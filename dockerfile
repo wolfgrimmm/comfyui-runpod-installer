@@ -8,4 +8,4 @@ RUN apt-get update && \
 RUN wget https://raw.githubusercontent.com/wolfgrimmm/comfyui-runpod-installer/main/comfy_install_script.sh && \
     chmod +x comfy_install_script.sh
 EXPOSE 8188
-CMD ["bash", "-c", "./comfy_install_script.sh && tail -f /dev/null"]
+CMD ["bash", "-c", "./comfy_install_script.sh && jupyter lab --ip=0.0.0.0 --port=8888 --allow-root --no-browser & ./start_comfyui.sh"]
