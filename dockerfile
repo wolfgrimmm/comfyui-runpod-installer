@@ -5,7 +5,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install Python and dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3.11 python3.11-pip python3.11-venv curl git && \
+    apt-get install -y --no-install-recommends software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends python3.11 python3.11-pip python3.11-venv python3.11-dev curl git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
