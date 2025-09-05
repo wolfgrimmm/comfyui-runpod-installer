@@ -54,12 +54,9 @@ RUN cd /workspace/ComfyUI/custom_nodes && \
     git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus.git && \
     git clone https://github.com/city96/ComfyUI-GGUF.git
 
-# Layer 8: Flash Attention (changes rarely)
-RUN pip install --no-cache-dir \
-    https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/flash_attn-2.7.4.post1-cp310-cp310-linux_x86_64.whl \
-    https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/sageattention-2.1.1-cp310-cp310-linux_x86_64.whl \
-    https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/xformers-0.0.30+3abeaa9e.d20250427-cp310-cp310-linux_x86_64.whl && \
-    rm -rf /root/.cache/pip/*
+# Layer 8: Flash Attention - Skip during build, install at runtime
+# These packages often fail during Docker builds due to CUDA/Python version mismatches
+# They will be installed on first run via start_comfyui.sh
 
 # Layer 9: Directory structure (changes rarely)
 RUN mkdir -p /workspace/models /workspace/workflows /workspace/output && \
@@ -70,6 +67,17 @@ RUN mkdir -p /workspace/models /workspace/workflows /workspace/output && \
 
 # Layer 10: Scripts (changes frequently - put last for fast rebuilds)
 RUN echo '#!/bin/bash' > /workspace/start_comfyui.sh && \
+    echo '' >> /workspace/start_comfyui.sh && \
+    echo '# Install Flash Attention on first run if not already installed' >> /workspace/start_comfyui.sh && \
+    echo 'if ! python -c "import flash_attn" 2>/dev/null; then' >> /workspace/start_comfyui.sh && \
+    echo '    echo "Installing Flash Attention packages (first run only)..."' >> /workspace/start_comfyui.sh && \
+    echo '    pip install --no-cache-dir \' >> /workspace/start_comfyui.sh && \
+    echo '        https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/flash_attn-2.7.4.post1-cp310-cp310-linux_x86_64.whl \' >> /workspace/start_comfyui.sh && \
+    echo '        https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/sageattention-2.1.1-cp310-cp310-linux_x86_64.whl \' >> /workspace/start_comfyui.sh && \
+    echo '        https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/xformers-0.0.30+3abeaa9e.d20250427-cp310-cp310-linux_x86_64.whl || \' >> /workspace/start_comfyui.sh && \
+    echo '        echo "Warning: Flash Attention installation failed. ComfyUI will run without acceleration."' >> /workspace/start_comfyui.sh && \
+    echo 'fi' >> /workspace/start_comfyui.sh && \
+    echo '' >> /workspace/start_comfyui.sh && \
     echo 'fuser -k 8188/tcp 2>/dev/null || true' >> /workspace/start_comfyui.sh && \
     echo 'source /workspace/venv/bin/activate' >> /workspace/start_comfyui.sh && \
     echo 'export HF_HOME="/workspace"' >> /workspace/start_comfyui.sh && \
