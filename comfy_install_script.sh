@@ -63,9 +63,9 @@ echo "📋 Installing ComfyUI requirements..."
 cd "$COMFYUI_DIR"
 pip install --no-cache-dir -r requirements.txt
 
-# Install PyTorch with CUDA 12.1 support (no cache)
-echo "🔥 Installing PyTorch with CUDA 12.1 support..."
-pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# Install PyTorch with CUDA 12.8 support (compatible with CUDA 12.9)
+echo "🔥 Installing PyTorch 2.7.1 with CUDA 12.8 support..."
+pip install --no-cache-dir torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu128
 
 # Install custom nodes
 echo "🔧 Installing custom nodes..."
