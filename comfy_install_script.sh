@@ -134,7 +134,8 @@ pip install --no-cache-dir https://huggingface.co/MonsterMMORPG/SECourses_Premiu
 
 # Install additional AI packages (no cache)
 echo "🤖 Installing additional AI packages..."
-pip install --no-cache-dir https://github.com/deepinsight/insightface/releases/download/v0.7.3/insightface-0.7.3-cp310-cp310-linux_x86_64.whl
+# Using Hugging Face mirror for insightface as GitHub release doesn't have cp310 wheel
+pip install --no-cache-dir https://huggingface.co/deauxpas/colabrepo/resolve/main/insightface-0.7.3-cp310-cp310-linux_x86_64.whl
 pip install --no-cache-dir onnxruntime-gpu
 pip install --no-cache-dir piexif
 pip install --no-cache-dir triton
