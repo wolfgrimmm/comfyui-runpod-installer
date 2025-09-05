@@ -3,12 +3,9 @@ FROM nvidia/cuda:12.9.0-runtime-ubuntu22.04
 WORKDIR /workspace
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Python and dependencies
+# Install Python and dependencies (using default Python 3.10)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends python3.11 python3.11-pip python3.11-venv python3.11-dev curl git && \
+    apt-get install -y --no-install-recommends python3 python3-pip python3-venv python3-dev curl git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

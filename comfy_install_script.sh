@@ -46,7 +46,7 @@ echo "🐍 Creating virtual environment..."
 if [ -d "$VENV_DIR" ]; then
     echo "⚠️  Virtual environment already exists, skipping creation..."
 else
-    python3.11 -m venv "$VENV_DIR"
+    python3 -m venv "$VENV_DIR"
 fi
 
 # Activate virtual environment
@@ -133,7 +133,7 @@ pip install https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attenti
 
 # Install additional AI packages
 echo "🤖 Installing additional AI packages..."
-pip install https://github.com/deepinsight/insightface/releases/download/v0.7.3/insightface-0.7.3-cp311-cp311-linux_x86_64.whl
+pip install https://github.com/deepinsight/insightface/releases/download/v0.7.3/insightface-0.7.3-cp310-cp310-linux_x86_64.whl
 pip install onnxruntime-gpu
 pip install piexif
 pip install triton
