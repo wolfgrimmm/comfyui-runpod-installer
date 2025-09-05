@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ComfyUI Installation Script for RunPod
-# Uses uv for faster package installation
+# Optimized for minimal storage usage during build
 
 set -e
 
@@ -19,8 +19,9 @@ OUTPUT_DIR="$WORKSPACE_DIR/output"
 
 cd "$WORKSPACE_DIR"
 
-# Use regular pip for simplicity
-echo "📦 Using pip for package installation..."
+# Configure pip for minimal cache usage
+echo "📦 Configuring pip for minimal storage usage..."
+export PIP_NO_CACHE_DIR=1
 
 # Create directory structure
 echo "📁 Creating directory structure..."
@@ -53,18 +54,18 @@ fi
 echo "🔧 Activating virtual environment..."
 source "$VENV_DIR/bin/activate"
 
-# Upgrade pip and install base packages
+# Upgrade pip and install base packages (no cache)
 echo "⬆️  Upgrading pip and installing base packages..."
-pip install --upgrade pip setuptools wheel
+pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install ComfyUI requirements
+# Install ComfyUI requirements (no cache)
 echo "📋 Installing ComfyUI requirements..."
 cd "$COMFYUI_DIR"
-pip install -r requirements.txt
+pip install --no-cache-dir -r requirements.txt
 
-# Install PyTorch with CUDA 12.9 support
-echo "🔥 Installing PyTorch with CUDA 12.9..."
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# Install PyTorch with CUDA 12.1 support (no cache)
+echo "🔥 Installing PyTorch with CUDA 12.1 support..."
+pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # Install custom nodes
 echo "🔧 Installing custom nodes..."
@@ -108,7 +109,7 @@ else
     cd ComfyUI-GGUF
 fi
 if [ -f "requirements.txt" ]; then
-    pip install -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt
 fi
 cd ..
 
@@ -125,26 +126,26 @@ cd ..
 
 cd "$COMFYUI_DIR"
 
-# Install Flash Attention and related packages from specific wheel files
+# Install Flash Attention and related packages from specific wheel files (no cache)
 echo "🔥 Installing Flash Attention and related packages..."
-pip install https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/flash_attn-2.7.4.post1-cp310-cp310-linux_x86_64.whl
-pip install https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/sageattention-2.1.1-cp310-cp310-linux_x86_64.whl
-pip install https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/xformers-0.0.30+3abeaa9e.d20250427-cp310-cp310-linux_x86_64.whl
+pip install --no-cache-dir https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/flash_attn-2.7.4.post1-cp310-cp310-linux_x86_64.whl
+pip install --no-cache-dir https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/sageattention-2.1.1-cp310-cp310-linux_x86_64.whl
+pip install --no-cache-dir https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/xformers-0.0.30+3abeaa9e.d20250427-cp310-cp310-linux_x86_64.whl
 
-# Install additional AI packages
+# Install additional AI packages (no cache)
 echo "🤖 Installing additional AI packages..."
-pip install https://github.com/deepinsight/insightface/releases/download/v0.7.3/insightface-0.7.3-cp310-cp310-linux_x86_64.whl
-pip install onnxruntime-gpu
-pip install piexif
-pip install triton
-pip install deepspeed
-pip install accelerate
-pip install diffusers
-pip install requests
+pip install --no-cache-dir https://github.com/deepinsight/insightface/releases/download/v0.7.3/insightface-0.7.3-cp310-cp310-linux_x86_64.whl
+pip install --no-cache-dir onnxruntime-gpu
+pip install --no-cache-dir piexif
+pip install --no-cache-dir triton
+pip install --no-cache-dir deepspeed
+pip install --no-cache-dir accelerate
+pip install --no-cache-dir diffusers
+pip install --no-cache-dir requests
 
-# Install HuggingFace tools
+# Install HuggingFace tools (no cache)
 echo "🤗 Installing HuggingFace tools..."
-pip install huggingface_hub hf_transfer
+pip install --no-cache-dir huggingface_hub hf_transfer
 
 # Set HuggingFace environment variables
 echo "🔧 Setting HuggingFace environment variables..."
@@ -227,7 +228,7 @@ echo "🎉 ComfyUI Installation Complete!"
 echo "=========================================="
 echo ""
 echo "📋 Installation Summary:"
-echo "✅ ComfyUI installed with uv for faster package management"
+echo "✅ ComfyUI installed with optimized pip configuration"
 echo "✅ Virtual environment created at: $VENV_DIR"
 echo "✅ Shared folder structure created with symlinks"
 echo "✅ Flash Attention, XFormers, and AI packages installed"
