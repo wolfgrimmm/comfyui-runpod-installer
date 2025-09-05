@@ -5,7 +5,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends wget curl ca-certificates git python3.11-dev build-essential && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-COPY comfy_install_script.sh /workspace/
+COPY comfy_install_script.sh /workspace/comfy_install_script.sh
 RUN chmod +x /workspace/comfy_install_script.sh
 EXPOSE 8188
-CMD ["bash", "-c", "cd /workspace && ls -la && ./comfy_install_script.sh && tail -f /dev/null"]
+CMD ["bash", "-c", "cd /workspace && ls -la && bash comfy_install_script.sh && bash start_comfyui.sh"]
