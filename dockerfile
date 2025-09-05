@@ -1,11 +1,11 @@
-FROM ubuntu:22.04
+FROM runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04
 WORKDIR /workspace
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends wget curl ca-certificates && \
+    apt-get install -y --no-install-recommends wget curl ca-certificates git python3.11-dev build-essential && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-RUN wget https://raw.githubusercontent.com/wolfgrimmm/comfyui-runpod-installer/main/comfy_install_script.sh && \
-    chmod +x comfy_install_script.sh
+COPY comfy_install_script.sh /workspace/
+RUN chmod +x /workspace/comfy_install_script.sh
 EXPOSE 8188
-CMD ["bash", "-c", "./comfy_install_script.sh && jupyter lab --ip=0.0.0.0 --port=8888 --allow-root --no-browser & ./start_comfyui.sh"]
+CMD ["bash", "-c", "cd /workspace && ls -la && ./comfy_install_script.sh && tail -f /dev/null"]
