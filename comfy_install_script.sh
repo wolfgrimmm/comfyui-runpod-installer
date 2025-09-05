@@ -140,7 +140,7 @@ uv pip install https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Atte
 
 # Install additional AI packages
 echo "🤖 Installing additional AI packages..."
-uv pip install insightface
+uv pip install https://github.com/deepinsight/insightface/releases/download/v0.7.3/insightface-0.7.3-cp311-cp311-linux_x86_64.whl
 uv pip install onnxruntime-gpu
 uv pip install piexif
 uv pip install triton
