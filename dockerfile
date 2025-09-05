@@ -87,5 +87,9 @@ ENV HF_HUB_ENABLE_HF_TRANSFER=1
 
 EXPOSE 8188
 EXPOSE 8888
+EXPOSE 22
 WORKDIR /workspace
-CMD ["/bin/bash", "/workspace/start_comfyui.sh"]
+
+# RunPod expects no CMD or a sleep command to keep container running
+# ComfyUI should be started manually via JupyterLab terminal
+CMD ["sleep", "infinity"]
