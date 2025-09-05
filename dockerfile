@@ -69,16 +69,14 @@ RUN mkdir -p /workspace/models /workspace/workflows /workspace/output && \
     ln -sf /workspace/ComfyUI/user/default/workflows /workspace/workflows
 
 # Create startup script
-RUN cat > /workspace/start_comfyui.sh << 'EOF'
-#!/bin/bash
-fuser -k 8188/tcp 2>/dev/null || true
-source /workspace/venv/bin/activate
-export HF_HOME="/workspace"
-export HF_HUB_ENABLE_HF_TRANSFER=1
-cd /workspace/ComfyUI
-echo "Starting ComfyUI on port 8188..."
-python main.py --listen 0.0.0.0 --port 8188
-EOF
+RUN echo '#!/bin/bash' > /workspace/start_comfyui.sh && \
+    echo 'fuser -k 8188/tcp 2>/dev/null || true' >> /workspace/start_comfyui.sh && \
+    echo 'source /workspace/venv/bin/activate' >> /workspace/start_comfyui.sh && \
+    echo 'export HF_HOME="/workspace"' >> /workspace/start_comfyui.sh && \
+    echo 'export HF_HUB_ENABLE_HF_TRANSFER=1' >> /workspace/start_comfyui.sh && \
+    echo 'cd /workspace/ComfyUI' >> /workspace/start_comfyui.sh && \
+    echo 'echo "Starting ComfyUI on port 8188..."' >> /workspace/start_comfyui.sh && \
+    echo 'python main.py --listen 0.0.0.0 --port 8188' >> /workspace/start_comfyui.sh
 
 RUN chmod +x /workspace/start_comfyui.sh
 
