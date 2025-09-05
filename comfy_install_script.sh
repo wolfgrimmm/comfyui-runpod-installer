@@ -52,7 +52,7 @@ echo "🐍 Creating virtual environment with uv..."
 if [ -d "$VENV_DIR" ]; then
     echo "⚠️  Virtual environment already exists, skipping creation..."
 else
-    uv venv "$VENV_DIR" --python 3.10
+    uv venv "$VENV_DIR" --python 3.11
 fi
 
 # Activate virtual environment
