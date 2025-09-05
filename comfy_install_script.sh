@@ -6,7 +6,7 @@
 set -e
 
 echo "=========================================="
-echo "🚀 ComfyUI Installation with UV"
+echo "🚀 ComfyUI Installation"
 echo "=========================================="
 
 # Configuration
@@ -19,15 +19,8 @@ OUTPUT_DIR="$WORKSPACE_DIR/output"
 
 cd "$WORKSPACE_DIR"
 
-# Check if uv is already installed (it may be pre-installed in Docker)
-if ! command -v uv &> /dev/null; then
-    echo "📦 Installing uv for faster package installation..."
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-fi
-export PATH="$HOME/.cargo/bin:$PATH"
-
-# Set UV link mode to avoid hardlink warnings on RunPod
-export UV_LINK_MODE=copy
+# Use regular pip for simplicity
+echo "📦 Using pip for package installation..."
 
 # Create directory structure
 echo "📁 Creating directory structure..."
@@ -48,30 +41,30 @@ fi
 
 # No need to copy models folder structure anymore - we'll use ComfyUI's folders directly
 
-# Create virtual environment with uv
-echo "🐍 Creating virtual environment with uv..."
+# Create virtual environment with python
+echo "🐍 Creating virtual environment..."
 if [ -d "$VENV_DIR" ]; then
     echo "⚠️  Virtual environment already exists, skipping creation..."
 else
-    uv venv "$VENV_DIR" --python 3.11
+    python3.11 -m venv "$VENV_DIR"
 fi
 
 # Activate virtual environment
 echo "🔧 Activating virtual environment..."
 source "$VENV_DIR/bin/activate"
 
-# Upgrade pip and install base packages with uv
+# Upgrade pip and install base packages
 echo "⬆️  Upgrading pip and installing base packages..."
-uv pip install --upgrade pip setuptools wheel
+pip install --upgrade pip setuptools wheel
 
 # Install ComfyUI requirements
 echo "📋 Installing ComfyUI requirements..."
 cd "$COMFYUI_DIR"
-uv pip install -r requirements.txt
+pip install -r requirements.txt
 
 # Install PyTorch with CUDA 12.9 support
 echo "🔥 Installing PyTorch with CUDA 12.9..."
-uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # Install custom nodes
 echo "🔧 Installing custom nodes..."
@@ -115,7 +108,7 @@ else
     cd ComfyUI-GGUF
 fi
 if [ -f "requirements.txt" ]; then
-    uv pip install -r requirements.txt
+    pip install -r requirements.txt
 fi
 cd ..
 
@@ -134,24 +127,24 @@ cd "$COMFYUI_DIR"
 
 # Install Flash Attention and related packages from specific wheel files
 echo "🔥 Installing Flash Attention and related packages..."
-uv pip install https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/flash_attn-2.7.4.post1-cp310-cp310-linux_x86_64.whl
-uv pip install https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/sageattention-2.1.1-cp310-cp310-linux_x86_64.whl
-uv pip install https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/xformers-0.0.30+3abeaa9e.d20250427-cp310-cp310-linux_x86_64.whl
+pip install https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/flash_attn-2.7.4.post1-cp310-cp310-linux_x86_64.whl
+pip install https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/sageattention-2.1.1-cp310-cp310-linux_x86_64.whl
+pip install https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/xformers-0.0.30+3abeaa9e.d20250427-cp310-cp310-linux_x86_64.whl
 
 # Install additional AI packages
 echo "🤖 Installing additional AI packages..."
-uv pip install https://github.com/deepinsight/insightface/releases/download/v0.7.3/insightface-0.7.3-cp311-cp311-linux_x86_64.whl
-uv pip install onnxruntime-gpu
-uv pip install piexif
-uv pip install triton
-uv pip install deepspeed
-uv pip install accelerate
-uv pip install diffusers
-uv pip install requests
+pip install https://github.com/deepinsight/insightface/releases/download/v0.7.3/insightface-0.7.3-cp311-cp311-linux_x86_64.whl
+pip install onnxruntime-gpu
+pip install piexif
+pip install triton
+pip install deepspeed
+pip install accelerate
+pip install diffusers
+pip install requests
 
 # Install HuggingFace tools
 echo "🤗 Installing HuggingFace tools..."
-uv pip install huggingface_hub hf_transfer
+pip install huggingface_hub hf_transfer
 
 # Set HuggingFace environment variables
 echo "🔧 Setting HuggingFace environment variables..."
