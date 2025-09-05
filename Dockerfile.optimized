@@ -1,0 +1,74 @@
+# Multi-stage build for optimal caching
+# Build from pre-built base image for faster builds
+ARG BASE_IMAGE=ghcr.io/yourusername/comfyui-base:latest
+FROM ${BASE_IMAGE} AS base
+
+# If base image doesn't exist, build from scratch
+FROM nvidia/cuda:12.9.0-devel-ubuntu22.04 AS base-fallback
+WORKDIR /workspace
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python3.10 python3.10-dev python3-pip python3.10-venv \
+    curl git psmisc && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /workspace/venv && \
+    . /workspace/venv/bin/activate && \
+    pip install --no-cache-dir --upgrade pip setuptools wheel
+
+ENV PATH="/workspace/venv/bin:$PATH"
+ENV VIRTUAL_ENV="/workspace/venv"
+
+RUN pip install --no-cache-dir torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu128
+
+# Main build continues from base
+FROM base AS final
+
+# ComfyUI core
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI && \
+    cd /workspace/ComfyUI && \
+    pip install --no-cache-dir -r requirements.txt
+
+# AI packages - separate layers for better caching
+RUN pip install --no-cache-dir \
+    https://huggingface.co/deauxpas/colabrepo/resolve/main/insightface-0.7.3-cp310-cp310-linux_x86_64.whl \
+    onnxruntime-gpu
+
+RUN pip install --no-cache-dir \
+    accelerate \
+    diffusers \
+    piexif \
+    triton \
+    requests \
+    huggingface_hub \
+    hf_transfer
+
+# Custom nodes
+RUN cd /workspace/ComfyUI/custom_nodes && \
+    git clone https://github.com/ltdrdata/ComfyUI-Manager.git && \
+    git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus.git && \
+    git clone https://github.com/city96/ComfyUI-GGUF.git
+
+# Directory structure
+RUN mkdir -p /workspace/models /workspace/workflows /workspace/output && \
+    ln -sf /workspace/ComfyUI/models /workspace/models || true && \
+    ln -sf /workspace/ComfyUI/output /workspace/output || true && \
+    mkdir -p /workspace/ComfyUI/user/default/workflows && \
+    ln -sf /workspace/ComfyUI/user/default/workflows /workspace/workflows || true
+
+# Scripts - only this layer rebuilds when scripts change
+COPY scripts/start_comfyui.sh /workspace/start_comfyui.sh
+COPY scripts/install_flash_attention.sh /workspace/install_flash_attention.sh
+RUN chmod +x /workspace/*.sh && \
+    ln -sf /workspace/start_comfyui.sh /start.sh
+
+ENV HF_HOME="/workspace"
+ENV HF_HUB_ENABLE_HF_TRANSFER=1
+
+EXPOSE 8188 8888 22
+WORKDIR /workspace
+CMD ["sleep", "infinity"]
