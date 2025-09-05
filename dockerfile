@@ -22,14 +22,14 @@ RUN chmod +x /build/comfy_install_script.sh && \
     # Clean up build artifacts
     rm -rf /root/.cache /tmp/* /var/tmp/*
 
-# Runtime stage - start fresh with runtime base
-FROM runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-runtime-ubuntu22.04
+# Runtime stage - use smaller base with CUDA support
+FROM nvidia/cuda:12.8-runtime-ubuntu22.04
 WORKDIR /workspace
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install minimal runtime dependencies
+# Install Python and minimal runtime dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl git psmisc && \
+    apt-get install -y --no-install-recommends python3.11 python3.11-venv curl git psmisc && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
