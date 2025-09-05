@@ -19,11 +19,12 @@ OUTPUT_DIR="$WORKSPACE_DIR/output"
 
 cd "$WORKSPACE_DIR"
 
-# Install uv for faster package management
-echo "📦 Installing uv for faster package installation..."
-curl -LsSf https://astral.sh/uv/install.sh | sh
-source $HOME/.local/bin/env
-export PATH="$HOME/.local/bin:$PATH"
+# Check if uv is already installed (it may be pre-installed in Docker)
+if ! command -v uv &> /dev/null; then
+    echo "📦 Installing uv for faster package installation..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+fi
+export PATH="$HOME/.cargo/bin:$PATH"
 
 # Set UV link mode to avoid hardlink warnings on RunPod
 export UV_LINK_MODE=copy
@@ -68,10 +69,9 @@ echo "📋 Installing ComfyUI requirements..."
 cd "$COMFYUI_DIR"
 uv pip install -r requirements.txt
 
-# Remove and reinstall PyTorch with specific version
-echo "🔥 Installing PyTorch 2.7.0 with CUDA 12.8..."
-uv pip uninstall torch torchvision xformers torchaudio || true
-uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+# Install PyTorch with CUDA 12.9 support
+echo "🔥 Installing PyTorch with CUDA 12.9..."
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # Install custom nodes
 echo "🔧 Installing custom nodes..."
