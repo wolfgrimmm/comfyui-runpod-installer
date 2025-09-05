@@ -11,11 +11,13 @@ RUN apt-get update && \
     # Cleanup apt immediately
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-# Copy script and run with cleanup
+# Set UV path permanently
+ENV PATH="/root/.cargo/bin:$PATH"
+ENV UV_LINK_MODE=copy
+
+# Copy and run script with cleanup
 COPY comfy_install_script.sh /workspace/
 RUN chmod +x /workspace/comfy_install_script.sh && \
-    export PATH="/root/.cargo/bin:$PATH" && \
-    export UV_LINK_MODE=copy && \
     bash /workspace/comfy_install_script.sh && \
     # Aggressive cleanup
     rm -rf /root/.cache /root/.cargo /tmp/* /var/tmp/* /workspace/comfy_install_script.sh && \
