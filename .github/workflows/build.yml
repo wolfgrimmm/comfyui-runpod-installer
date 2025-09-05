@@ -35,6 +35,9 @@ jobs:
           context: .
           push: true
           tags: "${{ vars.DOCKER_USER }}/comfyui-runpod:latest"
+          # GitHub Actions cache for faster rebuilds
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Also use registry cache as backup
+          platforms: linux/amd64
   
