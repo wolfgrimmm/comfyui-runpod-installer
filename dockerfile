@@ -1,11 +1,11 @@
-# Single stage with aggressive cleanup to save storage
-FROM runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04
+# Use minimal CUDA 12.9 runtime base for RTX 5090 support
+FROM nvidia/cuda:12.9.0-runtime-ubuntu22.04
 WORKDIR /workspace
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies, run script, and cleanup all in one layer
+# Install Python and dependencies, then install uv
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl git python3.11-dev build-essential psmisc && \
+    apt-get install -y --no-install-recommends python3.11 python3.11-venv python3.11-dev curl git build-essential psmisc && \
     # Install uv
     curl -LsSf https://astral.sh/uv/install.sh | sh && \
     # Cleanup apt immediately
