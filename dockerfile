@@ -78,11 +78,14 @@ RUN echo '#!/bin/bash' > /workspace/start_comfyui.sh && \
     echo 'echo "Starting ComfyUI on port 8188..."' >> /workspace/start_comfyui.sh && \
     echo 'python main.py --listen 0.0.0.0 --port 8188' >> /workspace/start_comfyui.sh
 
-RUN chmod +x /workspace/start_comfyui.sh
+RUN chmod +x /workspace/start_comfyui.sh && \
+    ln -sf /workspace/start_comfyui.sh /start_comfyui.sh && \
+    ln -sf /workspace/start_comfyui.sh /start.sh
 
 # Set environment variables
 ENV HF_HOME="/workspace"
 ENV HF_HUB_ENABLE_HF_TRANSFER=1
 
 EXPOSE 8188
-CMD ["bash", "/workspace/start_comfyui.sh"]
+WORKDIR /workspace
+CMD ["/bin/bash", "/workspace/start_comfyui.sh"]
