@@ -70,9 +70,9 @@ RUN mkdir -p /workspace/ComfyUI/models && \
 RUN echo '#!/bin/bash' > /workspace/start_comfyui.sh && \
     echo '' >> /workspace/start_comfyui.sh && \
     echo '# Install Flash Attention on first run if not already installed' >> /workspace/start_comfyui.sh && \
-    echo 'if ! python -c "import flash_attn" 2>/dev/null; then' >> /workspace/start_comfyui.sh && \
+    echo 'if ! /workspace/venv/bin/python -c "import flash_attn" 2>/dev/null; then' >> /workspace/start_comfyui.sh && \
     echo '    echo "Installing Flash Attention packages (first run only)..."' >> /workspace/start_comfyui.sh && \
-    echo '    pip install --no-cache-dir \' >> /workspace/start_comfyui.sh && \
+    echo '    /workspace/venv/bin/pip install --no-cache-dir \' >> /workspace/start_comfyui.sh && \
     echo '        https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/flash_attn-2.7.4.post1-cp310-cp310-linux_x86_64.whl \' >> /workspace/start_comfyui.sh && \
     echo '        https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/sageattention-2.1.1-cp310-cp310-linux_x86_64.whl \' >> /workspace/start_comfyui.sh && \
     echo '        https://huggingface.co/MonsterMMORPG/SECourses_Premium_Flash_Attention/resolve/main/xformers-0.0.30+3abeaa9e.d20250427-cp310-cp310-linux_x86_64.whl || \' >> /workspace/start_comfyui.sh && \
@@ -80,12 +80,11 @@ RUN echo '#!/bin/bash' > /workspace/start_comfyui.sh && \
     echo 'fi' >> /workspace/start_comfyui.sh && \
     echo '' >> /workspace/start_comfyui.sh && \
     echo 'fuser -k 8188/tcp 2>/dev/null || true' >> /workspace/start_comfyui.sh && \
-    echo 'source /workspace/venv/bin/activate' >> /workspace/start_comfyui.sh && \
     echo 'export HF_HOME="/workspace"' >> /workspace/start_comfyui.sh && \
     echo 'export HF_HUB_ENABLE_HF_TRANSFER=1' >> /workspace/start_comfyui.sh && \
     echo 'cd /workspace/ComfyUI' >> /workspace/start_comfyui.sh && \
     echo 'echo "Starting ComfyUI on port 8188..."' >> /workspace/start_comfyui.sh && \
-    echo 'python main.py --listen 0.0.0.0 --port 8188' >> /workspace/start_comfyui.sh && \
+    echo '/workspace/venv/bin/python main.py --listen 0.0.0.0 --port 8188' >> /workspace/start_comfyui.sh && \
     chmod +x /workspace/start_comfyui.sh && \
     ln -sf /workspace/start_comfyui.sh /start.sh
 
