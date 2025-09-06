@@ -66,14 +66,7 @@ RUN mkdir -p /workspace/ComfyUI/models && \
     ln -sf /workspace/ComfyUI/input /workspace/input && \
     ln -sf /workspace/ComfyUI/user/default/workflows /workspace/workflows
 
-# Layer 9: Copy sync scripts
-COPY scripts/*.sh /workspace/scripts/
-RUN chmod +x /workspace/scripts/*.sh && \
-    ln -sf /workspace/scripts/sync_from_gdrive.sh /workspace/sync_from_gdrive.sh && \
-    ln -sf /workspace/scripts/sync_to_gdrive.sh /workspace/sync_to_gdrive.sh && \
-    ln -sf /workspace/scripts/setup_gdrive.sh /workspace/setup_gdrive.sh
-
-# Layer 10: Create start script (changes most frequently - keep last)
+# Layer 9: Create start script directly (COPY is failing)
 RUN echo '#!/bin/bash' > /workspace/start_comfyui.sh && \
     echo '' >> /workspace/start_comfyui.sh && \
     echo '# Install Flash Attention on first run if not already installed' >> /workspace/start_comfyui.sh && \
