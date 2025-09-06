@@ -41,7 +41,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.optimized
+          file: Dockerfile
           push: true
           tags: |
             ${{ vars.DOCKER_USER }}/comfyui-runpod:latest
