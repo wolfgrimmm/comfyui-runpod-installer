@@ -102,5 +102,5 @@ ENV HF_HUB_ENABLE_HF_TRANSFER=1
 EXPOSE 8188 8888 22
 WORKDIR /workspace
 
-# RunPod expects sleep infinity to keep container running
-CMD ["sleep", "infinity"]
+# RunPod needs a startup script, not sleep infinity
+CMD ["/workspace/start_comfyui.sh"]
