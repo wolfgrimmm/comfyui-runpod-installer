@@ -9,7 +9,7 @@ ENV PIP_NO_CACHE_DIR=1
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     python3.10 python3.10-dev python3-pip python3.10-venv \
-    curl git psmisc && \
+    curl git psmisc supervisor lsof && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -42,7 +42,10 @@ RUN pip install --no-cache-dir \
     triton \
     requests \
     huggingface_hub \
-    hf_transfer
+    hf_transfer \
+    flask \
+    psutil \
+    jupyterlab
 
 # Layer 7: Custom nodes
 RUN cd /workspace/ComfyUI/custom_nodes && \
@@ -57,16 +60,21 @@ RUN mkdir -p /workspace/models /workspace/workflows /workspace/output && \
     mkdir -p /workspace/ComfyUI/user/default/workflows && \
     ln -sf /workspace/ComfyUI/user/default/workflows /workspace/workflows || true
 
-# Layer 9: Scripts (changes most frequently - keep last)
+# Layer 9: UI application
+COPY ui/ /workspace/ui/
+RUN mkdir -p /workspace/logs
+
+# Layer 10: Scripts and configuration (changes most frequently - keep last)
 COPY scripts/ /workspace/scripts/
 RUN chmod +x /workspace/scripts/*.sh && \
     ln -sf /workspace/scripts/start_comfyui.sh /workspace/start_comfyui.sh && \
-    ln -sf /workspace/scripts/install_flash_attention.sh /workspace/install_flash_attention.sh && \
-    ln -sf /workspace/scripts/start_comfyui.sh /start.sh
+    ln -sf /workspace/scripts/install_flash_attention.sh /workspace/install_flash_attention.sh
 
 ENV HF_HOME="/workspace"
 ENV HF_HUB_ENABLE_HF_TRANSFER=1
 
-EXPOSE 8188 8888 22
+EXPOSE 7777 8188 8888 22
 WORKDIR /workspace
-CMD ["sleep", "infinity"]
+
+# Start supervisor to manage UI and JupyterLab
+CMD ["/usr/bin/supervisord", "-c", "/workspace/scripts/supervisor.conf"]

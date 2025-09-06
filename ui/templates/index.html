@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComfyUI Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .status {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .status.running {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-text {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .status.running .status-text {
+            color: #155724;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-start {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-start:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-stop {
+            background: #dc3545;
+            color: white;
+            margin-top: 10px;
+        }
+        
+        .btn-stop:hover {
+            background: #c82333;
+        }
+        
+        .btn-open {
+            background: #28a745;
+            color: white;
+            margin-top: 10px;
+        }
+        
+        .btn-open:hover {
+            background: #218838;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .add-user {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .add-user input {
+            flex: 1;
+        }
+        
+        .add-user button {
+            padding: 12px 20px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .add-user button:hover {
+            background: #5a6268;
+        }
+        
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ComfyUI Manager</h1>
+        <p class="subtitle">Select your username and start ComfyUI</p>
+        
+        <div class="status {{ 'running' if running else '' }}">
+            <div class="status-text">
+                {% if running %}
+                    ✅ ComfyUI is running for user: <strong>{{ current_user }}</strong>
+                {% else %}
+                    ⚫ ComfyUI is not running
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="username">Select User:</label>
+            <select id="username" {% if running %}disabled{% endif %}>
+                {% for user in users %}
+                    <option value="{{ user }}" {% if user == current_user %}selected{% endif %}>
+                        {{ user }}
+                    </option>
+                {% endfor %}
+            </select>
+            
+            <div class="add-user">
+                <input type="text" id="newUser" placeholder="Or add new user..." {% if running %}disabled{% endif %}>
+                <button onclick="addUser()" {% if running %}disabled{% endif %}>Add</button>
+            </div>
+        </div>
+        
+        {% if not running %}
+            <button class="btn btn-start" onclick="startComfyUI()">
+                Start ComfyUI
+            </button>
+        {% else %}
+            <button class="btn btn-open" onclick="openComfyUI()">
+                Open ComfyUI Interface
+            </button>
+            <button class="btn btn-stop" onclick="stopComfyUI()">
+                Stop ComfyUI
+            </button>
+        {% endif %}
+        
+        <div class="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px;">Starting ComfyUI...</p>
+        </div>
+        
+        <div class="message" id="message"></div>
+    </div>
+    
+    <script>
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'message ' + type;
+            msg.style.display = 'block';
+            setTimeout(() => {
+                msg.style.display = 'none';
+            }, 5000);
+        }
+        
+        function showLoading(show) {
+            document.querySelector('.loading').style.display = show ? 'block' : 'none';
+        }
+        
+        async function startComfyUI() {
+            const username = document.getElementById('username').value;
+            if (!username) {
+                showMessage('Please select a user', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username: username})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('ComfyUI started! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = 'http://' + window.location.hostname + ':8188';
+                    }, 3000);
+                } else {
+                    showMessage(data.error || 'Failed to start ComfyUI', 'error');
+                    showLoading(false);
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+                showLoading(false);
+            }
+        }
+        
+        async function stopComfyUI() {
+            if (!confirm('Stop ComfyUI?')) return;
+            
+            try {
+                const response = await fetch('/api/stop', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                showMessage('ComfyUI stopped', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+            }
+        }
+        
+        function openComfyUI() {
+            window.open('http://' + window.location.hostname + ':8188', '_blank');
+        }
+        
+        async function addUser() {
+            const username = document.getElementById('newUser').value.trim().toLowerCase();
+            if (!username) return;
+            
+            try {
+                const response = await fetch('/api/add_user', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username: username})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(`User ${username} added`, 'success');
+                    // Add to select
+                    const select = document.getElementById('username');
+                    const option = document.createElement('option');
+                    option.value = username;
+                    option.textContent = username;
+                    select.appendChild(option);
+                    select.value = username;
+                    document.getElementById('newUser').value = '';
+                } else {
+                    showMessage(data.error || 'Failed to add user', 'error');
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+            }
+        }
+        
+        // Check status periodically
+        setInterval(async () => {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                // Update UI if status changed
+                if (data.running !== {{ 'true' if running else 'false' }}) {
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Status check failed:', error);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
