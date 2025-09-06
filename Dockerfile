@@ -1,15 +1,18 @@
-# RTX 5090 Optimized - Using RunPod's base image
-FROM runpod/pytorch:2.8.0-py3.11-cuda12.8-devel-ubuntu22.04
+# RTX 5090 Optimized with CUDA 12.4
+FROM nvidia/cuda:12.4.0-devel-ubuntu22.04
 
 WORKDIR /workspace
 ENV DEBIAN_FRONTEND=noninteractive
 
-# RunPod image already has Python 3.11 and PyTorch 2.8.0 with CUDA 12.8!
-# Just need git and wget
+# Install Python, git, wget
 RUN apt-get update && \
-    apt-get install -y git wget && \
+    apt-get install -y python3.10 python3-pip git wget && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    ln -s /usr/bin/python3 /usr/bin/python
+
+# Install PyTorch with CUDA 12.4 for RTX 5090
+RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # Install ComfyUI to /app (NOT /workspace which is for volumes)
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /app/ComfyUI && \
