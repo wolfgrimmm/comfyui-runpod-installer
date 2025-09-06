@@ -46,20 +46,38 @@ Flash Attention provides 2-3x speedup but may fail during Docker build. Install 
 ./start_comfyui.sh
 ```
 
-### 4. Working with Models
+### 4. Google Drive Integration
 
-Models location: `/workspace/models/`
-
-#### Download models via terminal:
+#### First-time setup:
 ```bash
-cd /workspace/models/checkpoints
-wget https://huggingface.co/[model-url]
+./setup_gdrive.sh
+# Follow the instructions to connect your Google account
 ```
 
-#### Or use ComfyUI Manager:
-1. Open ComfyUI in browser
-2. Click Manager button
-3. Install models through UI
+#### Sync models FROM Google Drive:
+```bash
+./sync_from_gdrive.sh
+# Downloads models, workflows, and inputs from your Drive
+```
+
+#### Backup outputs TO Google Drive:
+```bash
+./sync_to_gdrive.sh  
+# Uploads your generated images and workflows to Drive
+```
+
+#### Google Drive folder structure:
+```
+Google Drive/
+└── ComfyUI/
+    ├── models/
+    │   ├── checkpoints/   # Your SD models
+    │   ├── loras/         # LoRA models
+    │   ├── vae/           # VAE models
+    │   └── controlnet/    # ControlNet models
+    ├── workflows/         # Your saved workflows
+    ├── output/           # Generated images backup
+    └── input/            # Input images for img2img
 
 ### 5. Persistent Storage
 

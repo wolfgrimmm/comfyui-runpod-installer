@@ -9,9 +9,12 @@ ENV PIP_NO_CACHE_DIR=1
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     python3.10 python3.10-dev python3-pip python3.10-venv \
-    curl git psmisc supervisor lsof && \
+    curl git psmisc supervisor lsof wget unzip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Install rclone for Google Drive sync
+RUN curl https://rclone.org/install.sh | bash
 
 # Layer 2: Python venv (rarely changes) - FIX: Use python3.10 specifically and ensure pip
 RUN python3.10 -m venv /workspace/venv
@@ -49,7 +52,9 @@ RUN pip install --no-cache-dir \
 RUN cd /workspace/ComfyUI/custom_nodes && \
     git clone https://github.com/ltdrdata/ComfyUI-Manager.git && \
     git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus.git && \
-    git clone https://github.com/city96/ComfyUI-GGUF.git
+    git clone https://github.com/city96/ComfyUI-GGUF.git && \
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
+    cd ComfyUI-Impact-Pack && python install.py && cd ..
 
 # Layer 8: Directory structure with proper symlinks
 RUN mkdir -p /workspace/ComfyUI/models && \
@@ -61,8 +66,14 @@ RUN mkdir -p /workspace/ComfyUI/models && \
     ln -sf /workspace/ComfyUI/input /workspace/input && \
     ln -sf /workspace/ComfyUI/user/default/workflows /workspace/workflows
 
-# Layer 9: Scripts (changes most frequently - keep last)
-# Create individual script files directly to avoid COPY issues
+# Layer 9: Copy sync scripts
+COPY scripts/*.sh /workspace/scripts/
+RUN chmod +x /workspace/scripts/*.sh && \
+    ln -sf /workspace/scripts/sync_from_gdrive.sh /workspace/sync_from_gdrive.sh && \
+    ln -sf /workspace/scripts/sync_to_gdrive.sh /workspace/sync_to_gdrive.sh && \
+    ln -sf /workspace/scripts/setup_gdrive.sh /workspace/setup_gdrive.sh
+
+# Layer 10: Create start script (changes most frequently - keep last)
 RUN echo '#!/bin/bash' > /workspace/start_comfyui.sh && \
     echo '' >> /workspace/start_comfyui.sh && \
     echo '# Install Flash Attention on first run if not already installed' >> /workspace/start_comfyui.sh && \

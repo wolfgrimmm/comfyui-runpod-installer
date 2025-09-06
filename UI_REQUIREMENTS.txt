@@ -1,0 +1,46 @@
+UI REQUIREMENTS SUMMARY
+========================
+
+USER REQUIREMENTS:
+- Simple UI for user selection before starting ComfyUI
+- Each user gets their own pod with separate GPU (not sharing)
+- UI runs on port 7777, ComfyUI on port 8188
+- Users can only access ComfyUI through the UI (must select user first)
+- Very simple UI to start with - can improve later
+
+ARCHITECTURE DECISIONS:
+1. Single container setup (UI + ComfyUI in same container)
+2. Users cannot access ComfyUI directly - must go through UI first
+3. One user per pod model (each artist gets their own RunPod pod)
+4. No user authentication needed - simple dropdown selection
+5. UI should auto-start when pod starts
+
+USER/FOLDER STRUCTURE:
+- Each user has their own folders:
+  - /workspace/input/[username]/
+  - /workspace/output/[username]/
+- When user selects their name and starts ComfyUI:
+  - System creates symlinks: ComfyUI/input -> /workspace/input/[username]
+  - System creates symlinks: ComfyUI/output -> /workspace/output/[username]
+- All outputs save to user-specific folders
+
+USER MANAGEMENT:
+- Default user: "serhii" 
+- Simple user selection from dropdown
+- Can add new users on the fly
+- No passwords or authentication
+- No user conflicts (since each pod is for one person)
+
+WORKFLOW:
+1. Artist deploys their personal RunPod pod
+2. Pod auto-starts UI on port 7777
+3. Artist visits UI and selects their username
+4. Clicks "Start ComfyUI" button
+5. ComfyUI starts with their folders mapped
+6. UI redirects to ComfyUI on port 8188
+7. All work saves to their named folders
+
+KEY POINT:
+Each artist/user gets their own dedicated pod with their own GPU. 
+The UI is just for organizing their work into user-named folders, 
+not for managing multiple concurrent users.
