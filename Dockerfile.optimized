@@ -19,11 +19,9 @@ FROM base AS python-deps
 RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # Install ComfyUI dependencies (changes occasionally)
-COPY requirements.txt /tmp/comfyui-requirements.txt
-RUN pip3 install --no-cache-dir -r /tmp/comfyui-requirements.txt || \
-    (git clone https://github.com/comfyanonymous/ComfyUI.git /tmp/comfyui && \
-     pip3 install --no-cache-dir -r /tmp/comfyui/requirements.txt && \
-     rm -rf /tmp/comfyui)
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git /tmp/comfyui && \
+    pip3 install --no-cache-dir -r /tmp/comfyui/requirements.txt && \
+    rm -rf /tmp/comfyui
 
 # Install additional packages (changes occasionally)
 RUN pip3 install --no-cache-dir \
