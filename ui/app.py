@@ -119,27 +119,42 @@ class ComfyUIManager:
             f.write(username)
         
         # Kill any existing process on port 8188
-        os.system("fuser -k 8188/tcp 2>/dev/null || true")
+        try:
+            os.system("fuser -k 8188/tcp 2>/dev/null || true")
+        except:
+            # Try alternative method if fuser not available
+            os.system("pkill -f 'python.*main.py.*8188' || true")
         time.sleep(1)
         
         # Start ComfyUI
         try:
+            # Check if script exists
+            script_path = "/workspace/start_comfyui.sh"
+            if not os.path.exists(script_path):
+                # Fallback to direct command
+                cmd = ["python", "/workspace/ComfyUI/main.py", "--listen", "0.0.0.0", "--port", "8188"]
+            else:
+                cmd = [script_path]
+            
             self.comfyui_process = subprocess.Popen(
-                ["/workspace/start_comfyui.sh"],
+                cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                env={**os.environ, "COMFYUI_USER": username}
+                env={**os.environ, "COMFYUI_USER": username},
+                cwd="/workspace/ComfyUI"
             )
             
             # Wait a bit for startup
-            time.sleep(3)
+            time.sleep(5)
             
             if self.comfyui_process.poll() is None:
                 return True, "ComfyUI started successfully"
             else:
-                return False, "ComfyUI failed to start"
+                # Get error output
+                stderr = self.comfyui_process.stderr.read().decode() if self.comfyui_process.stderr else ""
+                return False, f"ComfyUI failed to start: {stderr[:200]}"
         except Exception as e:
-            return False, str(e)
+            return False, f"Error starting ComfyUI: {str(e)}"
     
     def stop_comfyui(self):
         """Stop ComfyUI"""
@@ -190,7 +205,10 @@ def start_comfyui():
         return jsonify({"success": False, "error": "Username required"}), 400
     
     success, message = manager.start_comfyui(username)
-    return jsonify({"success": success, "message": message})
+    if success:
+        return jsonify({"success": success, "message": message})
+    else:
+        return jsonify({"success": success, "error": message})
 
 @app.route('/api/stop', methods=['POST'])
 def stop_comfyui():

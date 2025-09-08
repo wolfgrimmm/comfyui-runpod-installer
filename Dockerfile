@@ -4,9 +4,9 @@ FROM nvidia/cuda:12.4.0-devel-ubuntu22.04
 WORKDIR /workspace
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Python, git, wget
+# Install Python, git, wget, psmisc (for fuser), lsof
 RUN apt-get update && \
-    apt-get install -y python3.10 python3-pip git wget && \
+    apt-get install -y python3.10 python3-pip git wget psmisc lsof && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     ln -s /usr/bin/python3 /usr/bin/python
