@@ -49,12 +49,11 @@ RUN mkdir -p /workspace/models/checkpoints && \
     mkdir -p /workspace/workflows && \
     mkdir -p /workspace/user_data
 
-# Move ComfyUI default directories and create symlinks
+# Move ComfyUI default directories and create symlinks for models only
 RUN rm -rf /workspace/ComfyUI/models && ln -sf /workspace/models /workspace/ComfyUI/models && \
     rm -rf /workspace/ComfyUI/output && \
     rm -rf /workspace/ComfyUI/input && \
-    mkdir -p /workspace/ComfyUI/user && \
-    ln -sf /workspace/workflows /workspace/ComfyUI/user/workflows
+    mkdir -p /workspace/ComfyUI/user
 
 # Copy UI application
 COPY ui /app/ui
