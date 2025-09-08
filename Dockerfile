@@ -19,12 +19,15 @@ RUN git clone https://github.com/comfyanonymous/ComfyUI.git /app/ComfyUI && \
     cd /app/ComfyUI && \
     pip install --no-cache-dir -r requirements.txt
 
-# Install additional AI packages
+# Install additional AI packages and JupyterLab
 RUN pip install --no-cache-dir \
     onnxruntime-gpu \
     opencv-python \
     accelerate \
-    diffusers
+    diffusers \
+    jupyterlab \
+    ipywidgets \
+    notebook
 
 # Install custom nodes
 RUN cd /app/ComfyUI/custom_nodes && \
@@ -49,15 +52,18 @@ RUN rm -rf /app/ComfyUI/models && ln -sf /workspace/models /app/ComfyUI/models &
     mkdir -p /app/ComfyUI/user/default && \
     ln -sf /workspace/workflows /app/ComfyUI/user/default/workflows
 
-# Create simple start script
+# Create start script that runs both JupyterLab and ComfyUI
 RUN echo '#!/bin/bash' > /app/start.sh && \
+    echo 'echo "Starting JupyterLab on port 8888..."' >> /app/start.sh && \
+    echo 'jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token="" --NotebookApp.password="" --ServerApp.terminado_settings="shell_command=[\"bash\"]" &' >> /app/start.sh && \
+    echo 'echo "Starting ComfyUI on port 8188..."' >> /app/start.sh && \
     echo 'cd /app/ComfyUI' >> /app/start.sh && \
     echo 'python main.py --listen 0.0.0.0 --port 8188' >> /app/start.sh && \
     chmod +x /app/start.sh
 
 ENV HF_HOME="/workspace"
 
-EXPOSE 8188
+EXPOSE 8188 8888
 WORKDIR /workspace
 
 # Start ComfyUI
