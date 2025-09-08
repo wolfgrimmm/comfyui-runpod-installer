@@ -49,42 +49,54 @@ RUN mkdir -p /workspace/models/checkpoints && \
     mkdir -p /workspace/workflows && \
     mkdir -p /workspace/user_data
 
+# Create app directory for scripts
+RUN mkdir -p /app
+
 # Create initialization script to set up ComfyUI in workspace on first run
-RUN echo '#!/bin/bash' > /app/init_workspace.sh && \
-    echo 'if [ ! -d "/workspace/ComfyUI" ]; then' >> /app/init_workspace.sh && \
-    echo '  echo "First run detected - setting up ComfyUI in /workspace..."' >> /app/init_workspace.sh && \
-    echo '  cp -r /opt/ComfyUI-install /workspace/ComfyUI' >> /app/init_workspace.sh && \
-    echo '  echo "ComfyUI copied to /workspace"' >> /app/init_workspace.sh && \
-    echo 'fi' >> /app/init_workspace.sh && \
-    echo '# Always ensure symlinks are correct' >> /app/init_workspace.sh && \
-    echo 'rm -rf /workspace/ComfyUI/models' >> /app/init_workspace.sh && \
-    echo 'ln -sf /workspace/models /workspace/ComfyUI/models' >> /app/init_workspace.sh && \
-    echo 'rm -rf /workspace/ComfyUI/output' >> /app/init_workspace.sh && \
-    echo 'rm -rf /workspace/ComfyUI/input' >> /app/init_workspace.sh && \
-    echo 'mkdir -p /workspace/ComfyUI/user' >> /app/init_workspace.sh && \
-    chmod +x /app/init_workspace.sh
+RUN cat > /app/init_workspace.sh << 'EOF'
+#!/bin/bash
+if [ ! -d "/workspace/ComfyUI" ]; then
+    echo "First run detected - setting up ComfyUI in /workspace..."
+    cp -r /opt/ComfyUI-install /workspace/ComfyUI
+    echo "ComfyUI copied to /workspace"
+fi
+# Always ensure symlinks are correct
+rm -rf /workspace/ComfyUI/models
+ln -sf /workspace/models /workspace/ComfyUI/models
+rm -rf /workspace/ComfyUI/output
+rm -rf /workspace/ComfyUI/input
+mkdir -p /workspace/ComfyUI/user
+EOF
+
+RUN chmod +x /app/init_workspace.sh
 
 # Copy UI application
 COPY ui /app/ui
 
 # Create start script that runs UI, JupyterLab and ComfyUI
-RUN echo '#!/bin/bash' > /app/start.sh && \
-    echo 'echo "Initializing workspace..."' >> /app/start.sh && \
-    echo '/app/init_workspace.sh' >> /app/start.sh && \
-    echo 'echo "Starting UI on port 7777..."' >> /app/start.sh && \
-    echo 'cd /app/ui && python app.py &' >> /app/start.sh && \
-    echo 'echo "Starting JupyterLab on port 8888..."' >> /app/start.sh && \
-    echo 'jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token="" --NotebookApp.password="" --NotebookApp.allow_origin="*" --NotebookApp.disable_check_xsrf=True --ServerApp.allow_origin="*" --ServerApp.disable_check_xsrf=True --ServerApp.terminado_settings="shell_command=[\"bash\"]" &' >> /app/start.sh && \
-    echo 'echo "UI running on port 7777 - visit to start ComfyUI"' >> /app/start.sh && \
-    echo 'sleep infinity' >> /app/start.sh && \
-    chmod +x /app/start.sh
+RUN cat > /app/start.sh << 'EOF'
+#!/bin/bash
+echo "Initializing workspace..."
+/app/init_workspace.sh
+echo "Starting UI on port 7777..."
+cd /app/ui && python app.py &
+echo "Starting JupyterLab on port 8888..."
+jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token="" --NotebookApp.password="" --NotebookApp.allow_origin="*" --NotebookApp.disable_check_xsrf=True --ServerApp.allow_origin="*" --ServerApp.disable_check_xsrf=True --ServerApp.terminado_settings="shell_command=[\"bash\"]" &
+echo "UI running on port 7777 - visit to start ComfyUI"
+sleep infinity
+EOF
+
+RUN chmod +x /app/start.sh
 
 # Create ComfyUI start script for UI to use
-RUN echo '#!/bin/bash' > /app/start_comfyui.sh && \
-    echo '/app/init_workspace.sh' >> /app/start_comfyui.sh && \
-    echo 'cd /workspace/ComfyUI' >> /app/start_comfyui.sh && \
-    echo 'python main.py --listen 0.0.0.0 --port 8188' >> /app/start_comfyui.sh && \
-    chmod +x /app/start_comfyui.sh
+RUN cat > /app/start_comfyui.sh << 'EOF'
+#!/bin/bash
+/app/init_workspace.sh
+cd /workspace/ComfyUI
+python main.py --listen 0.0.0.0 --port 8188
+EOF
+
+RUN chmod +x /app/start_comfyui.sh
 
 ENV HF_HOME="/workspace"
 
