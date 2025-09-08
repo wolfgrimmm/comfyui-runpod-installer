@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  comfyui-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      cache_from:
+        - wolfgrimmm/comfyui-runpod:latest
+    ports:
+      - "7777:7777"   # UI
+      - "8188:8188"   # ComfyUI
+      - "8888:8888"   # JupyterLab
+    volumes:
+      # Mount UI folder for hot reload - changes take effect immediately
+      - ./ui:/app/ui:ro
+      # Mount workspace for persistence
+      - comfyui-workspace:/workspace
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    command: >
+      bash -c "
+        echo 'Starting in development mode with hot reload...';
+        cd /app/ui && python -u app.py &
+        jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' &
+        sleep infinity
+      "
+
+  # Minimal UI-only container for rapid testing
+  ui-only:
+    image: python:3.10-slim
+    ports:
+      - "7777:7777"
+    volumes:
+      - ./ui:/app/ui
+      - ui-workspace:/workspace
+    working_dir: /app/ui
+    command: >
+      bash -c "
+        pip install flask psutil &&
+        python app.py
+      "
+    environment:
+      - FLASK_ENV=development
+
+volumes:
+  comfyui-workspace:
+  ui-workspace:

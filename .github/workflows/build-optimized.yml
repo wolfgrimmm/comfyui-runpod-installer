@@ -1,0 +1,122 @@
+name: Optimized Docker Build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'smart'
+        type: choice
+        options:
+        - smart    # Auto-detect what changed
+        - ui-only  # Only UI changes (fastest)
+        - full     # Full rebuild
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ui_changed: ${{ steps.filter.outputs.ui }}
+      dockerfile_changed: ${{ steps.filter.outputs.dockerfile }}
+      deps_changed: ${{ steps.filter.outputs.deps }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            ui:
+              - 'ui/**'
+            dockerfile:
+              - 'Dockerfile*'
+            deps:
+              - 'requirements.txt'
+              - 'ui/requirements.txt'
+
+  build-base:
+    needs: detect-changes
+    if: |
+      github.event.inputs.build_type == 'full' ||
+      needs.detect-changes.outputs.dockerfile_changed == 'true' ||
+      needs.detect-changes.outputs.deps_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PAT }}
+          
+      - name: Build and push base image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.optimized
+          target: comfyui
+          push: true
+          tags: |
+            ${{ vars.DOCKER_USER }}/comfyui-runpod:base
+          cache-from: |
+            type=gha
+            type=registry,ref=${{ vars.DOCKER_USER }}/comfyui-runpod:base
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  build-final:
+    needs: [detect-changes, build-base]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PAT }}
+      
+      - name: Determine Dockerfile
+        id: dockerfile
+        run: |
+          if [[ "${{ github.event.inputs.build_type }}" == "ui-only" ]] || \
+             [[ "${{ needs.detect-changes.outputs.ui_changed }}" == "true" && \
+                "${{ needs.detect-changes.outputs.dockerfile_changed }}" != "true" && \
+                "${{ needs.detect-changes.outputs.deps_changed }}" != "true" ]]; then
+            echo "file=Dockerfile.dev" >> $GITHUB_OUTPUT
+            echo "Building UI-only (fast)"
+          else
+            echo "file=Dockerfile.optimized" >> $GITHUB_OUTPUT
+            echo "Building full image"
+          fi
+          
+      - name: Build and push final image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ steps.dockerfile.outputs.file }}
+          push: true
+          tags: |
+            ${{ vars.DOCKER_USER }}/comfyui-runpod:latest
+            ${{ vars.DOCKER_USER }}/comfyui-runpod:${{ github.sha }}
+          cache-from: |
+            type=gha
+            type=registry,ref=${{ vars.DOCKER_USER }}/comfyui-runpod:base
+            type=registry,ref=${{ vars.DOCKER_USER }}/comfyui-runpod:latest
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1

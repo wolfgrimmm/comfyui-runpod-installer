@@ -1,0 +1,20 @@
+# Lightweight dev Dockerfile for UI changes only
+# Uses pre-built base image with ComfyUI already installed
+FROM wolfgrimmm/comfyui-runpod:base AS final
+
+# Only copy and update UI files (super fast rebuild)
+COPY ui /app/ui
+
+# Recreate start script if needed
+RUN echo '#!/bin/bash' > /app/start.sh && \
+    echo 'echo "Starting UI on port 7777..."' >> /app/start.sh && \
+    echo 'cd /app/ui && python app.py &' >> /app/start.sh && \
+    echo 'echo "Starting JupyterLab on port 8888..."' >> /app/start.sh && \
+    echo 'jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token="" --NotebookApp.password="" --ServerApp.terminado_settings="shell_command=[\"bash\"]" &' >> /app/start.sh && \
+    echo 'echo "Waiting for UI to handle ComfyUI startup..."' >> /app/start.sh && \
+    echo 'sleep infinity' >> /app/start.sh && \
+    chmod +x /app/start.sh
+
+EXPOSE 7777 8188 8888
+WORKDIR /workspace
+CMD ["/app/start.sh"]
