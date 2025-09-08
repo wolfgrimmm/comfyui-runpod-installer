@@ -50,22 +50,37 @@ RUN mkdir -p /app
 # Create initialization script to set up ComfyUI in workspace on first run
 RUN cat > /app/init_workspace.sh << 'EOF'
 #!/bin/bash
-set -e
+echo "==================================="
 echo "Initializing ComfyUI workspace..."
+echo "==================================="
+
+# Debug: Show current state
+echo "Current directory: $(pwd)"
+echo "Checking /workspace contents:"
+ls -la /workspace/ || echo "Cannot list /workspace"
 
 # Check if ComfyUI exists
 if [ ! -d "/workspace/ComfyUI" ]; then
     echo "📦 ComfyUI not found - Installing from GitHub..."
-    git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI
-    echo "✅ ComfyUI installed"
+    cd /workspace
+    git clone https://github.com/comfyanonymous/ComfyUI.git ComfyUI || {
+        echo "❌ Failed to clone ComfyUI!"
+        echo "Trying alternative method..."
+        mkdir -p /workspace/ComfyUI
+        cd /workspace/ComfyUI
+        git init
+        git remote add origin https://github.com/comfyanonymous/ComfyUI.git
+        git fetch --depth=1 origin main
+        git checkout main
+    }
+    echo "✅ ComfyUI installed at /workspace/ComfyUI"
 else
-    echo "✅ ComfyUI found - skipping installation"
+    echo "✅ ComfyUI found at /workspace/ComfyUI"
     
     # Optional: Update ComfyUI
     if [ "${COMFYUI_AUTO_UPDATE:-false}" == "true" ]; then
         echo "🔄 Updating ComfyUI..."
         cd /workspace/ComfyUI && git pull || echo "Could not update"
-        cd /
     fi
 fi
 
@@ -135,8 +150,24 @@ RUN chmod +x /app/start.sh
 # Create ComfyUI start script for UI to use
 RUN cat > /app/start_comfyui.sh << 'EOF'
 #!/bin/bash
+echo "Starting ComfyUI..."
+
+# Ensure workspace is initialized
 /app/init_workspace.sh
+
+# Verify ComfyUI exists
+if [ ! -f "/workspace/ComfyUI/main.py" ]; then
+    echo "❌ ERROR: ComfyUI main.py not found at /workspace/ComfyUI/main.py"
+    echo "Contents of /workspace:"
+    ls -la /workspace/
+    echo "Contents of /workspace/ComfyUI (if exists):"
+    ls -la /workspace/ComfyUI/ 2>/dev/null || echo "ComfyUI directory not found"
+    exit 1
+fi
+
+# Start ComfyUI
 cd /workspace/ComfyUI
+echo "Starting ComfyUI from $(pwd)..."
 python main.py --listen 0.0.0.0 --port 8188
 EOF
 
