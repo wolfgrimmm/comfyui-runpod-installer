@@ -28,6 +28,35 @@
             padding: 40px;
             max-width: 500px;
             width: 100%;
+            position: relative;
+        }
+        
+        .jupyter-icon {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: all 0.3s;
+            background: #f37626;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(0,0,0,0.1);
+        }
+        
+        .jupyter-icon:hover {
+            opacity: 1;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(243, 118, 38, 0.4);
+        }
+        
+        .jupyter-icon svg {
+            width: 22px;
+            height: 22px;
         }
         
         h1 {
@@ -202,6 +231,14 @@
 </head>
 <body>
     <div class="container">
+        <!-- JupyterLab Icon -->
+        <div class="jupyter-icon" onclick="openJupyterLab()" title="Open JupyterLab">
+            <svg viewBox="0 0 24 24" fill="white">
+                <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/>
+                <path d="M6 10h12v2H6zm0 3h12v2H6z" opacity="0.7"/>
+            </svg>
+        </div>
+        
         <h1>ComfyUI Manager</h1>
         <p class="subtitle">Select your username and start ComfyUI</p>
         
@@ -243,10 +280,6 @@
                 Stop ComfyUI
             </button>
         {% endif %}
-        
-        <button class="btn btn-jupyter" onclick="openJupyterLab()" style="background: #f37626; margin-top: 10px;">
-            Open JupyterLab
-        </button>
         
         <div class="loading">
             <div class="spinner"></div>

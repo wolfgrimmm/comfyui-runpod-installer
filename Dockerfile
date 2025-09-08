@@ -50,6 +50,7 @@ RUN mkdir -p /app
 # Create initialization script to set up ComfyUI in workspace on first run
 RUN cat > /app/init_workspace.sh << 'EOF'
 #!/bin/bash
+set -e
 echo "Initializing ComfyUI workspace..."
 
 # Check if ComfyUI exists
@@ -63,12 +64,16 @@ else
     # Optional: Update ComfyUI
     if [ "${COMFYUI_AUTO_UPDATE:-false}" == "true" ]; then
         echo "🔄 Updating ComfyUI..."
-        cd /workspace/ComfyUI && git pull
+        cd /workspace/ComfyUI && git pull || echo "Could not update"
+        cd /
     fi
 fi
 
+# Ensure custom_nodes directory exists
+mkdir -p /workspace/ComfyUI/custom_nodes
+
 # Install baseline custom nodes if not present
-if [ -f "/app/config/baseline-nodes.txt" ]; then
+if [ -f "/app/config/baseline-nodes.txt" ] && [ -d "/workspace/ComfyUI/custom_nodes" ]; then
     echo "📦 Checking custom nodes..."
     while IFS= read -r node || [ -n "$node" ]; do
         [[ "$node" =~ ^#.*$ ]] && continue
@@ -81,19 +86,29 @@ if [ -f "/app/config/baseline-nodes.txt" ]; then
             git clone "https://github.com/$node" || echo "Failed to clone $node"
             
             # Run install.py if exists
-            if [ -f "$repo_name/install.py" ]; then
-                cd "$repo_name" && python install.py
+            if [ -f "/workspace/ComfyUI/custom_nodes/$repo_name/install.py" ]; then
+                cd "/workspace/ComfyUI/custom_nodes/$repo_name"
+                python install.py || echo "Install script failed for $repo_name"
             fi
+        else
+            echo "  ✓ $repo_name already installed"
         fi
     done < /app/config/baseline-nodes.txt
 fi
 
 # Always ensure symlinks are correct
+echo "Setting up symlinks..."
 rm -rf /workspace/ComfyUI/models
 ln -sf /workspace/models /workspace/ComfyUI/models
 rm -rf /workspace/ComfyUI/output
 rm -rf /workspace/ComfyUI/input
 mkdir -p /workspace/ComfyUI/user
+
+# Ensure model directories exist
+mkdir -p /workspace/models/checkpoints
+mkdir -p /workspace/models/loras
+mkdir -p /workspace/models/vae
+
 echo "✅ Initialization complete!"
 EOF
 
