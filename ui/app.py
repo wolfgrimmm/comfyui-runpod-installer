@@ -15,7 +15,7 @@ app = Flask(__name__)
 
 # Configuration
 WORKSPACE_DIR = "/workspace"
-COMFYUI_DIR = f"{WORKSPACE_DIR}/ComfyUI"
+COMFYUI_DIR = "/app/ComfyUI"  # ComfyUI is installed in /app
 INPUT_BASE = f"{WORKSPACE_DIR}/input"
 OUTPUT_BASE = f"{WORKSPACE_DIR}/output"
 USERS_FILE = f"{WORKSPACE_DIR}/users.json"
@@ -117,7 +117,7 @@ class ComfyUIManager:
         # Start ComfyUI
         try:
             self.comfyui_process = subprocess.Popen(
-                ["/workspace/scripts/start_comfyui.sh"],
+                ["/app/start_comfyui.sh"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 env={**os.environ, "COMFYUI_USER": username}
