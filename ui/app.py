@@ -129,9 +129,11 @@ class ComfyUIManager:
         # Start ComfyUI
         try:
             # Check if script exists
-            script_path = "/workspace/start_comfyui.sh"
+            script_path = "/app/start_comfyui.sh"
             if not os.path.exists(script_path):
-                # Fallback to direct command
+                # Fallback - ensure ComfyUI exists first
+                if not os.path.exists("/workspace/ComfyUI"):
+                    os.system("/app/init_workspace.sh")
                 cmd = ["python", "/workspace/ComfyUI/main.py", "--listen", "0.0.0.0", "--port", "8188"]
             else:
                 cmd = [script_path]
