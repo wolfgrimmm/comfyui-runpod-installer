@@ -290,12 +290,23 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    showMessage('ComfyUI started! Redirecting...', 'success');
+                    showMessage('ComfyUI started! Waiting for it to be ready...', 'success');
+                    
+                    // Wait a bit longer for ComfyUI to fully initialize
+                    let countdown = 5;
+                    const countdownInterval = setInterval(() => {
+                        countdown--;
+                        showMessage(`ComfyUI started! Redirecting in ${countdown}s...`, 'success');
+                        if (countdown <= 0) {
+                            clearInterval(countdownInterval);
+                        }
+                    }, 1000);
+                    
                     setTimeout(() => {
                         // Use proper RunPod proxy URL format
                         const url = getRunPodUrl(8188);
                         window.location.href = url;
-                    }, 3000);
+                    }, 5000);  // Increased from 3s to 5s
                 } else {
                     showMessage(data.error || 'Failed to start ComfyUI', 'error');
                     showLoading(false);
@@ -341,7 +352,14 @@
         
         function openComfyUI() {
             const url = getRunPodUrl(8188);
-            window.open(url, '_blank');
+            
+            // Open in same window with a loading message
+            showMessage('Opening ComfyUI...', 'success');
+            
+            // Small delay to ensure it's ready
+            setTimeout(() => {
+                window.open(url, '_blank');
+            }, 1000);
         }
         
         function openJupyterLab() {

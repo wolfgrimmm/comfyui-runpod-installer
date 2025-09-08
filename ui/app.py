@@ -158,7 +158,14 @@ class ComfyUIManager:
                 
                 # Check if port is listening
                 if self.is_comfyui_running():
-                    return True, "ComfyUI started successfully"
+                    # Double-check by trying to connect
+                    import urllib.request
+                    try:
+                        response = urllib.request.urlopen('http://127.0.0.1:8188', timeout=1)
+                        if response.getcode() == 200 or response.getcode() == 301:
+                            return True, "ComfyUI started successfully"
+                    except:
+                        pass  # Still warming up
                 
                 # Show progress
                 if i % 5 == 0:
