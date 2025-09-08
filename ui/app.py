@@ -146,15 +146,25 @@ class ComfyUIManager:
                 cwd="/workspace/ComfyUI"
             )
             
-            # Wait a bit for startup
-            time.sleep(5)
+            # Wait for ComfyUI to actually start listening
+            max_wait = 30  # Maximum 30 seconds
+            for i in range(max_wait):
+                time.sleep(1)
+                
+                # Check if process died
+                if self.comfyui_process.poll() is not None:
+                    stderr = self.comfyui_process.stderr.read().decode() if self.comfyui_process.stderr else ""
+                    return False, f"ComfyUI process died: {stderr[:200]}"
+                
+                # Check if port is listening
+                if self.is_comfyui_running():
+                    return True, "ComfyUI started successfully"
+                
+                # Show progress
+                if i % 5 == 0:
+                    print(f"Waiting for ComfyUI to start... {i}s")
             
-            if self.comfyui_process.poll() is None:
-                return True, "ComfyUI started successfully"
-            else:
-                # Get error output
-                stderr = self.comfyui_process.stderr.read().decode() if self.comfyui_process.stderr else ""
-                return False, f"ComfyUI failed to start: {stderr[:200]}"
+            return False, "ComfyUI took too long to start (30s timeout)"
         except Exception as e:
             return False, f"Error starting ComfyUI: {str(e)}"
     
@@ -173,12 +183,19 @@ class ComfyUIManager:
     
     def is_comfyui_running(self):
         """Check if ComfyUI is running"""
+        # First check our process handle
         if self.comfyui_process and self.comfyui_process.poll() is None:
             return True
         
-        # Check port
-        result = os.system("lsof -i:8188 >/dev/null 2>&1")
-        return result == 0
+        # Check if port 8188 is actually listening
+        import socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            result = sock.connect_ex(('127.0.0.1', 8188))
+            sock.close()
+            return result == 0
+        except:
+            return False
     
     def get_status(self):
         """Get current status"""

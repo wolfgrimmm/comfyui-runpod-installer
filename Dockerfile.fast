@@ -1,0 +1,103 @@
+# Optimized for fast RunPod downloads
+FROM runpod/pytorch:2.1.0-py3.10-cuda12.1.0-devel-ubuntu22.04
+
+# This base image already has:
+# - PyTorch pre-installed (saves 2GB download)
+# - CUDA configured
+# - Python 3.10
+# - Common ML libraries
+
+WORKDIR /workspace
+
+# Install only what's missing (much less to download)
+RUN pip install --no-cache-dir \
+    onnxruntime-gpu \
+    opencv-python \
+    accelerate \
+    diffusers \
+    jupyterlab \
+    flask==3.0.0 \
+    psutil==5.9.0
+
+# Install aria2 for faster downloads in scripts
+RUN apt-get update && apt-get install -y aria2 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+RUN mkdir -p /app
+
+# Copy configuration files
+COPY config /app/config
+COPY ui /app/ui
+COPY scripts/optimize-downloads.sh /app/optimize-downloads.sh
+
+# Create initialization script with optimized downloads
+RUN cat > /app/init_workspace.sh << 'EOF'
+#!/bin/bash
+echo "Initializing ComfyUI with optimized downloads..."
+
+if [ ! -d "/workspace/ComfyUI" ]; then
+    echo "📦 Installing ComfyUI (optimized)..."
+    
+    # Use shallow clone (much faster)
+    git clone --depth=1 https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI
+    
+    # Install requirements
+    cd /workspace/ComfyUI
+    pip install -r requirements.txt --no-cache-dir
+    
+    # Install custom nodes with shallow clones
+    cd custom_nodes
+    while IFS= read -r node || [ -n "$node" ]; do
+        [[ "$node" =~ ^#.*$ ]] && continue
+        [[ -z "$node" ]] && continue
+        echo "Installing $node..."
+        git clone --depth=1 "https://github.com/$node"
+    done < /app/config/baseline-nodes.txt
+    
+    echo "✅ ComfyUI installed!"
+else
+    echo "✅ ComfyUI found - skipping installation"
+fi
+
+# Setup symlinks
+rm -rf /workspace/ComfyUI/models
+ln -sf /workspace/models /workspace/ComfyUI/models
+rm -rf /workspace/ComfyUI/output /workspace/ComfyUI/input
+mkdir -p /workspace/ComfyUI/user
+EOF
+
+RUN chmod +x /app/init_workspace.sh /app/optimize-downloads.sh
+
+# Start script
+RUN cat > /app/start.sh << 'EOF'
+#!/bin/bash
+/app/init_workspace.sh
+cd /app/ui && python app.py &
+jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root \
+    --NotebookApp.token="" --NotebookApp.password="" \
+    --NotebookApp.allow_origin="*" --NotebookApp.disable_check_xsrf=True \
+    --ServerApp.allow_origin="*" --ServerApp.disable_check_xsrf=True &
+echo "Services started - UI on 7777, JupyterLab on 8888"
+sleep infinity
+EOF
+
+RUN chmod +x /app/start.sh
+
+# ComfyUI start script
+RUN cat > /app/start_comfyui.sh << 'EOF'
+#!/bin/bash
+/app/init_workspace.sh
+cd /workspace/ComfyUI
+python main.py --listen 0.0.0.0 --port 8188
+EOF
+
+RUN chmod +x /app/start_comfyui.sh
+
+ENV HF_HOME="/workspace"
+ENV PIP_DEFAULT_TIMEOUT=100
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+EXPOSE 7777 8188 8888
+WORKDIR /workspace
+CMD ["/app/start.sh"]
