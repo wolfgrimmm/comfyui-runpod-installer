@@ -14,10 +14,10 @@ RUN apt-get update && \
 # Install PyTorch with CUDA 12.4 for RTX 5090
 RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
-# Clone ComfyUI to temp location for later copying
-RUN git clone https://github.com/comfyanonymous/ComfyUI.git /opt/ComfyUI-install && \
-    cd /opt/ComfyUI-install && \
-    pip install --no-cache-dir -r requirements.txt
+# Install ComfyUI requirements without cloning ComfyUI itself
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git /tmp/comfyui-req && \
+    pip install --no-cache-dir -r /tmp/comfyui-req/requirements.txt && \
+    rm -rf /tmp/comfyui-req
 
 # Install additional AI packages, JupyterLab, and UI dependencies
 RUN pip install --no-cache-dir \
@@ -31,13 +31,8 @@ RUN pip install --no-cache-dir \
     flask==3.0.0 \
     psutil==5.9.0
 
-# Install custom nodes to temp location
-RUN cd /opt/ComfyUI-install/custom_nodes && \
-    git clone https://github.com/ltdrdata/ComfyUI-Manager.git && \
-    git clone https://github.com/cubiq/ComfyUI_IPAdapter_plus.git && \
-    git clone https://github.com/city96/ComfyUI-GGUF.git && \
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
-    cd ComfyUI-Impact-Pack && python install.py && cd ..
+# Copy configuration files
+COPY config /app/config
 
 # Create workspace directories structure
 RUN mkdir -p /workspace/models/checkpoints && \
@@ -55,17 +50,51 @@ RUN mkdir -p /app
 # Create initialization script to set up ComfyUI in workspace on first run
 RUN cat > /app/init_workspace.sh << 'EOF'
 #!/bin/bash
+echo "Initializing ComfyUI workspace..."
+
+# Check if ComfyUI exists
 if [ ! -d "/workspace/ComfyUI" ]; then
-    echo "First run detected - setting up ComfyUI in /workspace..."
-    cp -r /opt/ComfyUI-install /workspace/ComfyUI
-    echo "ComfyUI copied to /workspace"
+    echo "📦 ComfyUI not found - Installing from GitHub..."
+    git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI
+    echo "✅ ComfyUI installed"
+else
+    echo "✅ ComfyUI found - skipping installation"
+    
+    # Optional: Update ComfyUI
+    if [ "${COMFYUI_AUTO_UPDATE:-false}" == "true" ]; then
+        echo "🔄 Updating ComfyUI..."
+        cd /workspace/ComfyUI && git pull
+    fi
 fi
+
+# Install baseline custom nodes if not present
+if [ -f "/app/config/baseline-nodes.txt" ]; then
+    echo "📦 Checking custom nodes..."
+    while IFS= read -r node || [ -n "$node" ]; do
+        [[ "$node" =~ ^#.*$ ]] && continue
+        [[ -z "$node" ]] && continue
+        repo_name=$(echo "$node" | sed 's/.*\///')
+        
+        if [ ! -d "/workspace/ComfyUI/custom_nodes/$repo_name" ]; then
+            echo "  Installing: $repo_name"
+            cd /workspace/ComfyUI/custom_nodes
+            git clone "https://github.com/$node" || echo "Failed to clone $node"
+            
+            # Run install.py if exists
+            if [ -f "$repo_name/install.py" ]; then
+                cd "$repo_name" && python install.py
+            fi
+        fi
+    done < /app/config/baseline-nodes.txt
+fi
+
 # Always ensure symlinks are correct
 rm -rf /workspace/ComfyUI/models
 ln -sf /workspace/models /workspace/ComfyUI/models
 rm -rf /workspace/ComfyUI/output
 rm -rf /workspace/ComfyUI/input
 mkdir -p /workspace/ComfyUI/user
+echo "✅ Initialization complete!"
 EOF
 
 RUN chmod +x /app/init_workspace.sh

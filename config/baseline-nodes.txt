@@ -1,0 +1,6 @@
+# Baseline Custom Nodes - Will be installed/synced on startup
+# Format: GitHub URL or just owner/repo
+ltdrdata/ComfyUI-Manager
+cubiq/ComfyUI_IPAdapter_plus
+city96/ComfyUI-GGUF
+ltdrdata/ComfyUI-Impact-Pack
