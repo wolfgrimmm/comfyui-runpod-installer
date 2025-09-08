@@ -15,11 +15,11 @@ app = Flask(__name__)
 
 # Configuration
 WORKSPACE_DIR = "/workspace"
-COMFYUI_DIR = "/app/ComfyUI"  # ComfyUI is installed in /app
+COMFYUI_DIR = f"{WORKSPACE_DIR}/ComfyUI"  # ComfyUI is in /workspace/ComfyUI
 INPUT_BASE = f"{WORKSPACE_DIR}/input"
 OUTPUT_BASE = f"{WORKSPACE_DIR}/output"
-USERS_FILE = f"{WORKSPACE_DIR}/users.json"
-CURRENT_USER_FILE = f"{WORKSPACE_DIR}/.current_user"
+USERS_FILE = f"{WORKSPACE_DIR}/user_data/users.json"
+CURRENT_USER_FILE = f"{WORKSPACE_DIR}/user_data/.current_user"
 
 class ComfyUIManager:
     def __init__(self):
@@ -31,6 +31,7 @@ class ComfyUIManager:
         """Initialize directories and default users"""
         os.makedirs(INPUT_BASE, exist_ok=True)
         os.makedirs(OUTPUT_BASE, exist_ok=True)
+        os.makedirs(f"{WORKSPACE_DIR}/user_data", exist_ok=True)
         
         # Load or create users list
         if os.path.exists(USERS_FILE):
@@ -69,24 +70,22 @@ class ComfyUIManager:
     
     def setup_symlinks(self, username):
         """Setup ComfyUI symlinks to user folders"""
-        # Remove existing input/output in ComfyUI
+        # Remove existing input/output symlinks in ComfyUI
         comfy_input = f"{COMFYUI_DIR}/input"
         comfy_output = f"{COMFYUI_DIR}/output"
         
+        # Remove existing symlinks/directories
         for path in [comfy_input, comfy_output]:
-            if os.path.islink(path):
-                os.unlink(path)
-            elif os.path.exists(path):
-                # Backup existing folder
-                backup = f"{path}_backup"
-                if os.path.exists(backup):
-                    os.system(f"rm -rf {backup}")
-                os.rename(path, backup)
+            if os.path.islink(path) or os.path.exists(path):
+                os.system(f"rm -rf {path}")
         
-        # Create symlinks to user folders
+        # Create user folders if they don't exist
         user_input = f"{INPUT_BASE}/{username}"
         user_output = f"{OUTPUT_BASE}/{username}"
+        os.makedirs(user_input, exist_ok=True)
+        os.makedirs(user_output, exist_ok=True)
         
+        # Create symlinks to user folders
         os.symlink(user_input, comfy_input)
         os.symlink(user_output, comfy_output)
         
@@ -117,7 +116,7 @@ class ComfyUIManager:
         # Start ComfyUI
         try:
             self.comfyui_process = subprocess.Popen(
-                ["/app/start_comfyui.sh"],
+                ["/workspace/start_comfyui.sh"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 env={**os.environ, "COMFYUI_USER": username}
