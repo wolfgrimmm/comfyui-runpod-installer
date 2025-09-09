@@ -46,10 +46,11 @@ RUN pip install --no-cache-dir \
     requests \
     GitPython
 
-# Group 5b: PyGithub separately (can fail in some environments)
-RUN pip install --no-cache-dir PyGithub || \
-    pip install --no-cache-dir --break-system-packages PyGithub || \
-    echo "Warning: PyGithub installation failed, ComfyUI Manager features may be limited"
+# Group 5b: GitHub integration (install separately due to potential conflicts)
+# Try older stable version first, fallback to any version, then give up gracefully
+RUN pip install --no-cache-dir "PyGithub==1.59.1" || \
+    pip install --no-cache-dir PyGithub || \
+    echo "Warning: PyGithub installation failed, ComfyUI Manager GitHub features may be limited"
 
 # Group 6: Jupyter
 RUN pip install --no-cache-dir \
