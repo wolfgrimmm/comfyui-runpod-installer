@@ -46,6 +46,11 @@ RUN pip install --no-cache-dir \
     requests \
     GitPython
 
+# Group 5b: PyGithub separately (can fail in some environments)
+RUN pip install --no-cache-dir PyGithub || \
+    pip install --no-cache-dir --break-system-packages PyGithub || \
+    echo "Warning: PyGithub installation failed, ComfyUI Manager features may be limited"
+
 # Group 6: Jupyter
 RUN pip install --no-cache-dir \
     jupyterlab \
