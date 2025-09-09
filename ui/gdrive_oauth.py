@@ -105,9 +105,13 @@ class GDriveOAuth:
     def save_rclone_config(self, token, remote_name="gdrive"):
         """Save rclone configuration with OAuth token"""
         try:
-            # Create config directory
+            # Create config directory in workspace
             config_dir = os.path.dirname(self.rclone_config_file)
             os.makedirs(config_dir, exist_ok=True)
+            
+            # Also create in root home for compatibility
+            root_config_dir = "/root/.config/rclone"
+            os.makedirs(root_config_dir, exist_ok=True)
             
             # Create rclone config
             config = f"""[{remote_name}]
@@ -134,13 +138,18 @@ root_folder_id =
                     flags=re.DOTALL
                 )
             
-            # Write new config
+            # Write new config to both locations
             with open(self.rclone_config_file, 'w') as f:
                 f.write(existing_config + config)
             
-            # Test configuration
+            # Also write to root home directory
+            root_config_file = "/root/.config/rclone/rclone.conf"
+            with open(root_config_file, 'w') as f:
+                f.write(existing_config + config)
+            
+            # Test configuration with explicit config file
             result = subprocess.run(
-                ['rclone', 'lsd', f'{remote_name}:'],
+                ['rclone', '--config', self.rclone_config_file, 'lsd', f'{remote_name}:'],
                 capture_output=True,
                 text=True,
                 timeout=10
@@ -207,24 +216,40 @@ root_folder_id =
             # Parse service account JSON
             sa_data = json.loads(service_account_json)
             
-            # Create rclone config for service account
-            config = f"""[gdrive]
-type = drive
-scope = drive
-service_account_file = {self.workspace_dir}/.config/rclone/service_account.json
-team_drive = 
-
-"""
+            # Create directories
+            workspace_config_dir = f"{self.workspace_dir}/.config/rclone"
+            root_config_dir = "/root/.config/rclone"
+            os.makedirs(workspace_config_dir, exist_ok=True)
+            os.makedirs(root_config_dir, exist_ok=True)
             
-            # Save service account file
-            sa_path = f"{self.workspace_dir}/.config/rclone/service_account.json"
-            os.makedirs(os.path.dirname(sa_path), exist_ok=True)
+            # Save service account file to both locations
+            sa_path = f"{workspace_config_dir}/service_account.json"
+            root_sa_path = f"{root_config_dir}/service_account.json"
             
             with open(sa_path, 'w') as f:
                 json.dump(sa_data, f)
             
-            # Save rclone config
+            with open(root_sa_path, 'w') as f:
+                json.dump(sa_data, f)
+            
+            # Set permissions
+            os.chmod(sa_path, 0o600)
+            os.chmod(root_sa_path, 0o600)
+            
+            # Create rclone config using absolute path
+            config = f"""[gdrive]
+type = drive
+scope = drive
+service_account_file = {root_sa_path}
+team_drive = 
+
+"""
+            
+            # Save rclone config to both locations
             with open(self.rclone_config_file, 'w') as f:
+                f.write(config)
+            
+            with open(f"{root_config_dir}/rclone.conf", 'w') as f:
                 f.write(config)
             
             # Test configuration
@@ -247,7 +272,13 @@ team_drive =
     def check_existing_config(self):
         """Check if rclone is already configured"""
         try:
-            if not os.path.exists(self.rclone_config_file):
+            # Check both possible config locations
+            root_config = "/root/.config/rclone/rclone.conf"
+            workspace_config = self.rclone_config_file
+            
+            config_exists = os.path.exists(root_config) or os.path.exists(workspace_config)
+            
+            if not config_exists:
                 return False, "No configuration found"
             
             # Check if gdrive remote exists

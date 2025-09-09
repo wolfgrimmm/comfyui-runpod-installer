@@ -20,22 +20,15 @@
     <div class="panel-body">
         <!-- Configuration Section -->
         <div class="gdrive-config" id="gdriveConfig" style="display: none;">
-            <p class="info-text">Google Drive is not configured. Set it up to enable output sync for all users.</p>
-            <button class="btn btn-secondary" onclick="installRclone()">
-                <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
+            <p class="info-text">Google Drive sync is managed by administrator.</p>
+            <div class="admin-notice" style="padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; margin-top: 10px;">
+                <svg class="inline-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
-                Install rclone
-            </button>
-            <button class="btn btn-secondary" onclick="showConfigureDialog()">
-                <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M12 1v6m0 6v6m4.22-13.22l4.24 4.24M1.54 1.54l4.24 4.24M18.36 18.36l4.24 4.24M1.54 18.36l4.24-4.24"/>
-                </svg>
-                Configure
-            </button>
+                Contact administrator to configure Google Drive sync.
+            </div>
         </div>
         
         <!-- Sync Controls -->
@@ -67,6 +60,15 @@
             <div class="sync-actions">
                 <h4 class="section-title">Quick Actions</h4>
                 <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="openGoogleDrive()" id="openDriveBtn">
+                        <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/>
+                            <polyline points="15 3 21 3 21 9"/>
+                            <line x1="10" y1="14" x2="21" y2="3"/>
+                        </svg>
+                        Open in Google Drive
+                    </button>
+                    
                     <button class="btn btn-primary" onclick="syncToGDrive()" id="syncToBtn">
                         <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -389,15 +391,26 @@ input[type="checkbox"] {
 <script>
 // Google Drive sync functions
 let syncCheckInterval;
+let driveUrl = 'https://drive.google.com/drive/folders/';
 
 async function checkGDriveStatus() {
     try {
         const response = await fetch('/api/gdrive/status');
         const data = await response.json();
         updateGDriveUI(data);
+        
+        // Use the drive URL from the backend
+        if (data.drive_url) {
+            driveUrl = data.drive_url;
+        }
     } catch (error) {
         console.error('Error checking Google Drive status:', error);
     }
+}
+
+function openGoogleDrive() {
+    // Open Google Drive folder in new tab
+    window.open(driveUrl, '_blank');
 }
 
 function updateGDriveUI(data) {
@@ -407,7 +420,16 @@ function updateGDriveUI(data) {
     const controlsSection = document.getElementById('gdriveControls');
     const autoSyncToggle = document.getElementById('autoSyncToggle');
     
-    if (data.configured) {
+    // Check if rclone is installed first
+    if (!data.rclone_installed) {
+        statusIndicator.dataset.status = 'not-configured';
+        statusText.textContent = 'rclone Not Installed';
+        configSection.style.display = 'block';
+        controlsSection.style.display = 'none';
+        // Show install button, hide configure button
+        document.querySelector('button[onclick="installRclone()"]').style.display = 'inline-flex';
+        document.querySelector('button[onclick="showConfigureDialog()"]').style.display = 'none';
+    } else if (data.configured) {
         statusIndicator.dataset.status = 'configured';
         statusText.textContent = 'Configured';
         configSection.style.display = 'none';
@@ -428,6 +450,9 @@ function updateGDriveUI(data) {
         statusText.textContent = 'Not Configured';
         configSection.style.display = 'block';
         controlsSection.style.display = 'none';
+        // Hide install button, show configure button
+        document.querySelector('button[onclick="installRclone()"]').style.display = 'none';
+        document.querySelector('button[onclick="showConfigureDialog()"]').style.display = 'inline-flex';
     }
     
     // Update sync status if syncing

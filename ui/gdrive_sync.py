@@ -36,9 +36,24 @@ class GDriveSync:
             # Check if rclone command exists
             result = subprocess.run(['which', 'rclone'], capture_output=True, text=True)
             if result.returncode != 0:
-                return False
+                # Rclone not found in PATH, check common locations
+                common_paths = ['/usr/bin/rclone', '/usr/local/bin/rclone']
+                for path in common_paths:
+                    if os.path.exists(path):
+                        # Found rclone, but not in PATH
+                        break
+                else:
+                    return False
             
-            # Check if gdrive remote is configured
+            # Only check if gdrive remote is configured if rclone exists
+            # Don't require configuration to consider rclone "available"
+            return True
+        except:
+            return False
+    
+    def check_gdrive_configured(self):
+        """Check if Google Drive remote is configured"""
+        try:
             result = subprocess.run(['rclone', 'listremotes'], capture_output=True, text=True)
             return f"{self.gdrive_remote}:" in result.stdout
         except:

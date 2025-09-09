@@ -183,11 +183,28 @@ RUN chmod +x /app/init_workspace.sh
 # Copy UI application
 COPY ui /app/ui
 
+# Copy scripts including Google Drive setup
+COPY scripts /app/scripts
+RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
+
 # Create start script that runs UI, JupyterLab and ComfyUI
 RUN cat > /app/start.sh << 'EOF'
 #!/bin/bash
 echo "Initializing workspace..."
 /app/init_workspace.sh
+
+# Auto-configure Google Drive (if embedded credentials exist)
+if [ -f "/app/scripts/init_gdrive_temp.sh" ]; then
+    echo "🚀 Auto-configuring Google Drive..."
+    /app/scripts/init_gdrive_temp.sh || true
+elif [ -f "/app/scripts/init_gdrive_embedded.sh" ]; then
+    echo "🚀 Auto-configuring Google Drive..."
+    /app/scripts/init_gdrive_embedded.sh || true
+elif [ -f "/app/scripts/init_gdrive.sh" ]; then
+    echo "Checking Google Drive configuration..."
+    /app/scripts/init_gdrive.sh || true
+fi
+
 echo "Starting UI on port 7777..."
 cd /app/ui && python app.py &
 echo "Starting JupyterLab on port 8888..."

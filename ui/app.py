@@ -577,10 +577,21 @@ def get_user_stats():
 @app.route('/api/gdrive/status')
 def gdrive_status():
     """Check Google Drive configuration status"""
+    # Check if we have a stored Drive URL
+    drive_url = None
+    if os.path.exists('/workspace/.gdrive_url'):
+        try:
+            with open('/workspace/.gdrive_url', 'r') as f:
+                drive_url = f.read().strip()
+        except:
+            pass
+    
     return jsonify({
-        'configured': gdrive.rclone_available,
+        'rclone_installed': gdrive.rclone_available,
+        'configured': gdrive.check_gdrive_configured(),
         'mount_point': f"{WORKSPACE_DIR}/gdrive",
-        'sync_status': gdrive.get_sync_status()
+        'sync_status': gdrive.get_sync_status(),
+        'drive_url': drive_url or 'https://drive.google.com/drive/search?q=ComfyUI-Output'
     })
 
 @app.route('/api/gdrive/sync', methods=['POST'])

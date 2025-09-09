@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# Automatic Google Drive setup on container start
+# This runs before the UI starts, configuring rclone from environment variables
+
+echo "🔧 Initializing Google Drive configuration..."
+
+# Check if already configured
+if [ -f "/workspace/.gdrive_configured" ]; then
+    echo "✅ Google Drive already configured"
+    exit 0
+fi
+
+# Check for service account JSON in environment variable
+if [ -n "$GOOGLE_SERVICE_ACCOUNT_JSON" ]; then
+    echo "📝 Found service account in environment variable"
+    
+    # Create config directories
+    mkdir -p /root/.config/rclone
+    mkdir -p /workspace/.config/rclone
+    
+    # Save service account JSON
+    echo "$GOOGLE_SERVICE_ACCOUNT_JSON" > /root/.config/rclone/service_account.json
+    echo "$GOOGLE_SERVICE_ACCOUNT_JSON" > /workspace/.config/rclone/service_account.json
+    chmod 600 /root/.config/rclone/service_account.json
+    chmod 600 /workspace/.config/rclone/service_account.json
+    
+    # Create rclone config
+    cat > /root/.config/rclone/rclone.conf << EOF
+[gdrive]
+type = drive
+scope = drive
+service_account_file = /root/.config/rclone/service_account.json
+team_drive = 
+
+EOF
+    
+    # Copy to workspace location too
+    cp /root/.config/rclone/rclone.conf /workspace/.config/rclone/rclone.conf
+    
+    # Test configuration
+    if rclone lsd gdrive: 2>/dev/null; then
+        echo "✅ Google Drive configured successfully"
+        
+        # Create folder structure
+        echo "📁 Creating folder structure..."
+        rclone mkdir gdrive:ComfyUI-Output/outputs
+        rclone mkdir gdrive:ComfyUI-Output/models
+        rclone mkdir gdrive:ComfyUI-Output/workflows
+        
+        # Create user folders
+        for user in serhii marcin vlad ksenija max ivan; do
+            rclone mkdir gdrive:ComfyUI-Output/outputs/$user
+        done
+        
+        # Mark as configured
+        touch /workspace/.gdrive_configured
+        
+        # Store the Drive ID for UI access
+        DRIVE_ID=$(echo "$GOOGLE_SERVICE_ACCOUNT_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('project_id', 'unknown'))")
+        echo "$DRIVE_ID" > /workspace/.gdrive_id
+        
+        echo "✅ Google Drive setup complete"
+    else
+        echo "⚠️  Failed to connect to Google Drive"
+        echo "   Please check your service account permissions"
+        exit 1
+    fi
+    
+elif [ -f "$GOOGLE_SERVICE_ACCOUNT_FILE" ]; then
+    echo "📝 Found service account file at $GOOGLE_SERVICE_ACCOUNT_FILE"
+    
+    # Use the file path version
+    export GOOGLE_SERVICE_ACCOUNT_JSON=$(cat "$GOOGLE_SERVICE_ACCOUNT_FILE")
+    exec "$0" "$@"  # Re-run this script with JSON in env
+    
+else
+    echo "ℹ️  No Google Drive configuration provided"
+    echo "   Set GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_SERVICE_ACCOUNT_FILE to configure"
+fi
+
+exit 0
