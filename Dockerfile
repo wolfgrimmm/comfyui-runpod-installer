@@ -30,7 +30,7 @@ RUN git clone https://github.com/comfyanonymous/ComfyUI.git /tmp/comfyui-req && 
     pip install --no-cache-dir -r /tmp/comfyui-req/requirements.txt && \
     rm -rf /tmp/comfyui-req
 
-# Install additional AI packages, JupyterLab, and UI dependencies
+# Install additional AI packages, JupyterLab, UI dependencies, and ComfyUI Manager requirements
 RUN pip install --no-cache-dir \
     onnxruntime-gpu \
     opencv-python \
@@ -41,7 +41,12 @@ RUN pip install --no-cache-dir \
     notebook \
     flask==3.0.0 \
     psutil==5.9.0 \
-    requests==2.31.0
+    requests==2.31.0 \
+    GitPython \
+    PyGithub \
+    matrix-client==0.4.0 \
+    transformers \
+    safetensors
 
 # Copy configuration files
 COPY config /app/config
@@ -125,9 +130,15 @@ fi
 # Ensure custom_nodes directory exists
 mkdir -p /workspace/ComfyUI/custom_nodes
 
+# Debug: Show ComfyUI structure
+echo "ComfyUI directory structure:"
+ls -la /workspace/ComfyUI/ | head -10 || echo "ComfyUI directory issue"
+
 # Install baseline custom nodes if not present
 if [ -f "/app/config/baseline-nodes.txt" ] && [ -d "/workspace/ComfyUI/custom_nodes" ]; then
-    echo "📦 Checking custom nodes..."
+    echo "📦 Installing custom nodes from baseline-nodes.txt..."
+    cat /app/config/baseline-nodes.txt
+    echo "---"
     while IFS= read -r node || [ -n "$node" ]; do
         [[ "$node" =~ ^#.*$ ]] && continue
         [[ -z "$node" ]] && continue
@@ -137,6 +148,12 @@ if [ -f "/app/config/baseline-nodes.txt" ] && [ -d "/workspace/ComfyUI/custom_no
             echo "  Installing: $repo_name"
             cd /workspace/ComfyUI/custom_nodes
             git clone "https://github.com/$node" || echo "Failed to clone $node"
+            
+            # Install requirements if exists
+            if [ -f "/workspace/ComfyUI/custom_nodes/$repo_name/requirements.txt" ]; then
+                echo "  Installing requirements for $repo_name..."
+                pip install -r "/workspace/ComfyUI/custom_nodes/$repo_name/requirements.txt" || echo "Requirements install failed for $repo_name"
+            fi
             
             # Run install.py if exists
             if [ -f "/workspace/ComfyUI/custom_nodes/$repo_name/install.py" ]; then
@@ -225,6 +242,19 @@ if [ ! -f "/workspace/ComfyUI/main.py" ]; then
     echo "Contents of /workspace/ComfyUI (if exists):"
     ls -la /workspace/ComfyUI/ 2>/dev/null || echo "ComfyUI directory not found"
     exit 1
+fi
+
+# Verify Manager installation
+if [ -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
+    echo "✅ ComfyUI Manager is installed"
+    ls -la /workspace/ComfyUI/custom_nodes/ComfyUI-Manager/ | head -5
+else
+    echo "⚠️ ComfyUI Manager not found - attempting reinstall..."
+    cd /workspace/ComfyUI/custom_nodes
+    git clone https://github.com/ltdrdata/ComfyUI-Manager.git
+    if [ -f "ComfyUI-Manager/requirements.txt" ]; then
+        pip install -r ComfyUI-Manager/requirements.txt
+    fi
 fi
 
 # Start ComfyUI
