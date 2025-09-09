@@ -138,15 +138,40 @@ mkdir -p /workspace/ComfyUI/custom_nodes
 echo "ComfyUI directory structure:"
 ls -la /workspace/ComfyUI/ | head -10 || echo "ComfyUI directory issue"
 
-# Install baseline custom nodes if not present
+# CRITICAL: Ensure ComfyUI Manager is installed first
+echo "🎯 Installing ComfyUI Manager (Required)..."
+cd /workspace/ComfyUI/custom_nodes
+if [ ! -d "ComfyUI-Manager" ]; then
+    git clone https://github.com/ltdrdata/ComfyUI-Manager.git || {
+        echo "Retrying Manager installation..."
+        git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git
+    }
+fi
+
+# Install Manager requirements
+if [ -d "ComfyUI-Manager" ]; then
+    if [ -f "ComfyUI-Manager/requirements.txt" ]; then
+        pip install -r "ComfyUI-Manager/requirements.txt" || true
+    fi
+    if [ -f "ComfyUI-Manager/install.py" ]; then
+        cd ComfyUI-Manager && python install.py || true
+        cd ..
+    fi
+    echo "✅ ComfyUI Manager installed"
+fi
+
+# Install other baseline custom nodes
 if [ -f "/app/config/baseline-nodes.txt" ] && [ -d "/workspace/ComfyUI/custom_nodes" ]; then
-    echo "📦 Installing custom nodes from baseline-nodes.txt..."
-    cat /app/config/baseline-nodes.txt
-    echo "---"
+    echo "📦 Installing other custom nodes..."
     while IFS= read -r node || [ -n "$node" ]; do
         [[ "$node" =~ ^#.*$ ]] && continue
         [[ -z "$node" ]] && continue
         repo_name=$(echo "$node" | sed 's/.*\///')
+        
+        # Skip Manager since we already installed it
+        if [ "$repo_name" == "ComfyUI-Manager" ]; then
+            continue
+        fi
         
         if [ ! -d "/workspace/ComfyUI/custom_nodes/$repo_name" ]; then
             echo "  Installing: $repo_name"
@@ -156,13 +181,13 @@ if [ -f "/app/config/baseline-nodes.txt" ] && [ -d "/workspace/ComfyUI/custom_no
             # Install requirements if exists
             if [ -f "/workspace/ComfyUI/custom_nodes/$repo_name/requirements.txt" ]; then
                 echo "  Installing requirements for $repo_name..."
-                pip install -r "/workspace/ComfyUI/custom_nodes/$repo_name/requirements.txt" || echo "Requirements install failed for $repo_name"
+                pip install -r "/workspace/ComfyUI/custom_nodes/$repo_name/requirements.txt" || true
             fi
             
             # Run install.py if exists
             if [ -f "/workspace/ComfyUI/custom_nodes/$repo_name/install.py" ]; then
                 cd "/workspace/ComfyUI/custom_nodes/$repo_name"
-                python install.py || echo "Install script failed for $repo_name"
+                python install.py || true
             fi
         else
             echo "  ✓ $repo_name already installed"
