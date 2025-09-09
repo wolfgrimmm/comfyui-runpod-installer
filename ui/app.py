@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Simple UI for ComfyUI user selection and startup
-Single user per pod model - no conflicts
+ComfyUI Control Panel - Modern UI for user selection and system management
+Single user per pod model with resource monitoring
 """
 
 from flask import Flask, render_template, request, jsonify, redirect
@@ -9,7 +9,9 @@ import os
 import subprocess
 import json
 import time
+import psutil
 from pathlib import Path
+import shutil
 
 app = Flask(__name__)
 
@@ -26,6 +28,8 @@ class ComfyUIManager:
     def __init__(self):
         self.comfyui_process = None
         self.current_user = None
+        self.start_time = None
+        self.auto_update = os.environ.get('COMFYUI_AUTO_UPDATE', 'false').lower() == 'true'
         self.init_system()
     
     def init_system(self):
@@ -156,7 +160,7 @@ class ComfyUIManager:
             )
             
             # Wait for ComfyUI to actually start listening
-            max_wait = 30  # Maximum 30 seconds
+            max_wait = 60  # Increased to 60 seconds for full initialization
             for i in range(max_wait):
                 time.sleep(1)
                 
@@ -167,20 +171,38 @@ class ComfyUIManager:
                 
                 # Check if port is listening
                 if self.is_comfyui_running():
-                    # Double-check by trying to connect
+                    # More thorough check - try to actually get a valid response
                     import urllib.request
-                    try:
-                        response = urllib.request.urlopen('http://127.0.0.1:8188', timeout=1)
-                        if response.getcode() == 200 or response.getcode() == 301:
-                            return True, "ComfyUI started successfully"
-                    except:
-                        pass  # Still warming up
+                    import urllib.error
+                    consecutive_success = 0
+                    required_success = 3  # Need 3 consecutive successful checks
+                    
+                    for retry in range(5):
+                        try:
+                            response = urllib.request.urlopen('http://127.0.0.1:8188', timeout=2)
+                            if response.getcode() in [200, 301, 302]:
+                                consecutive_success += 1
+                                if consecutive_success >= required_success:
+                                    # ComfyUI is consistently responding
+                                    print(f"ComfyUI fully initialized after {i+1} seconds")
+                                    return True, "ComfyUI started successfully"
+                            time.sleep(0.5)
+                        except urllib.error.HTTPError as e:
+                            if e.code in [301, 302]:  # Redirects are OK
+                                consecutive_success += 1
+                                if consecutive_success >= required_success:
+                                    print(f"ComfyUI fully initialized after {i+1} seconds")
+                                    self.start_time = time.time()
+                                    return True, "ComfyUI started successfully"
+                        except:
+                            consecutive_success = 0  # Reset on failure
+                            time.sleep(0.5)
                 
                 # Show progress
                 if i % 5 == 0:
                     print(f"Waiting for ComfyUI to start... {i}s")
             
-            return False, "ComfyUI took too long to start (30s timeout)"
+            return False, "ComfyUI took too long to start (60s timeout)"
         except Exception as e:
             return False, f"Error starting ComfyUI: {str(e)}"
     
@@ -215,18 +237,95 @@ class ComfyUIManager:
     
     def get_status(self):
         """Get current status"""
+        is_running = self.is_comfyui_running()
         return {
-            "running": self.is_comfyui_running(),
+            "running": is_running,
+            "ready": is_running,  # Additional ready check
             "current_user": self.current_user,
-            "users": self.users
+            "users": self.users,
+            "uptime": self.get_uptime() if is_running else "0m",
+            "auto_update": self.auto_update
         }
+    
+    def get_uptime(self):
+        """Get uptime in human-readable format"""
+        if not self.start_time:
+            return "0m"
+        
+        elapsed = time.time() - self.start_time
+        hours = int(elapsed // 3600)
+        minutes = int((elapsed % 3600) // 60)
+        
+        if hours > 0:
+            return f"{hours}h {minutes}m"
+        return f"{minutes}m"
+    
+    def get_resource_usage(self):
+        """Get system resource usage"""
+        try:
+            cpu_percent = psutil.cpu_percent(interval=1)
+            memory = psutil.virtual_memory()
+            disk = psutil.disk_usage('/workspace') if os.path.exists('/workspace') else psutil.disk_usage('/')
+            
+            # Try to get GPU usage (nvidia-smi)
+            gpu_usage = "N/A"
+            try:
+                result = subprocess.run(['nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'], 
+                                      capture_output=True, text=True, timeout=2)
+                if result.returncode == 0:
+                    gpu_usage = f"{result.stdout.strip()}%"
+            except:
+                pass
+            
+            return {
+                "cpu_usage": f"{cpu_percent}%",
+                "gpu_usage": gpu_usage,
+                "mem_usage": f"{memory.used / (1024**3):.1f} GB",
+                "disk_usage": f"{disk.used / (1024**3):.0f} GB"
+            }
+        except Exception as e:
+            print(f"Error getting resources: {e}")
+            return {
+                "cpu_usage": "0%",
+                "gpu_usage": "0%",
+                "mem_usage": "0 GB",
+                "disk_usage": "0 GB"
+            }
+    
+    def count_models(self):
+        """Count the number of models"""
+        models_dir = f"{WORKSPACE_DIR}/models/checkpoints"
+        if os.path.exists(models_dir):
+            return len([f for f in os.listdir(models_dir) if os.path.isfile(os.path.join(models_dir, f))])
+        return 0
+    
+    def update_settings(self, settings):
+        """Update settings"""
+        if 'auto_update' in settings:
+            self.auto_update = settings['auto_update']
+            os.environ['COMFYUI_AUTO_UPDATE'] = 'true' if self.auto_update else 'false'
+        return True
 
 # Initialize manager
 manager = ComfyUIManager()
 
 @app.route('/')
 def index():
-    """Main UI page"""
+    """Main UI page - new control panel"""
+    status = manager.get_status()
+    resources = manager.get_resource_usage()
+    models_count = manager.count_models()
+    
+    return render_template('control_panel.html', 
+                         **status, 
+                         **resources,
+                         models_count=models_count,
+                         queue_size=0,
+                         is_admin=os.environ.get('COMFYUI_ADMIN_KEY') is not None)
+
+@app.route('/classic')
+def classic_ui():
+    """Classic UI page (old design)"""
     status = manager.get_status()
     return render_template('index.html', **status)
 
@@ -269,6 +368,19 @@ def add_user():
         return jsonify({"success": True, "message": f"User {username} added"})
     else:
         return jsonify({"success": False, "error": "User already exists"}), 400
+
+@app.route('/api/resources')
+def get_resources():
+    """Get system resource usage"""
+    return jsonify(manager.get_resource_usage())
+
+@app.route('/api/settings', methods=['POST'])
+def update_settings():
+    """Update system settings"""
+    data = request.json
+    if manager.update_settings(data):
+        return jsonify({"success": True})
+    return jsonify({"success": False}), 400
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=7777, debug=False)

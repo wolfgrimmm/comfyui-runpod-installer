@@ -283,7 +283,8 @@
         
         <div class="loading">
             <div class="spinner"></div>
-            <p style="margin-top: 10px;">Starting ComfyUI...</p>
+            <p style="margin-top: 10px;" id="loadingText">Starting ComfyUI...</p>
+            <p style="margin-top: 5px; font-size: 12px; color: #666;" id="loadingProgress"></p>
         </div>
         
         <div class="message" id="message"></div>
@@ -323,23 +324,56 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    showMessage('ComfyUI started! Waiting for it to be ready...', 'success');
+                    // Start polling for actual ComfyUI readiness
+                    showMessage('ComfyUI process started! Waiting for full initialization...', 'success');
                     
-                    // Wait a bit longer for ComfyUI to fully initialize
-                    let countdown = 5;
-                    const countdownInterval = setInterval(() => {
-                        countdown--;
-                        showMessage(`ComfyUI started! Redirecting in ${countdown}s...`, 'success');
-                        if (countdown <= 0) {
-                            clearInterval(countdownInterval);
+                    let checkAttempts = 0;
+                    const maxAttempts = 40;  // 40 attempts * 1.5s = 60s max wait
+                    
+                    const checkReady = setInterval(async () => {
+                        checkAttempts++;
+                        
+                        // Update progress indicator
+                        const progress = Math.min(95, Math.round((checkAttempts / maxAttempts) * 100));
+                        document.getElementById('loadingProgress').textContent = 
+                            `Initializing... ${progress}% (${checkAttempts * 1.5}s elapsed)`;
+                        
+                        try {
+                            // Check if ComfyUI is actually responding
+                            const statusResponse = await fetch('/api/status');
+                            const statusData = await statusResponse.json();
+                            
+                            if (statusData.running) {
+                                // Try to fetch from ComfyUI directly through proxy
+                                const comfyUrl = getRunPodUrl(8188);
+                                try {
+                                    const testResponse = await fetch(comfyUrl, { 
+                                        mode: 'no-cors',
+                                        signal: AbortSignal.timeout(2000)
+                                    });
+                                    // If we get here without error, ComfyUI is likely ready
+                                    clearInterval(checkReady);
+                                    showMessage('ComfyUI is ready! Redirecting...', 'success');
+                                    document.getElementById('loadingProgress').textContent = 'Ready!';
+                                    
+                                    // Small final delay then redirect
+                                    setTimeout(() => {
+                                        window.location.href = comfyUrl;
+                                    }, 1500);
+                                } catch (e) {
+                                    // ComfyUI not yet fully ready, continue checking
+                                    if (checkAttempts >= maxAttempts) {
+                                        clearInterval(checkReady);
+                                        showMessage('ComfyUI is taking longer than expected. You can try opening it manually.', 'error');
+                                        showLoading(false);
+                                        setTimeout(() => location.reload(), 2000);
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Status check error:', error);
                         }
-                    }, 1000);
-                    
-                    setTimeout(() => {
-                        // Use proper RunPod proxy URL format
-                        const url = getRunPodUrl(8188);
-                        window.location.href = url;
-                    }, 5000);  // Increased from 3s to 5s
+                    }, 1500);  // Check every 1.5 seconds
                 } else {
                     showMessage(data.error || 'Failed to start ComfyUI', 'error');
                     showLoading(false);
