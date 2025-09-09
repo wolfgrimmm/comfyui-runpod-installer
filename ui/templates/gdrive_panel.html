@@ -447,7 +447,25 @@ function updateGDriveUI(data) {
         getStorageStats();
     } else {
         statusIndicator.dataset.status = 'not-configured';
-        statusText.textContent = 'Not Configured';
+        
+        // Show detailed status for debugging
+        if (data.config_details) {
+            let statusMsg = 'Not Configured';
+            if (!data.config_details.has_runpod_secret) {
+                statusMsg = 'Missing RunPod Secret';
+            } else if (!data.config_details.has_rclone_config) {
+                statusMsg = 'Initializing...';
+            }
+            statusText.textContent = statusMsg;
+            
+            // Show hint about RunPod secret
+            if (!data.config_details.has_runpod_secret) {
+                statusText.title = 'Add GOOGLE_SERVICE_ACCOUNT secret in RunPod dashboard';
+            }
+        } else {
+            statusText.textContent = 'Not Configured';
+        }
+        
         configSection.style.display = 'block';
         controlsSection.style.display = 'none';
         // Hide install button, show configure button

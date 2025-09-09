@@ -586,12 +586,23 @@ def gdrive_status():
         except:
             pass
     
+    # Check for RunPod secret
+    has_secret = bool(os.environ.get('RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT'))
+    
+    # Get detailed configuration status
+    config_details = {
+        'has_runpod_secret': has_secret,
+        'has_flag_file': os.path.exists('/workspace/.gdrive_configured'),
+        'has_rclone_config': os.path.exists('/root/.config/rclone/rclone.conf') or os.path.exists('/workspace/.config/rclone/rclone.conf')
+    }
+    
     return jsonify({
         'rclone_installed': gdrive.rclone_available,
         'configured': gdrive.check_gdrive_configured(),
         'mount_point': f"{WORKSPACE_DIR}/gdrive",
         'sync_status': gdrive.get_sync_status(),
-        'drive_url': drive_url or 'https://drive.google.com/drive/search?q=ComfyUI-Output'
+        'drive_url': drive_url or 'https://drive.google.com/drive/search?q=ComfyUI-Output',
+        'config_details': config_details
     })
 
 @app.route('/api/gdrive/sync', methods=['POST'])

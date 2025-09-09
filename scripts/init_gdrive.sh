@@ -71,6 +71,11 @@ EOF
 else
     echo "⚠️  No Google Drive configuration found"
     echo "   Please add GOOGLE_SERVICE_ACCOUNT secret in RunPod dashboard"
+    echo "   Secret name must be exactly: GOOGLE_SERVICE_ACCOUNT"
+    echo "   It will be available as: RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT"
+    
+    # Create a status file for the UI
+    echo "missing_secret" > /workspace/.gdrive_status
 fi
 
 exit 0
