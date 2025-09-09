@@ -39,18 +39,19 @@ RUN pip install --no-cache-dir \
 RUN pip install --no-cache-dir \
     opencv-python
 
-# Group 5: Web UI and tools
-RUN pip install --no-cache-dir \
-    flask==3.0.0 \
-    psutil \
-    requests \
-    GitPython
+# Group 5: Core Web UI requirements (must succeed)
+RUN pip install --no-cache-dir flask==3.0.0
+RUN pip install --no-cache-dir psutil
+RUN pip install --no-cache-dir requests
 
-# Group 5b: GitHub integration (install separately due to potential conflicts)
-# Try older stable version first, fallback to any version, then give up gracefully
-RUN pip install --no-cache-dir "PyGithub==1.59.1" || \
-    pip install --no-cache-dir PyGithub || \
-    echo "Warning: PyGithub installation failed, ComfyUI Manager GitHub features may be limited"
+# Group 5a: ComfyUI Manager dependencies (optional, installed at runtime if needed)
+# These are used by Manager but not critical for base functionality
+RUN pip install --no-cache-dir GitPython 2>/dev/null || \
+    pip install --no-cache-dir "GitPython==3.1.31" 2>/dev/null || \
+    echo "Note: GitPython not installed (Manager will install at runtime if needed)"
+
+RUN pip install --no-cache-dir "PyGithub==1.59.1" 2>/dev/null || \
+    echo "Note: PyGithub not installed (Manager will install at runtime if needed)"
 
 # Group 6: Jupyter
 RUN pip install --no-cache-dir \
@@ -172,7 +173,10 @@ if [ ! -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
     cd /workspace/ComfyUI/custom_nodes
     if git clone https://github.com/ltdrdata/ComfyUI-Manager.git; then
         if [ -f "ComfyUI-Manager/requirements.txt" ]; then
-            pip install -r ComfyUI-Manager/requirements.txt 2>/dev/null || true
+            # Install Manager requirements, ignore failures for optional packages
+            pip install -r ComfyUI-Manager/requirements.txt 2>/dev/null || \
+            pip install GitPython PyGithub 2>/dev/null || \
+            echo "Some Manager features may be limited"
         fi
     fi
 fi
