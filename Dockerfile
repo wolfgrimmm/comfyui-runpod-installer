@@ -51,19 +51,23 @@ RUN pip install --no-cache-dir \
 # Copy configuration files
 COPY config /app/config
 
-# Create workspace directories structure
-RUN mkdir -p /workspace/models/checkpoints && \
+# Create workspace directories structure (matching official ComfyUI)
+RUN mkdir -p /workspace/models/audio_encoders && \
+    mkdir -p /workspace/models/checkpoints && \
     mkdir -p /workspace/models/clip && \
     mkdir -p /workspace/models/clip_vision && \
     mkdir -p /workspace/models/configs && \
     mkdir -p /workspace/models/controlnet && \
     mkdir -p /workspace/models/diffusers && \
+    mkdir -p /workspace/models/diffusion_models && \
     mkdir -p /workspace/models/embeddings && \
     mkdir -p /workspace/models/gligen && \
     mkdir -p /workspace/models/hypernetworks && \
     mkdir -p /workspace/models/loras && \
+    mkdir -p /workspace/models/model_patches && \
     mkdir -p /workspace/models/photomaker && \
     mkdir -p /workspace/models/style_models && \
+    mkdir -p /workspace/models/text_encoders && \
     mkdir -p /workspace/models/unet && \
     mkdir -p /workspace/models/upscale_models && \
     mkdir -p /workspace/models/vae && \
@@ -174,19 +178,23 @@ rm -rf /workspace/ComfyUI/output
 rm -rf /workspace/ComfyUI/input
 mkdir -p /workspace/ComfyUI/user
 
-# Ensure all model directories exist
+# Ensure all model directories exist (matching official ComfyUI)
+mkdir -p /workspace/models/audio_encoders
 mkdir -p /workspace/models/checkpoints
 mkdir -p /workspace/models/clip
 mkdir -p /workspace/models/clip_vision
 mkdir -p /workspace/models/configs
 mkdir -p /workspace/models/controlnet
 mkdir -p /workspace/models/diffusers
+mkdir -p /workspace/models/diffusion_models
 mkdir -p /workspace/models/embeddings
 mkdir -p /workspace/models/gligen
 mkdir -p /workspace/models/hypernetworks
 mkdir -p /workspace/models/loras
+mkdir -p /workspace/models/model_patches
 mkdir -p /workspace/models/photomaker
 mkdir -p /workspace/models/style_models
+mkdir -p /workspace/models/text_encoders
 mkdir -p /workspace/models/unet
 mkdir -p /workspace/models/upscale_models
 mkdir -p /workspace/models/vae
