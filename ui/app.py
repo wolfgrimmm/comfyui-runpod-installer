@@ -586,14 +586,20 @@ def gdrive_status():
         except:
             pass
     
-    # Check for RunPod secret
+    # Check for RunPod secret (with debugging)
     has_secret = bool(os.environ.get('RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT'))
+    
+    # Debug: Check all RUNPOD environment variables
+    runpod_vars = {k: '***' if 'SECRET' in k else v[:50] 
+                   for k, v in os.environ.items() 
+                   if k.startswith('RUNPOD')}
     
     # Get detailed configuration status
     config_details = {
         'has_runpod_secret': has_secret,
         'has_flag_file': os.path.exists('/workspace/.gdrive_configured'),
-        'has_rclone_config': os.path.exists('/root/.config/rclone/rclone.conf') or os.path.exists('/workspace/.config/rclone/rclone.conf')
+        'has_rclone_config': os.path.exists('/root/.config/rclone/rclone.conf') or os.path.exists('/workspace/.config/rclone/rclone.conf'),
+        'runpod_vars': runpod_vars  # Show what RunPod vars are available
     }
     
     return jsonify({

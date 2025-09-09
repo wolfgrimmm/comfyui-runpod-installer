@@ -11,6 +11,14 @@ if [ -f "/workspace/.gdrive_configured" ]; then
     exit 0
 fi
 
+# Debug: Show available RunPod environment variables
+echo "🔍 Checking for Google Drive credentials..."
+echo "Available RUNPOD variables:"
+env | grep ^RUNPOD | grep -v SECRET | head -5
+if env | grep -q "RUNPOD_SECRET"; then
+    echo "Found RunPod secret variables (hidden for security)"
+fi
+
 # Check for RunPod Secret
 if [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
     echo "📝 Found service account in RunPod Secret"
@@ -68,11 +76,63 @@ EOF
         exit 1
     fi
     
+elif [ -n "$GOOGLE_SERVICE_ACCOUNT" ]; then
+    # Fallback: Check for secret without RUNPOD_SECRET prefix
+    echo "📝 Found service account in GOOGLE_SERVICE_ACCOUNT variable"
+    export GOOGLE_SERVICE_ACCOUNT_JSON="$GOOGLE_SERVICE_ACCOUNT"
+    
+    # Same setup as above
+    mkdir -p /root/.config/rclone
+    mkdir -p /workspace/.config/rclone
+    
+    echo "$GOOGLE_SERVICE_ACCOUNT_JSON" > /root/.config/rclone/service_account.json
+    echo "$GOOGLE_SERVICE_ACCOUNT_JSON" > /workspace/.config/rclone/service_account.json
+    chmod 600 /root/.config/rclone/service_account.json
+    chmod 600 /workspace/.config/rclone/service_account.json
+    
+    # Create rclone config
+    cat > /root/.config/rclone/rclone.conf << EOF
+[gdrive]
+type = drive
+scope = drive
+service_account_file = /root/.config/rclone/service_account.json
+team_drive = 
+
+EOF
+    
+    cp /root/.config/rclone/rclone.conf /workspace/.config/rclone/rclone.conf
+    
+    # Test and setup
+    if rclone lsd gdrive: 2>/dev/null; then
+        echo "✅ Google Drive configured successfully"
+        
+        echo "📁 Creating folder structure..."
+        rclone mkdir gdrive:ComfyUI-Output/outputs
+        rclone mkdir gdrive:ComfyUI-Output/models
+        rclone mkdir gdrive:ComfyUI-Output/workflows
+        
+        for user in serhii marcin vlad ksenija max ivan; do
+            rclone mkdir gdrive:ComfyUI-Output/outputs/$user
+        done
+        
+        touch /workspace/.gdrive_configured
+        
+        DRIVE_ID=$(echo "$GOOGLE_SERVICE_ACCOUNT_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('project_id', 'unknown'))")
+        echo "$DRIVE_ID" > /workspace/.gdrive_id
+        
+        echo "✅ Google Drive setup complete"
+    else
+        echo "⚠️  Failed to connect to Google Drive"
+        exit 1
+    fi
 else
     echo "⚠️  No Google Drive configuration found"
+    echo "   Checked for:"
+    echo "   - RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT"
+    echo "   - GOOGLE_SERVICE_ACCOUNT"
+    echo ""
     echo "   Please add GOOGLE_SERVICE_ACCOUNT secret in RunPod dashboard"
     echo "   Secret name must be exactly: GOOGLE_SERVICE_ACCOUNT"
-    echo "   It will be available as: RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT"
     
     # Create a status file for the UI
     echo "missing_secret" > /workspace/.gdrive_status
