@@ -44,8 +44,7 @@ RUN pip install --no-cache-dir \
     flask==3.0.0 \
     psutil \
     requests \
-    GitPython \
-    PyGithub
+    GitPython
 
 # Group 6: Jupyter
 RUN pip install --no-cache-dir \

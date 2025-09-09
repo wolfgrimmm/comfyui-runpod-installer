@@ -80,7 +80,6 @@ setup_venv_if_needed() {
         psutil==5.9.0 \
         requests==2.31.0 \
         GitPython \
-        PyGithub \
         matrix-client==0.4.0 \
         transformers \
         safetensors \
