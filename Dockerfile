@@ -11,60 +11,6 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Create and activate a virtual environment to avoid conflicts
-ENV VIRTUAL_ENV=/opt/venv
-RUN python3.11 -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-
-# Upgrade pip in virtual environment
-RUN pip install --upgrade pip wheel setuptools
-
-# Install Python packages in virtual environment
-# Core ComfyUI requirements
-RUN pip install --no-cache-dir \
-    einops \
-    torchsde \
-    "kornia>=0.7.1" \
-    spandrel \
-    "safetensors>=0.4.2"
-
-# Web and async packages
-RUN pip install --no-cache-dir \
-    aiohttp \
-    pyyaml \
-    Pillow \
-    tqdm \
-    scipy
-
-# ML packages
-RUN pip install --no-cache-dir \
-    transformers \
-    diffusers \
-    accelerate
-
-# ONNX and CV
-RUN pip install --no-cache-dir onnxruntime-gpu || \
-    pip install --no-cache-dir onnxruntime
-
-RUN pip install --no-cache-dir opencv-python
-
-# Core Web UI requirements
-RUN pip install --no-cache-dir \
-    flask==3.0.0 \
-    psutil \
-    requests
-
-# Git integration (for ComfyUI Manager)
-RUN pip install --no-cache-dir \
-    GitPython \
-    PyGithub==1.59.1
-
-# Jupyter
-RUN pip install --no-cache-dir \
-    jupyterlab \
-    ipywidgets \
-    notebook
-
 # Create app directory
 RUN mkdir -p /app
 
@@ -74,7 +20,7 @@ COPY config /app/config
 COPY ui /app/ui
 RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
 
-# Create init script
+# Create init script that sets up venv if needed
 RUN cat > /app/init.sh << 'EOF'
 #!/bin/bash
 set -e
@@ -91,6 +37,38 @@ git config --global user.name "ComfyUI" 2>/dev/null || true
 mkdir -p /workspace/models/{checkpoints,loras,vae,controlnet,clip,clip_vision,diffusers,embeddings,upscale_models}
 mkdir -p /workspace/output /workspace/input /workspace/workflows
 
+# Setup Python virtual environment in persistent storage
+if [ ! -d "/workspace/venv" ]; then
+    echo "📦 Creating virtual environment in /workspace/venv..."
+    python3.11 -m venv /workspace/venv
+    source /workspace/venv/bin/activate
+    
+    echo "📦 Installing Python packages..."
+    pip install --upgrade pip wheel setuptools
+    
+    # Core packages for UI
+    pip install flask==3.0.0 psutil requests
+    
+    # ComfyUI requirements
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+    pip install einops torchsde "kornia>=0.7.1" spandrel "safetensors>=0.4.2"
+    pip install aiohttp pyyaml Pillow tqdm scipy
+    pip install transformers diffusers accelerate
+    pip install opencv-python
+    pip install onnxruntime-gpu || pip install onnxruntime
+    
+    # Git integration
+    pip install GitPython PyGithub==1.59.1
+    
+    # Jupyter
+    pip install jupyterlab ipywidgets notebook
+    
+    echo "✅ Virtual environment setup complete"
+else
+    echo "✅ Using existing virtual environment"
+    source /workspace/venv/bin/activate
+fi
+
 echo "✅ Environment prepared"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 EOF
@@ -105,11 +83,11 @@ set -e
 echo "🚀 Starting RunPod Services..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Activate virtual environment
-source /opt/venv/bin/activate
-
-# Initialize environment
+# Initialize environment (creates venv if needed)
 /app/init.sh
+
+# Activate virtual environment
+source /workspace/venv/bin/activate
 
 # Start Control Panel UI
 echo "🌐 Starting Control Panel on port 7777..."
@@ -153,7 +131,13 @@ RUN cat > /app/start_comfyui.sh << 'EOF'
 echo "🎨 Starting ComfyUI..."
 
 # Activate virtual environment
-source /opt/venv/bin/activate
+if [ -d "/workspace/venv" ]; then
+    source /workspace/venv/bin/activate
+else
+    echo "⚠️ Virtual environment not found, creating..."
+    /app/init.sh
+    source /workspace/venv/bin/activate
+fi
 
 # Check if ComfyUI is installed
 if [ ! -f "/workspace/ComfyUI/main.py" ]; then
@@ -169,6 +153,12 @@ if [ ! -f "/workspace/ComfyUI/main.py" ]; then
     if [ ! -f "/workspace/ComfyUI/main.py" ]; then
         echo "❌ Failed to install ComfyUI"
         exit 1
+    fi
+    
+    # Install ComfyUI requirements
+    cd /workspace/ComfyUI
+    if [ -f "requirements.txt" ]; then
+        pip install -r requirements.txt
     fi
 fi
 
@@ -197,10 +187,6 @@ exec python main.py --listen 0.0.0.0 --port 8188
 EOF
 
 RUN chmod +x /app/start_comfyui.sh
-
-# Verify critical packages are installed
-RUN python -c "import flask; print(f'Flask {flask.__version__} OK')"
-RUN python -c "import torch; print(f'PyTorch {torch.__version__} OK')"
 
 # Environment
 ENV PYTHONUNBUFFERED=1
