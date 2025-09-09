@@ -29,6 +29,7 @@ class ComfyUIManager:
         self.comfyui_process = None
         self.current_user = None
         self.start_time = None
+        self.auto_update = False  # Not used but kept for compatibility
         self.init_system()
     
     def init_system(self):
@@ -320,13 +321,12 @@ def index():
     resources = manager.get_resource_usage()
     models_count = manager.count_models()
     
-    # Ensure start_time is passed properly
+    # Pass all data to template (start_time is already in status dict)
     return render_template('control_panel.html', 
                          **status, 
                          **resources,
                          models_count=models_count,
                          queue_size=0,
-                         start_time=manager.start_time,
                          is_admin=os.environ.get('COMFYUI_ADMIN_KEY') is not None)
 
 @app.route('/classic')
