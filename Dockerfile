@@ -80,153 +80,8 @@ RUN mkdir -p /workspace/models/audio_encoders && \
 # Create app directory for scripts
 RUN mkdir -p /app
 
-# Create initialization script to set up ComfyUI in workspace on first run
-RUN cat > /app/init_workspace.sh << 'EOF'
-#!/bin/bash
-echo "==================================="
-echo "Initializing ComfyUI workspace..."
-echo "==================================="
-
-# Debug: Show current state
-echo "Current directory: $(pwd)"
-echo "Checking /workspace contents:"
-ls -la /workspace/ || echo "Cannot list /workspace"
-
-# Check if ComfyUI is properly installed (not just directory exists)
-if [ ! -f "/workspace/ComfyUI/main.py" ]; then
-    echo "📦 ComfyUI not found or incomplete - Installing from GitHub..."
-    
-    # Remove empty or incomplete directory if it exists
-    if [ -d "/workspace/ComfyUI" ]; then
-        echo "Removing incomplete ComfyUI directory..."
-        rm -rf /workspace/ComfyUI
-    fi
-    
-    cd /workspace
-    git clone https://github.com/comfyanonymous/ComfyUI.git ComfyUI || {
-        echo "❌ Failed to clone ComfyUI!"
-        echo "Trying alternative method..."
-        mkdir -p /workspace/ComfyUI
-        cd /workspace/ComfyUI
-        git init
-        git remote add origin https://github.com/comfyanonymous/ComfyUI.git
-        git fetch --depth=1 origin main
-        git checkout main
-    }
-    
-    # Verify installation
-    if [ -f "/workspace/ComfyUI/main.py" ]; then
-        echo "✅ ComfyUI installed at /workspace/ComfyUI"
-    else
-        echo "❌ Installation failed - main.py not found"
-        exit 1
-    fi
-else
-    echo "✅ ComfyUI found at /workspace/ComfyUI (main.py exists)"
-    
-    # Optional: Update ComfyUI
-    if [ "${COMFYUI_AUTO_UPDATE:-false}" == "true" ]; then
-        echo "🔄 Updating ComfyUI..."
-        cd /workspace/ComfyUI && git pull || echo "Could not update"
-    fi
-fi
-
-# Ensure custom_nodes directory exists
-mkdir -p /workspace/ComfyUI/custom_nodes
-
-# Debug: Show ComfyUI structure
-echo "ComfyUI directory structure:"
-ls -la /workspace/ComfyUI/ | head -10 || echo "ComfyUI directory issue"
-
-# CRITICAL: Ensure ComfyUI Manager is installed first
-echo "🎯 Installing ComfyUI Manager (Required)..."
-cd /workspace/ComfyUI/custom_nodes
-if [ ! -d "ComfyUI-Manager" ]; then
-    git clone https://github.com/ltdrdata/ComfyUI-Manager.git || {
-        echo "Retrying Manager installation..."
-        git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git
-    }
-fi
-
-# Install Manager requirements
-if [ -d "ComfyUI-Manager" ]; then
-    if [ -f "ComfyUI-Manager/requirements.txt" ]; then
-        pip install -r "ComfyUI-Manager/requirements.txt" || true
-    fi
-    if [ -f "ComfyUI-Manager/install.py" ]; then
-        cd ComfyUI-Manager && python install.py || true
-        cd ..
-    fi
-    echo "✅ ComfyUI Manager installed"
-fi
-
-# Install other baseline custom nodes
-if [ -f "/app/config/baseline-nodes.txt" ] && [ -d "/workspace/ComfyUI/custom_nodes" ]; then
-    echo "📦 Installing other custom nodes..."
-    while IFS= read -r node || [ -n "$node" ]; do
-        [[ "$node" =~ ^#.*$ ]] && continue
-        [[ -z "$node" ]] && continue
-        repo_name=$(echo "$node" | sed 's/.*\///')
-        
-        # Skip Manager since we already installed it
-        if [ "$repo_name" == "ComfyUI-Manager" ]; then
-            continue
-        fi
-        
-        if [ ! -d "/workspace/ComfyUI/custom_nodes/$repo_name" ]; then
-            echo "  Installing: $repo_name"
-            cd /workspace/ComfyUI/custom_nodes
-            git clone "https://github.com/$node" || echo "Failed to clone $node"
-            
-            # Install requirements if exists
-            if [ -f "/workspace/ComfyUI/custom_nodes/$repo_name/requirements.txt" ]; then
-                echo "  Installing requirements for $repo_name..."
-                pip install -r "/workspace/ComfyUI/custom_nodes/$repo_name/requirements.txt" || true
-            fi
-            
-            # Run install.py if exists
-            if [ -f "/workspace/ComfyUI/custom_nodes/$repo_name/install.py" ]; then
-                cd "/workspace/ComfyUI/custom_nodes/$repo_name"
-                python install.py || true
-            fi
-        else
-            echo "  ✓ $repo_name already installed"
-        fi
-    done < /app/config/baseline-nodes.txt
-fi
-
-# Always ensure symlinks are correct
-echo "Setting up symlinks..."
-rm -rf /workspace/ComfyUI/models
-ln -sf /workspace/models /workspace/ComfyUI/models
-rm -rf /workspace/ComfyUI/output
-rm -rf /workspace/ComfyUI/input
-mkdir -p /workspace/ComfyUI/user
-
-# Ensure all model directories exist (matching official ComfyUI)
-mkdir -p /workspace/models/audio_encoders
-mkdir -p /workspace/models/checkpoints
-mkdir -p /workspace/models/clip
-mkdir -p /workspace/models/clip_vision
-mkdir -p /workspace/models/configs
-mkdir -p /workspace/models/controlnet
-mkdir -p /workspace/models/diffusers
-mkdir -p /workspace/models/diffusion_models
-mkdir -p /workspace/models/embeddings
-mkdir -p /workspace/models/gligen
-mkdir -p /workspace/models/hypernetworks
-mkdir -p /workspace/models/loras
-mkdir -p /workspace/models/model_patches
-mkdir -p /workspace/models/photomaker
-mkdir -p /workspace/models/style_models
-mkdir -p /workspace/models/text_encoders
-mkdir -p /workspace/models/unet
-mkdir -p /workspace/models/upscale_models
-mkdir -p /workspace/models/vae
-mkdir -p /workspace/models/vae_approx
-
-echo "✅ Initialization complete!"
-EOF
+# Use the universal initialization script
+COPY scripts/init_universal.sh /app/init_workspace.sh
 
 RUN chmod +x /app/init_workspace.sh
 
@@ -249,6 +104,12 @@ if [ -f "/app/scripts/init_gdrive.sh" ]; then
     /app/scripts/init_gdrive.sh || true
 fi
 
+# Activate venv if it was created
+if [ -f "/workspace/venv/bin/activate" ]; then
+    echo "Activating virtual environment..."
+    source /workspace/venv/bin/activate
+fi
+
 echo "Starting UI on port 7777..."
 cd /app/ui && python app.py &
 echo "Starting JupyterLab on port 8888..."
@@ -266,6 +127,11 @@ echo "Starting ComfyUI..."
 
 # Ensure workspace is initialized
 /app/init_workspace.sh
+
+# Activate venv if it exists
+if [ -f "/workspace/venv/bin/activate" ]; then
+    source /workspace/venv/bin/activate
+fi
 
 # Verify ComfyUI exists
 if [ ! -f "/workspace/ComfyUI/main.py" ]; then
