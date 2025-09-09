@@ -17,7 +17,7 @@ WORKDIR /workspace
 # Only install what's missing (much faster!)
 RUN apt-get update && \
     apt-get install -y \
-        wget curl unzip psmisc lsof \
+        git wget curl unzip psmisc lsof \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

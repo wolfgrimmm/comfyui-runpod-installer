@@ -102,8 +102,47 @@ setup_venv_if_needed() {
 install_comfyui() {
     if [ ! -f "/workspace/ComfyUI/main.py" ]; then
         echo "📦 Installing ComfyUI..."
+        
+        # Remove any incomplete installation
+        if [ -d "/workspace/ComfyUI" ]; then
+            echo "Removing incomplete ComfyUI directory..."
+            rm -rf /workspace/ComfyUI
+        fi
+        
         cd /workspace
-        git clone https://github.com/comfyanonymous/ComfyUI.git ComfyUI
+        
+        # Try multiple methods to clone
+        echo "Method 1: Standard clone..."
+        if ! git clone https://github.com/comfyanonymous/ComfyUI.git ComfyUI; then
+            echo "Method 1 failed, trying shallow clone..."
+            if ! git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git ComfyUI; then
+                echo "Method 2 failed, trying with different protocol..."
+                if ! git clone https://github.com/comfyanonymous/ComfyUI ComfyUI; then
+                    echo "❌ ERROR: Failed to clone ComfyUI!"
+                    echo "Trying wget as last resort..."
+                    
+                    # Last resort: download as zip
+                    wget -q https://github.com/comfyanonymous/ComfyUI/archive/refs/heads/master.zip -O comfyui.zip
+                    if [ -f "comfyui.zip" ]; then
+                        unzip -q comfyui.zip
+                        mv ComfyUI-master ComfyUI
+                        rm comfyui.zip
+                        echo "✅ Downloaded ComfyUI via wget"
+                    else
+                        echo "❌ FATAL: Could not download ComfyUI"
+                        return 1
+                    fi
+                fi
+            fi
+        fi
+        
+        # Verify installation
+        if [ -f "/workspace/ComfyUI/main.py" ]; then
+            echo "✅ ComfyUI successfully installed"
+        else
+            echo "❌ ComfyUI installation verification failed"
+            return 1
+        fi
     else
         echo "✅ ComfyUI already installed"
         if [ "${COMFYUI_AUTO_UPDATE:-false}" == "true" ]; then
@@ -185,7 +224,27 @@ install_custom_nodes() {
     done < /app/config/baseline-nodes.txt
 }
 
+# Configure git to avoid issues
+configure_git() {
+    # Set git config to avoid errors
+    git config --global --add safe.directory /workspace
+    git config --global --add safe.directory /workspace/ComfyUI
+    git config --global --add safe.directory '*'
+    
+    # Set a default user if not set (required for some operations)
+    if ! git config --global user.email > /dev/null 2>&1; then
+        git config --global user.email "comfyui@runpod.local"
+        git config --global user.name "ComfyUI"
+    fi
+}
+
 # Main execution flow
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Step 0: Git Configuration"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+configure_git
+
+echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Step 1: Python Environment"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
