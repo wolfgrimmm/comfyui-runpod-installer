@@ -272,21 +272,24 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "Step 2: ComfyUI Installation"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 if ! install_comfyui; then
-    echo "❌ FATAL: ComfyUI installation failed!"
-    echo "Please check your internet connection and try again."
-    exit 1
+    echo "⚠️  WARNING: ComfyUI installation failed!"
+    echo "The UI will start but ComfyUI won't be available."
+    echo "You can try installing it later from the UI."
+    # Don't exit - let the UI start so user can debug
 fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Step 3: Directory Structure"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-# Only create these if ComfyUI exists
+# Create directories even if ComfyUI isn't installed yet
+# This allows the UI to start and potentially install ComfyUI later
 if [ -f "/workspace/ComfyUI/main.py" ]; then
     mkdir -p /workspace/ComfyUI/custom_nodes
+    echo "✅ ComfyUI directories created"
 else
-    echo "❌ ERROR: ComfyUI not found at /workspace/ComfyUI/main.py"
-    exit 1
+    echo "⚠️  WARNING: ComfyUI not found at /workspace/ComfyUI/main.py"
+    echo "Creating basic directory structure anyway..."
 fi
 mkdir -p /workspace/models/{audio_encoders,checkpoints,clip,clip_vision,configs,controlnet,diffusers,diffusion_models,embeddings,gligen,hypernetworks,loras,model_patches,photomaker,style_models,text_encoders,unet,upscale_models,vae,vae_approx}
 mkdir -p /workspace/output

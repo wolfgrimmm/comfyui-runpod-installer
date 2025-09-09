@@ -43,9 +43,13 @@ class ComfyUIManager:
     
     def init_system(self):
         """Initialize directories and default users"""
-        os.makedirs(INPUT_BASE, exist_ok=True)
-        os.makedirs(OUTPUT_BASE, exist_ok=True)
-        os.makedirs(f"{WORKSPACE_DIR}/user_data", exist_ok=True)
+        try:
+            os.makedirs(INPUT_BASE, exist_ok=True)
+            os.makedirs(OUTPUT_BASE, exist_ok=True)
+            os.makedirs(f"{WORKSPACE_DIR}/user_data", exist_ok=True)
+        except Exception as e:
+            print(f"Warning: Could not create directories: {e}")
+            # Continue anyway - directories might already exist
         
         # Detect GPU on startup
         self.detect_gpu()

@@ -95,7 +95,11 @@ RUN ln -sf /app/scripts/init_universal.sh /app/init_workspace.sh && \
 RUN cat > /app/start.sh << 'EOF'
 #!/bin/bash
 echo "Initializing workspace..."
-/app/init_workspace.sh
+# Don't let init_workspace.sh failure stop the UI from starting
+/app/init_workspace.sh || {
+    echo "WARNING: Workspace initialization had issues"
+    echo "Continuing to start UI anyway..."
+}
 
 # Auto-configure Google Drive from RunPod Secrets
 if [ -f "/app/scripts/init_gdrive.sh" ]; then
