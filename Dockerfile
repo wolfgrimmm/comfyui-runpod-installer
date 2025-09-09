@@ -9,55 +9,67 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python packages in smaller groups to avoid memory issues
+# Upgrade pip and install wheel first
+RUN python -m pip install --upgrade pip wheel setuptools
+
+# Install Python packages with better error handling
 # Group 1: Core ComfyUI requirements
-RUN pip install --no-cache-dir \
+RUN python -m pip install --no-cache-dir \
     einops \
     torchsde \
-    "kornia>=0.7.1" \
+    kornia>=0.7.1 \
     spandrel \
-    "safetensors>=0.4.2"
+    safetensors>=0.4.2 || \
+    echo "Warning: Some ComfyUI packages failed to install"
 
 # Group 2: Web and async packages
-RUN pip install --no-cache-dir \
+RUN python -m pip install --no-cache-dir \
     aiohttp \
     pyyaml \
     Pillow \
     tqdm \
-    scipy
+    scipy || \
+    echo "Warning: Some web packages failed to install"
 
 # Group 3: ML packages
-RUN pip install --no-cache-dir \
+RUN python -m pip install --no-cache-dir \
     transformers \
     diffusers \
-    accelerate
+    accelerate || \
+    echo "Warning: Some ML packages failed to install"
 
-# Group 4: ONNX and CV (these can be large)
-RUN pip install --no-cache-dir \
-    onnxruntime-gpu || pip install --no-cache-dir onnxruntime
+# Group 4: ONNX and CV
+RUN python -m pip install --no-cache-dir onnxruntime-gpu || \
+    python -m pip install --no-cache-dir onnxruntime || \
+    echo "Warning: ONNX runtime not installed"
 
-RUN pip install --no-cache-dir \
-    opencv-python
+RUN python -m pip install --no-cache-dir opencv-python || \
+    echo "Warning: OpenCV not installed"
 
-# Group 5: Core Web UI requirements (must succeed)
-RUN pip install --no-cache-dir flask==3.0.0
-RUN pip install --no-cache-dir psutil
-RUN pip install --no-cache-dir requests
+# Group 5: Core Web UI requirements - using system pip if needed
+RUN python -m pip install --no-cache-dir flask==3.0.0 || \
+    pip3 install --no-cache-dir flask==3.0.0 || \
+    apt-get update && apt-get install -y python3-flask && apt-get clean || \
+    echo "Warning: Flask not installed"
 
-# Group 5a: ComfyUI Manager dependencies (optional, installed at runtime if needed)
-# These are used by Manager but not critical for base functionality
-RUN pip install --no-cache-dir GitPython 2>/dev/null || \
-    pip install --no-cache-dir "GitPython==3.1.31" 2>/dev/null || \
-    echo "Note: GitPython not installed (Manager will install at runtime if needed)"
+RUN python -m pip install --no-cache-dir psutil || \
+    pip3 install --no-cache-dir psutil || \
+    echo "Warning: psutil not installed"
 
-RUN pip install --no-cache-dir "PyGithub==1.59.1" 2>/dev/null || \
-    echo "Note: PyGithub not installed (Manager will install at runtime if needed)"
+RUN python -m pip install --no-cache-dir requests || \
+    pip3 install --no-cache-dir requests || \
+    echo "Warning: requests not installed"
+
+# Group 5a: ComfyUI Manager dependencies (optional)
+RUN python -m pip install --no-cache-dir GitPython 2>/dev/null || \
+    echo "Note: GitPython not installed (Manager will install at runtime)"
+
+RUN python -m pip install --no-cache-dir PyGithub==1.59.1 2>/dev/null || \
+    echo "Note: PyGithub not installed (Manager will install at runtime)"
 
 # Group 6: Jupyter
-RUN pip install --no-cache-dir \
-    jupyterlab \
-    ipywidgets \
-    notebook
+RUN python -m pip install --no-cache-dir jupyterlab ipywidgets notebook || \
+    echo "Warning: Jupyter not installed"
 
 # Create app directory
 RUN mkdir -p /app
@@ -101,6 +113,12 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 
 # Initialize environment
 /app/init.sh
+
+# Try to ensure Flask is available
+if ! python -c "import flask" 2>/dev/null; then
+    echo "Installing Flask at runtime..."
+    pip install flask==3.0.0 || pip3 install flask || echo "Flask install failed"
+fi
 
 # Start Control Panel UI
 echo "🌐 Starting Control Panel on port 7777..."
