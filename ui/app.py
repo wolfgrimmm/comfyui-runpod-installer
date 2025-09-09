@@ -498,6 +498,11 @@ manager = ComfyUIManager()
 gdrive = GDriveSync(WORKSPACE_DIR)
 gdrive_oauth = GDriveOAuth(WORKSPACE_DIR)
 
+@app.route('/health')
+def health():
+    """Health check endpoint"""
+    return jsonify({'status': 'ok', 'timestamp': time.time()})
+
 @app.route('/')
 def index():
     """Main UI page - new control panel"""

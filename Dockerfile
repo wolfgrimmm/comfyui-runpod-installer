@@ -110,7 +110,18 @@ if [ -f "/workspace/venv/bin/activate" ]; then
 fi
 
 echo "Starting UI on port 7777..."
-cd /app/ui && python app.py &
+cd /app/ui && python app.py > /workspace/ui.log 2>&1 &
+sleep 2
+if ! lsof -i:7777 > /dev/null 2>&1; then
+    echo "WARNING: UI failed to start on port 7777"
+    echo "Check /workspace/ui.log for errors"
+    if [ -f /workspace/ui.log ]; then
+        echo "Last 20 lines of UI log:"
+        tail -20 /workspace/ui.log
+    fi
+else
+    echo "UI successfully started on port 7777"
+fi
 echo "Starting JupyterLab on port 8888..."
 jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token="" --NotebookApp.password="" --NotebookApp.allow_origin="*" --NotebookApp.disable_check_xsrf=True --ServerApp.allow_origin="*" --ServerApp.disable_check_xsrf=True --ServerApp.terminado_settings="shell_command=[\"bash\"]" &
 echo "UI running on port 7777 - visit to start ComfyUI"
