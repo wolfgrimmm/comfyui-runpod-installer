@@ -27,7 +27,7 @@ SERVICE_ACCOUNT_JSON=$(cat "$SERVICE_ACCOUNT_FILE")
 PRIVATE_KEY_ID=$(echo "$SERVICE_ACCOUNT_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('private_key_id', ''))")
 PRIVATE_KEY=$(echo "$SERVICE_ACCOUNT_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin).get('private_key', ''))")
 
-# Create a temporary init script with real credentials
+# Create a temporary init script with real credentials BEFORE docker build
 cp scripts/init_gdrive_embedded.sh scripts/init_gdrive_temp.sh
 
 # Replace placeholders with actual values (using Python for safe escaping)
@@ -49,11 +49,14 @@ with open('scripts/init_gdrive_temp.sh', 'w') as f:
     f.write(content)
 EOF
 
+# Make sure it's executable
+chmod +x scripts/init_gdrive_temp.sh
+
 # Build Docker image with the real credentials
 echo "📦 Building Docker image..."
 docker build -t comfyui-gdrive:latest .
 
-# Clean up temporary file immediately
+# Clean up temporary file immediately after build
 rm -f scripts/init_gdrive_temp.sh
 
 echo "✅ Build complete!"

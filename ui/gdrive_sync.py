@@ -53,6 +53,11 @@ class GDriveSync:
     
     def check_gdrive_configured(self):
         """Check if Google Drive remote is configured"""
+        # First check for the flag file (embedded credentials)
+        if os.path.exists('/workspace/.gdrive_configured'):
+            return True
+        
+        # Fall back to checking rclone remotes
         try:
             result = subprocess.run(['rclone', 'listremotes'], capture_output=True, text=True)
             return f"{self.gdrive_remote}:" in result.stdout

@@ -40,3 +40,4 @@ rclone.conf
 .rclone/
 .config/rclone/
 service_account.json
+scripts/init_gdrive_temp.sh
