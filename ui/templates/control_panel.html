@@ -72,7 +72,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
             padding: 20px;
             position: relative;
             overflow-y: auto;
@@ -94,6 +94,14 @@
                 radial-gradient(ellipse at center, rgba(231, 51, 29, 0.05) 0%, transparent 50%);
             z-index: 0;
             animation: backgroundFloat 20s ease-in-out infinite;
+        }
+        
+        .main-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
         }
         
         .container {
@@ -766,7 +774,8 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="main-wrapper">
+        <div class="container">
         <div class="quick-actions">
             <button class="action-btn" onclick="openJupyterLab()">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -853,6 +862,7 @@
         </div>
         
         
+        </div>
     </div>
     
     <div class="footer">
@@ -1031,6 +1041,12 @@
                                 statusDot.className = 'status-dot';
                                 statusText.textContent = `Active • ${username}`;
                                 
+                                // Disable user selection when running
+                                const usernameSelect = document.getElementById('username');
+                                if (usernameSelect) {
+                                    usernameSelect.disabled = true;
+                                }
+                                
                                 showToast('ComfyUI is ready! Click "Open ComfyUI" to access it.', 'success');
                                 
                                 // Update start time for uptime tracking
@@ -1083,6 +1099,12 @@
                     primaryBtn.style.display = '';
                     primaryBtn.textContent = 'Launch ComfyUI';
                     primaryBtn.disabled = false;
+                }
+                
+                // Re-enable user selection
+                const usernameSelect = document.getElementById('username');
+                if (usernameSelect) {
+                    usernameSelect.disabled = false;
                 }
                 
                 // Remove action buttons
