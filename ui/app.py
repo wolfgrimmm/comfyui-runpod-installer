@@ -11,7 +11,6 @@ import json
 import time
 import psutil
 from pathlib import Path
-import shutil
 
 app = Flask(__name__)
 
@@ -30,7 +29,6 @@ class ComfyUIManager:
         self.comfyui_process = None
         self.current_user = None
         self.start_time = None
-        self.auto_update = os.environ.get('COMFYUI_AUTO_UPDATE', 'false').lower() == 'true'
         self.init_system()
     
     def init_system(self):
