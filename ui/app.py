@@ -185,6 +185,7 @@ class ComfyUIManager:
                                 if consecutive_success >= required_success:
                                     # ComfyUI is consistently responding
                                     print(f"ComfyUI fully initialized after {i+1} seconds")
+                                    self.start_time = time.time()
                                     return True, "ComfyUI started successfully"
                             time.sleep(0.5)
                         except urllib.error.HTTPError as e:
@@ -243,8 +244,7 @@ class ComfyUIManager:
             "ready": is_running,  # Additional ready check
             "current_user": self.current_user,
             "users": self.users,
-            "uptime": self.get_uptime() if is_running else "0m",
-            "auto_update": self.auto_update
+            "uptime": self.get_uptime() if is_running and self.start_time else "0m"
         }
     
     def get_uptime(self):
@@ -263,31 +263,16 @@ class ComfyUIManager:
     def get_resource_usage(self):
         """Get system resource usage"""
         try:
-            cpu_percent = psutil.cpu_percent(interval=1)
             memory = psutil.virtual_memory()
             disk = psutil.disk_usage('/workspace') if os.path.exists('/workspace') else psutil.disk_usage('/')
             
-            # Try to get GPU usage (nvidia-smi)
-            gpu_usage = "N/A"
-            try:
-                result = subprocess.run(['nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'], 
-                                      capture_output=True, text=True, timeout=2)
-                if result.returncode == 0:
-                    gpu_usage = f"{result.stdout.strip()}%"
-            except:
-                pass
-            
             return {
-                "cpu_usage": f"{cpu_percent}%",
-                "gpu_usage": gpu_usage,
                 "mem_usage": f"{memory.used / (1024**3):.1f} GB",
                 "disk_usage": f"{disk.used / (1024**3):.0f} GB"
             }
         except Exception as e:
             print(f"Error getting resources: {e}")
             return {
-                "cpu_usage": "0%",
-                "gpu_usage": "0%",
                 "mem_usage": "0 GB",
                 "disk_usage": "0 GB"
             }
@@ -299,12 +284,6 @@ class ComfyUIManager:
             return len([f for f in os.listdir(models_dir) if os.path.isfile(os.path.join(models_dir, f))])
         return 0
     
-    def update_settings(self, settings):
-        """Update settings"""
-        if 'auto_update' in settings:
-            self.auto_update = settings['auto_update']
-            os.environ['COMFYUI_AUTO_UPDATE'] = 'true' if self.auto_update else 'false'
-        return True
 
 # Initialize manager
 manager = ComfyUIManager()
@@ -373,14 +352,6 @@ def add_user():
 def get_resources():
     """Get system resource usage"""
     return jsonify(manager.get_resource_usage())
-
-@app.route('/api/settings', methods=['POST'])
-def update_settings():
-    """Update system settings"""
-    data = request.json
-    if manager.update_settings(data):
-        return jsonify({"success": True})
-    return jsonify({"success": False}), 400
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=7777, debug=False)

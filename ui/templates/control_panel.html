@@ -74,7 +74,8 @@
             justify-content: center;
             padding: 20px;
             position: relative;
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
         
         body::before {
@@ -818,16 +819,8 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="add-user-section">
-                <input type="text" id="newUser" placeholder="Add new user..." {% if running %}disabled{% endif %}>
-                <button onclick="addUser()" {% if running %}disabled{% endif %}>Add</button>
-            </div>
         </div>
         
-        <div class="settings-toggle" onclick="toggleAutoUpdate()">
-            <span class="toggle-label">Auto-update ComfyUI</span>
-            <div class="toggle-switch {% if auto_update %}active{% endif %}" id="autoUpdateToggle"></div>
-        </div>
         
         <div class="actions-grid">
             {% if not running %}
@@ -836,32 +829,15 @@
                 </button>
             {% else %}
                 <button class="btn btn-primary" onclick="openComfyUI()">
-                    Open ComfyUI Interface
-                </button>
-                <button class="btn btn-secondary" onclick="restartService()">
-                    Restart
+                    Open ComfyUI
                 </button>
                 <button class="btn btn-secondary" onclick="stopComfyUI()">
-                    Stop
+                    Stop ComfyUI
                 </button>
             {% endif %}
         </div>
         
         <div class="resource-monitor">
-            <div class="resource-item">
-                <div class="resource-icon">💻</div>
-                <div class="resource-info">
-                    <div class="resource-label">CPU Usage</div>
-                    <div class="resource-value" id="cpuUsage">{{ cpu_usage|default('0%') }}</div>
-                </div>
-            </div>
-            <div class="resource-item">
-                <div class="resource-icon">🎮</div>
-                <div class="resource-info">
-                    <div class="resource-label">GPU Usage</div>
-                    <div class="resource-value" id="gpuUsage">{{ gpu_usage|default('0%') }}</div>
-                </div>
-            </div>
             <div class="resource-item">
                 <div class="resource-icon">💾</div>
                 <div class="resource-info">
@@ -1024,34 +1000,12 @@
             }
         }
         
-        async function restartService() {
-            showLoading(true, 'Restarting ComfyUI...');
-            
-            try {
-                await fetch('/api/stop', { method: 'POST' });
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                const username = document.getElementById('username').value || '{{ current_user }}';
-                const response = await fetch('/api/start', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({username: username})
-                });
-                
-                showLoading(false);
-                showToast('ComfyUI restarted successfully', 'success');
-                setTimeout(() => location.reload(), 1500);
-            } catch (error) {
-                showLoading(false);
-                showToast('Error: ' + error.message, 'error');
-            }
-        }
         
         function openComfyUI() {
             const url = getRunPodUrl(8188);
             showToast('Opening ComfyUI...', 'info');
             setTimeout(() => {
-                window.open(url, '_blank');
+                window.location.href = url;
             }, 500);
         }
         
@@ -1065,55 +1019,6 @@
             window.open('https://github.com/wolfgrimmm/comfyui-runpod-installer', '_blank');
         }
         
-        async function addUser() {
-            const username = document.getElementById('newUser').value.trim().toLowerCase();
-            if (!username) return;
-            
-            try {
-                const response = await fetch('/api/add_user', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({username: username})
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    showToast(`User ${username} added`, 'success');
-                    const select = document.getElementById('username');
-                    const option = document.createElement('option');
-                    option.value = username;
-                    option.textContent = username;
-                    select.appendChild(option);
-                    select.value = username;
-                    document.getElementById('newUser').value = '';
-                } else {
-                    showToast(data.error || 'Failed to add user', 'error');
-                }
-            } catch (error) {
-                showToast('Error: ' + error.message, 'error');
-            }
-        }
-        
-        async function toggleAutoUpdate() {
-            const toggle = document.getElementById('autoUpdateToggle');
-            const isActive = toggle.classList.contains('active');
-            
-            try {
-                const response = await fetch('/api/settings', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({auto_update: !isActive})
-                });
-                
-                if (response.ok) {
-                    toggle.classList.toggle('active');
-                    showToast(`Auto-update ${!isActive ? 'enabled' : 'disabled'}`, 'info');
-                }
-            } catch (error) {
-                showToast('Failed to update setting', 'error');
-            }
-        }
         
         // Update resource monitor periodically
         setInterval(async () => {
@@ -1121,8 +1026,6 @@
                 const response = await fetch('/api/resources');
                 if (response.ok) {
                     const data = await response.json();
-                    document.getElementById('cpuUsage').textContent = data.cpu_usage || '0%';
-                    document.getElementById('gpuUsage').textContent = data.gpu_usage || '0%';
                     document.getElementById('memUsage').textContent = data.mem_usage || '0 GB';
                     document.getElementById('storage').textContent = data.disk_usage || '0 GB';
                 }
