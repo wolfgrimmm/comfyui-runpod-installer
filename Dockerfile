@@ -36,9 +36,21 @@ COPY config /app/config
 
 # Create workspace directories structure
 RUN mkdir -p /workspace/models/checkpoints && \
-    mkdir -p /workspace/models/loras && \
-    mkdir -p /workspace/models/vae && \
+    mkdir -p /workspace/models/clip && \
+    mkdir -p /workspace/models/clip_vision && \
+    mkdir -p /workspace/models/configs && \
     mkdir -p /workspace/models/controlnet && \
+    mkdir -p /workspace/models/diffusers && \
+    mkdir -p /workspace/models/embeddings && \
+    mkdir -p /workspace/models/gligen && \
+    mkdir -p /workspace/models/hypernetworks && \
+    mkdir -p /workspace/models/loras && \
+    mkdir -p /workspace/models/photomaker && \
+    mkdir -p /workspace/models/style_models && \
+    mkdir -p /workspace/models/unet && \
+    mkdir -p /workspace/models/upscale_models && \
+    mkdir -p /workspace/models/vae && \
+    mkdir -p /workspace/models/vae_approx && \
     mkdir -p /workspace/output && \
     mkdir -p /workspace/input && \
     mkdir -p /workspace/workflows && \
@@ -133,10 +145,23 @@ rm -rf /workspace/ComfyUI/output
 rm -rf /workspace/ComfyUI/input
 mkdir -p /workspace/ComfyUI/user
 
-# Ensure model directories exist
+# Ensure all model directories exist
 mkdir -p /workspace/models/checkpoints
+mkdir -p /workspace/models/clip
+mkdir -p /workspace/models/clip_vision
+mkdir -p /workspace/models/configs
+mkdir -p /workspace/models/controlnet
+mkdir -p /workspace/models/diffusers
+mkdir -p /workspace/models/embeddings
+mkdir -p /workspace/models/gligen
+mkdir -p /workspace/models/hypernetworks
 mkdir -p /workspace/models/loras
+mkdir -p /workspace/models/photomaker
+mkdir -p /workspace/models/style_models
+mkdir -p /workspace/models/unet
+mkdir -p /workspace/models/upscale_models
 mkdir -p /workspace/models/vae
+mkdir -p /workspace/models/vae_approx
 
 echo "✅ Initialization complete!"
 EOF
