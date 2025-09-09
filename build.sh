@@ -1,46 +1,50 @@
 #!/bin/bash
 
-# Universal build script - creates image that works both ways:
-# 1. Traditional: Pre-installed packages (larger image, instant start)
-# 2. Fast: Creates venv on first run (smaller image, 5-10 min first start)
+# Build script optimized for RunPod using their official base image
+# Much faster builds since PyTorch/CUDA are pre-installed!
 
 set -e
 
-echo "🔧 Building Universal Docker image for RunPod..."
-echo ""
-echo "This image supports two modes:"
-echo "1. Traditional build: Include all packages (use --traditional flag)"
-echo "2. Fast build: Minimal image, downloads on first run (default)"
-echo ""
+echo "🚀 Building RunPod-Optimized Docker Image"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Using RunPod base image with:"
+echo "• PyTorch 2.4.0 pre-installed"
+echo "• CUDA 12.4 pre-installed"
+echo "• Python 3.11 pre-installed"
+echo "• Common ML libraries included"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-if [ "$1" == "--traditional" ]; then
-    echo "📦 Building TRADITIONAL image with pre-installed packages..."
-    echo "   Image size: ~15GB"
-    echo "   First start: Instant"
-    echo ""
-    
-    # Build with pre-installed packages
-    docker build --build-arg INSTALL_PACKAGES=true -t comfyui-runpod:latest .
-else
-    echo "🚀 Building FAST image (minimal, downloads on demand)..."
-    echo "   Image size: ~3GB"
-    echo "   First start: 5-10 minutes (then instant)"
-    echo ""
-    
-    # Build minimal image
-    docker build -t comfyui-runpod:latest .
-fi
+# Enable BuildKit for better caching
+export DOCKER_BUILDKIT=1
 
-echo "✅ Build complete!"
+# Build the optimized image
+echo "Building image..."
+docker build \
+    --platform linux/amd64 \
+    -t comfyui-runpod:latest \
+    .
+
+# Calculate size difference
 echo ""
-echo "The image will automatically:"
-echo "• Check for venv in /workspace/venv"
-echo "• Use it if found (instant start)"
-echo "• Create it if needed (5-10 min first time)"
-echo "• Install ComfyUI Manager"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 Build Complete!"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Show image size
+docker images comfyui-runpod:latest --format "Image size: {{.Size}}"
+
 echo ""
-echo "Next steps:"
-echo "1. Tag: docker tag comfyui-runpod:latest yourusername/comfyui-runpod:latest"
-echo "2. Push: docker push yourusername/comfyui-runpod:latest"
-echo "3. Add GOOGLE_SERVICE_ACCOUNT secret in RunPod dashboard"
-echo "4. Deploy pod with persistent /workspace volume"
+echo "🎯 How it works:"
+echo "• Control Panel starts automatically on port 7777"
+echo "• Use Control Panel to install/start ComfyUI on port 8188"
+echo "• JupyterLab available on port 8888"
+echo "• All data persists in /workspace"
+echo ""
+echo "📤 To push to Docker Hub:"
+echo "docker tag comfyui-runpod:latest wolfgrimmm/comfyui-runpod:latest"
+echo "docker push wolfgrimmm/comfyui-runpod:latest"
+echo ""
+echo "🏃 To run locally:"
+echo "docker run -it --gpus all -p 7777:7777 -p 8188:8188 -p 8888:8888 -v ./workspace:/workspace comfyui-runpod:latest"
+echo ""
+echo "⚡ This image is optimized for RunPod pods!"

@@ -1,148 +1,99 @@
-# ComfyUI RunPod Deployment Guide
+# ComfyUI RunPod Installer
 
-## Quick Start
+Optimized Docker image for deploying ComfyUI on RunPod with web-based control panel.
 
-### 1. Deploy on RunPod
+## Features
 
-1. Go to [RunPod](https://runpod.io)
-2. Click "Deploy" → "Pods" → "GPU Pod"
-3. Select GPU (RTX 4090, A100, etc.)
-4. In Template section:
-   - Container Image: `wolfgrimmm/comfyui-runpod:latest`
-   - Container Disk: 20-50 GB (depending on models)
-   - Volume Disk: 50-100 GB (for persistent storage)
-   - Expose HTTP Ports: `8188,8888`
-5. Deploy Pod
+- 🚀 **RunPod Optimized** - Uses RunPod's PyTorch base image for fastest deployment
+- 🎛️ **Web Control Panel** - Manage ComfyUI through browser interface (port 7777)
+- 📦 **On-Demand Installation** - ComfyUI installs only when you need it
+- 💾 **Persistent Storage** - All data saved in `/workspace` volume
+- 🔧 **ComfyUI Manager** - Pre-configured with essential custom nodes
+- 📊 **JupyterLab** - Included for advanced workflows (port 8888)
+- ☁️ **Google Drive Sync** - Optional integration for model storage
 
-### 2. Access Your Pod
+## Quick Deploy
 
-Once running, you have 3 options:
-
-#### Option A: Web Terminal (Easiest)
-1. Click "Connect" → "Connect to Web Terminal"
-2. Run: `./start_comfyui.sh`
-3. Click "Connect to HTTP Service [Port 8188]"
-
-#### Option B: JupyterLab
-1. Click "Connect" → "Connect to HTTP Service [Port 8888]"
-2. Open Terminal in JupyterLab
-3. Run: `./start_comfyui.sh`
-4. Access ComfyUI at: `https://[pod-id]-8188.proxy.runpod.net`
-
-#### Option C: SSH
-1. Add SSH key in RunPod settings
-2. Click "Connect" → Get SSH command
-3. SSH into pod and run: `./start_comfyui.sh`
-
-### 3. Install Flash Attention (Optional - First Run)
-
-Flash Attention provides 2-3x speedup but may fail during Docker build. Install it on first run:
+### 1. Build & Push Image
 
 ```bash
-# Via JupyterLab or SSH terminal
-./install_flash_attention.sh
-
-# Or it auto-installs when you run:
-./start_comfyui.sh
+./build.sh
+docker tag comfyui-runpod:latest wolfgrimmm/comfyui-runpod:latest
+docker push wolfgrimmm/comfyui-runpod:latest
 ```
 
-### 4. Google Drive Integration
+### 2. Create RunPod Template
 
-#### First-time setup:
+- **Container Image:** `wolfgrimmm/comfyui-runpod:latest`
+- **Container Disk:** 20-50 GB
+- **Volume Mount Path:** `/workspace`
+- **Exposed HTTP Ports:** `7777,8188,8888`
+- **Volume Size:** 50-100 GB (for models)
+
+### 3. Deploy Pod & Access
+
+1. Launch pod from template
+2. Access Control Panel: `https://[pod-id]-7777.proxy.runpod.net`
+3. Click "Install ComfyUI" then "Start ComfyUI"
+4. Access ComfyUI: `https://[pod-id]-8188.proxy.runpod.net`
+5. JupyterLab available at: `https://[pod-id]-8888.proxy.runpod.net`
+
+## How It Works
+
+1. **Pod Starts** → Control Panel launches on port 7777
+2. **You Visit Control Panel** → Install/manage ComfyUI
+3. **Start ComfyUI** → Runs on port 8188
+4. **All Data Persists** → Models, workflows, outputs in `/workspace`
+
+## Google Drive Integration (Optional)
+
+### Method 1: RunPod Secrets (Automatic)
+Add these secrets in RunPod:
+- `GDRIVE_SERVICE_ACCOUNT` - Service account JSON
+- `GDRIVE_FOLDER_ID` - Your Google Drive folder ID
+
+### Method 2: Manual Setup
 ```bash
-./setup_gdrive.sh
-# Follow the instructions to connect your Google account
+# In JupyterLab terminal
+cd /app/scripts
+./setup_gdrive.sh  # Follow OAuth instructions
+./sync_from_gdrive.sh  # Download models
+./sync_to_gdrive.sh  # Backup outputs
 ```
 
-#### Sync models FROM Google Drive:
-```bash
-./sync_from_gdrive.sh
-# Downloads models, workflows, and inputs from your Drive
-```
+## Persistent Storage Structure
 
-#### Backup outputs TO Google Drive:
-```bash
-./sync_to_gdrive.sh  
-# Uploads your generated images and workflows to Drive
-```
-
-#### Google Drive folder structure:
-```
-Google Drive/
-└── ComfyUI/
-    ├── models/
-    │   ├── checkpoints/   # Your SD models
-    │   ├── loras/         # LoRA models
-    │   ├── vae/           # VAE models
-    │   └── controlnet/    # ControlNet models
-    ├── workflows/         # Your saved workflows
-    ├── output/           # Generated images backup
-    └── input/            # Input images for img2img
-
-### 5. Persistent Storage
-
-RunPod volumes persist at `/workspace/`. Structure:
 ```
 /workspace/
-├── ComfyUI/          # Main installation
-├── models/           # Your models (symlink to ComfyUI/models)
+├── ComfyUI/          # ComfyUI installation
+├── models/           # All model files
+│   ├── checkpoints/  # SD models
+│   ├── loras/        # LoRA models
+│   ├── vae/          # VAE models
+│   └── controlnet/   # ControlNet models
 ├── output/           # Generated images
-├── workflows/        # Saved workflows
-└── venv/            # Python environment
+├── input/            # Input images
+└── workflows/        # Saved workflows
 ```
 
 ## Troubleshooting
 
-### ComfyUI won't start
-```bash
-# Kill existing process
-fuser -k 8188/tcp
+**ComfyUI won't start:**
+- Use Control Panel to restart
+- Check logs in JupyterLab terminal
 
-# Check logs
-./start_comfyui.sh
-```
-
-### Out of memory
+**Out of memory:**
 - Reduce batch size in ComfyUI
-- Use lower resolution
-- Clear output folder: `rm -rf /workspace/output/*`
+- Clear outputs: Control Panel → Clear Outputs
 
-### Slow generation
-- Install Flash Attention: `./install_flash_attention.sh`
-- Ensure you selected GPU pod (not CPU)
-- Check GPU: `nvidia-smi`
-
-### Models not showing
-- Check models directory: `ls /workspace/models/`
-- Restart ComfyUI after adding models
-- Ensure correct folder structure (checkpoints/, loras/, etc.)
-
-## Custom Nodes
-
-Pre-installed:
-- ComfyUI Manager
-- IPAdapter Plus  
-- GGUF support
-
-Install more via Manager or manually:
-```bash
-cd /workspace/ComfyUI/custom_nodes
-git clone [custom-node-repo]
-pip install -r requirements.txt  # if needed
-```
+**Models not showing:**
+- Refresh ComfyUI page after adding models
+- Check `/workspace/models/` structure
 
 ## Tips
 
-1. **Save money**: Stop pod when not using, RunPod only charges for active time
-2. **Faster startup**: Use "Resume" instead of creating new pod
-3. **Model management**: Use network volumes to share models between pods
-4. **Workflows**: Save important workflows to `/workspace/workflows/`
-
-## Docker Image Details
-
-- Base: CUDA 12.9, Ubuntu 22.04, Python 3.10
-- PyTorch: 2.7.1 with CUDA 12.8
-- Includes: ComfyUI, essential custom nodes, AI packages
-- Flash Attention: Installs on first run (avoids build failures)
+- **Save Money:** Stop pod when not using
+- **Fast Resume:** Use "Resume" instead of new pod
+- **Share Models:** Use network volumes between pods
 
 Source: https://github.com/wolfgrimmm/comfyui-runpod-installer
