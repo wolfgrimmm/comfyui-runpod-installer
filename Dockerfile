@@ -48,9 +48,6 @@ RUN pip install --no-cache-dir \
     transformers \
     safetensors
 
-# Copy configuration files
-COPY config /app/config
-
 # Create workspace directories structure (matching official ComfyUI)
 RUN mkdir -p /workspace/models/audio_encoders && \
     mkdir -p /workspace/models/checkpoints && \
@@ -80,17 +77,19 @@ RUN mkdir -p /workspace/models/audio_encoders && \
 # Create app directory for scripts
 RUN mkdir -p /app
 
-# Use the universal initialization script
-COPY scripts/init_universal.sh /app/init_workspace.sh
-
-RUN chmod +x /app/init_workspace.sh
+# Copy scripts first (needed for init_workspace.sh)
+COPY scripts /app/scripts
+RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
 
 # Copy UI application
 COPY ui /app/ui
 
-# Copy scripts including Google Drive setup
-COPY scripts /app/scripts
-RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
+# Copy configuration files
+COPY config /app/config
+
+# Link the universal initialization script
+RUN ln -sf /app/scripts/init_universal.sh /app/init_workspace.sh && \
+    chmod +x /app/init_workspace.sh
 
 # Create start script that runs UI, JupyterLab and ComfyUI
 RUN cat > /app/start.sh << 'EOF'
