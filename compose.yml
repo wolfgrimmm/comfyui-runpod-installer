@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  comfyui-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.layered
+      cache_from:
+        - comfyui-dev:cache
+      args:
+        INSTALL_PACKAGES: "false"  # Use venv for development
+    
+    image: comfyui-dev:latest
+    
+    ports:
+      - "7777:7777"  # UI Control Panel
+      - "8188:8188"  # ComfyUI
+      - "8888:8888"  # JupyterLab
+    
+    volumes:
+      # Mount UI for live development (changes reflect immediately)
+      - ./ui:/app/ui:ro
+      
+      # Mount scripts for testing changes
+      - ./scripts:/app/scripts:ro
+      
+      # Mount config for testing
+      - ./config:/app/config:ro
+      
+      # Persistent workspace (models, venv, etc.)
+      - comfyui-workspace:/workspace
+      
+      # Optional: Mount local models directory
+      # - ~/models:/workspace/models
+    
+    environment:
+      # Development settings
+      - PYTHONUNBUFFERED=1
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      
+      # Optional: Add Google Drive secret for testing
+      # - RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT=${GOOGLE_SERVICE_ACCOUNT_JSON}
+    
+    # Use GPU if available (comment out for CPU-only development)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7777/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  comfyui-workspace:
+    driver: local
