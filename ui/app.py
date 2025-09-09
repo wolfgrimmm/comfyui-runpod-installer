@@ -586,8 +586,15 @@ def gdrive_status():
         except:
             pass
     
-    # Check for RunPod secret (with debugging)
-    has_secret = bool(os.environ.get('RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT'))
+    # Check for RunPod secret (with debugging) - check multiple possible names
+    has_secret = bool(
+        os.environ.get('RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT') or
+        os.environ.get('GOOGLE_SERVICE_ACCOUNT') or
+        os.environ.get('RUNPOD_SECRET_GDRIVE') or
+        os.environ.get('GDRIVE_SERVICE_ACCOUNT') or
+        any(k.startswith('RUNPOD_SECRET_') and 'service_account' in v.lower() 
+            for k, v in os.environ.items() if v)
+    )
     
     # Debug: Check all RUNPOD environment variables
     runpod_vars = {k: '***' if 'SECRET' in k else v[:50] 
