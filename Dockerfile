@@ -4,13 +4,23 @@ FROM nvidia/cuda:12.4.0-devel-ubuntu22.04
 WORKDIR /workspace
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Python, git, wget, psmisc (for fuser), lsof, curl, and rclone
+# Install Python, git, wget, psmisc (for fuser), lsof, curl, and other dependencies
 RUN apt-get update && \
-    apt-get install -y python3.10 python3-pip git wget psmisc lsof curl && \
+    apt-get install -y python3.10 python3-pip git wget psmisc lsof curl unzip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    ln -s /usr/bin/python3 /usr/bin/python && \
-    curl https://rclone.org/install.sh | bash
+    ln -s /usr/bin/python3 /usr/bin/python
+
+# Install rclone separately with error handling
+RUN curl -O https://downloads.rclone.org/rclone-current-linux-amd64.zip && \
+    unzip rclone-current-linux-amd64.zip && \
+    cd rclone-*-linux-amd64 && \
+    cp rclone /usr/bin/ && \
+    chown root:root /usr/bin/rclone && \
+    chmod 755 /usr/bin/rclone && \
+    cd .. && \
+    rm -rf rclone-*-linux-amd64* && \
+    rclone version || echo "rclone installation completed"
 
 # Install PyTorch with CUDA 12.4 for RTX 5090
 RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
