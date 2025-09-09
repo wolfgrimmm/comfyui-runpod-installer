@@ -77,9 +77,136 @@ RUN mkdir -p /workspace/models/audio_encoders && \
 # Create app directory for scripts
 RUN mkdir -p /app
 
+<<<<<<< HEAD
 # Copy scripts first (needed for init_workspace.sh)
 COPY scripts /app/scripts
 RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
+=======
+# Create initialization script to set up ComfyUI in workspace on first run
+RUN cat > /app/init_workspace.sh << 'EOF'
+#!/bin/bash
+echo "==================================="
+echo "Initializing ComfyUI workspace..."
+echo "==================================="
+
+# Debug: Show current state
+echo "Current directory: $(pwd)"
+echo "Checking /workspace contents:"
+ls -la /workspace/ || echo "Cannot list /workspace"
+
+# Check if ComfyUI is properly installed (not just directory exists)
+if [ ! -f "/workspace/ComfyUI/main.py" ]; then
+    echo "📦 ComfyUI not found or incomplete - Installing from GitHub..."
+    
+    # Remove empty or incomplete directory if it exists
+    if [ -d "/workspace/ComfyUI" ]; then
+        echo "Removing incomplete ComfyUI directory..."
+        rm -rf /workspace/ComfyUI
+    fi
+    
+    cd /workspace
+    git clone https://github.com/comfyanonymous/ComfyUI.git ComfyUI || {
+        echo "❌ Failed to clone ComfyUI!"
+        echo "Trying alternative method..."
+        mkdir -p /workspace/ComfyUI
+        cd /workspace/ComfyUI
+        git init
+        git remote add origin https://github.com/comfyanonymous/ComfyUI.git
+        git fetch --depth=1 origin main
+        git checkout main
+    }
+    
+    # Verify installation
+    if [ -f "/workspace/ComfyUI/main.py" ]; then
+        echo "✅ ComfyUI installed at /workspace/ComfyUI"
+    else
+        echo "❌ Installation failed - main.py not found"
+        exit 1
+    fi
+else
+    echo "✅ ComfyUI found at /workspace/ComfyUI (main.py exists)"
+    
+    # Optional: Update ComfyUI
+    if [ "${COMFYUI_AUTO_UPDATE:-false}" == "true" ]; then
+        echo "🔄 Updating ComfyUI..."
+        cd /workspace/ComfyUI && git pull || echo "Could not update"
+    fi
+fi
+
+# Ensure custom_nodes directory exists
+mkdir -p /workspace/ComfyUI/custom_nodes
+
+# Debug: Show ComfyUI structure
+echo "ComfyUI directory structure:"
+ls -la /workspace/ComfyUI/ | head -10 || echo "ComfyUI directory issue"
+
+# Install baseline custom nodes if not present
+if [ -f "/app/config/baseline-nodes.txt" ] && [ -d "/workspace/ComfyUI/custom_nodes" ]; then
+    echo "📦 Installing custom nodes from baseline-nodes.txt..."
+    cat /app/config/baseline-nodes.txt
+    echo "---"
+    while IFS= read -r node || [ -n "$node" ]; do
+        [[ "$node" =~ ^#.*$ ]] && continue
+        [[ -z "$node" ]] && continue
+        repo_name=$(echo "$node" | sed 's/.*\///')
+        
+        if [ ! -d "/workspace/ComfyUI/custom_nodes/$repo_name" ]; then
+            echo "  Installing: $repo_name"
+            cd /workspace/ComfyUI/custom_nodes
+            git clone "https://github.com/$node" || echo "Failed to clone $node"
+            
+            # Install requirements if exists
+            if [ -f "/workspace/ComfyUI/custom_nodes/$repo_name/requirements.txt" ]; then
+                echo "  Installing requirements for $repo_name..."
+                pip install -r "/workspace/ComfyUI/custom_nodes/$repo_name/requirements.txt" || echo "Requirements install failed for $repo_name"
+            fi
+            
+            # Run install.py if exists
+            if [ -f "/workspace/ComfyUI/custom_nodes/$repo_name/install.py" ]; then
+                cd "/workspace/ComfyUI/custom_nodes/$repo_name"
+                python install.py || echo "Install script failed for $repo_name"
+            fi
+        else
+            echo "  ✓ $repo_name already installed"
+        fi
+    done < /app/config/baseline-nodes.txt
+fi
+
+# Always ensure symlinks are correct
+echo "Setting up symlinks..."
+rm -rf /workspace/ComfyUI/models
+ln -sf /workspace/models /workspace/ComfyUI/models
+rm -rf /workspace/ComfyUI/output
+rm -rf /workspace/ComfyUI/input
+mkdir -p /workspace/ComfyUI/user
+
+# Ensure all model directories exist (matching official ComfyUI)
+mkdir -p /workspace/models/audio_encoders
+mkdir -p /workspace/models/checkpoints
+mkdir -p /workspace/models/clip
+mkdir -p /workspace/models/clip_vision
+mkdir -p /workspace/models/configs
+mkdir -p /workspace/models/controlnet
+mkdir -p /workspace/models/diffusers
+mkdir -p /workspace/models/diffusion_models
+mkdir -p /workspace/models/embeddings
+mkdir -p /workspace/models/gligen
+mkdir -p /workspace/models/hypernetworks
+mkdir -p /workspace/models/loras
+mkdir -p /workspace/models/model_patches
+mkdir -p /workspace/models/photomaker
+mkdir -p /workspace/models/style_models
+mkdir -p /workspace/models/text_encoders
+mkdir -p /workspace/models/unet
+mkdir -p /workspace/models/upscale_models
+mkdir -p /workspace/models/vae
+mkdir -p /workspace/models/vae_approx
+
+echo "✅ Initialization complete!"
+EOF
+
+RUN chmod +x /app/init_workspace.sh
+>>>>>>> parent of c61a767 (Optimize build time and ensure ComfyUI Manager installation)
 
 # Copy UI application
 COPY ui /app/ui
