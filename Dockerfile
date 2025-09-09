@@ -3,84 +3,76 @@ FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 WORKDIR /
 
-# Install minimal system dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git wget curl psmisc lsof unzip \
+    python3-pip python3-venv \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip and install wheel first
-RUN python -m pip install --upgrade pip wheel setuptools
+# Fix potential pip issues in RunPod base image
+RUN python3 -m pip uninstall -y pip && \
+    apt-get update && \
+    apt-get install -y python3-pip && \
+    apt-get clean
 
-# Install Python packages with better error handling
-# Group 1: Core ComfyUI requirements
-RUN python -m pip install --no-cache-dir \
-    einops \
-    torchsde \
-    kornia>=0.7.1 \
-    spandrel \
-    safetensors>=0.4.2 || \
-    echo "Warning: Some ComfyUI packages failed to install"
+# Reinstall and upgrade pip properly
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3
+RUN python3 -m pip install --upgrade pip wheel setuptools
 
-# Group 2: Web and async packages
-RUN python -m pip install --no-cache-dir \
-    aiohttp \
-    pyyaml \
-    Pillow \
-    tqdm \
-    scipy || \
-    echo "Warning: Some web packages failed to install"
+# Verify pip is working
+RUN python3 -m pip --version
 
-# Group 3: ML packages
-RUN python -m pip install --no-cache-dir \
-    transformers \
-    diffusers \
-    accelerate || \
-    echo "Warning: Some ML packages failed to install"
+# Install Python packages one by one to identify conflicts
+# Core ComfyUI requirements
+RUN python3 -m pip install --no-cache-dir einops
+RUN python3 -m pip install --no-cache-dir torchsde
+RUN python3 -m pip install --no-cache-dir "kornia>=0.7.1"
+RUN python3 -m pip install --no-cache-dir spandrel
+RUN python3 -m pip install --no-cache-dir "safetensors>=0.4.2"
 
-# Group 4: ONNX and CV
-RUN python -m pip install --no-cache-dir onnxruntime-gpu || \
-    python -m pip install --no-cache-dir onnxruntime || \
-    echo "Warning: ONNX runtime not installed"
+# Web and async packages
+RUN python3 -m pip install --no-cache-dir aiohttp
+RUN python3 -m pip install --no-cache-dir pyyaml
+RUN python3 -m pip install --no-cache-dir Pillow
+RUN python3 -m pip install --no-cache-dir tqdm
+RUN python3 -m pip install --no-cache-dir scipy
 
-RUN python -m pip install --no-cache-dir opencv-python || \
-    echo "Warning: OpenCV not installed"
+# ML packages
+RUN python3 -m pip install --no-cache-dir transformers
+RUN python3 -m pip install --no-cache-dir diffusers
+RUN python3 -m pip install --no-cache-dir accelerate
 
-# Group 5: Core Web UI requirements - using system pip if needed
-RUN python -m pip install --no-cache-dir flask==3.0.0 || \
-    pip3 install --no-cache-dir flask==3.0.0 || \
-    apt-get update && apt-get install -y python3-flask && apt-get clean || \
-    echo "Warning: Flask not installed"
+# ONNX and CV
+RUN python3 -m pip install --no-cache-dir onnxruntime-gpu || \
+    python3 -m pip install --no-cache-dir onnxruntime
 
-RUN python -m pip install --no-cache-dir psutil || \
-    pip3 install --no-cache-dir psutil || \
-    echo "Warning: psutil not installed"
+RUN python3 -m pip install --no-cache-dir opencv-python
 
-RUN python -m pip install --no-cache-dir requests || \
-    pip3 install --no-cache-dir requests || \
-    echo "Warning: requests not installed"
+# Core Web UI requirements
+RUN python3 -m pip install --no-cache-dir flask==3.0.0
+RUN python3 -m pip install --no-cache-dir psutil
+RUN python3 -m pip install --no-cache-dir requests
 
-# Group 5a: ComfyUI Manager dependencies (optional)
-RUN python -m pip install --no-cache-dir GitPython 2>/dev/null || \
-    echo "Note: GitPython not installed (Manager will install at runtime)"
+# Git integration (for ComfyUI Manager)
+RUN python3 -m pip install --no-cache-dir GitPython
+RUN python3 -m pip install --no-cache-dir PyGithub==1.59.1
 
-RUN python -m pip install --no-cache-dir PyGithub==1.59.1 2>/dev/null || \
-    echo "Note: PyGithub not installed (Manager will install at runtime)"
-
-# Group 6: Jupyter
-RUN python -m pip install --no-cache-dir jupyterlab ipywidgets notebook || \
-    echo "Warning: Jupyter not installed"
+# Jupyter
+RUN python3 -m pip install --no-cache-dir jupyterlab
+RUN python3 -m pip install --no-cache-dir ipywidgets
+RUN python3 -m pip install --no-cache-dir notebook
 
 # Create app directory
 RUN mkdir -p /app
 
-# Copy scripts and configs (separate layers for better caching)
+# Copy application files
 COPY scripts /app/scripts
 COPY config /app/config
 COPY ui /app/ui
 RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
 
-# Create init script (only prepares environment, doesn't start ComfyUI)
+# Create init script
 RUN cat > /app/init.sh << 'EOF'
 #!/bin/bash
 set -e
@@ -103,7 +95,7 @@ EOF
 
 RUN chmod +x /app/init.sh
 
-# Create startup script (only starts control panel, NOT ComfyUI)
+# Create startup script
 RUN cat > /start.sh << 'EOF'
 #!/bin/bash
 set -e
@@ -114,15 +106,9 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 # Initialize environment
 /app/init.sh
 
-# Try to ensure Flask is available
-if ! python -c "import flask" 2>/dev/null; then
-    echo "Installing Flask at runtime..."
-    pip install flask==3.0.0 || pip3 install flask || echo "Flask install failed"
-fi
-
 # Start Control Panel UI
 echo "🌐 Starting Control Panel on port 7777..."
-cd /app/ui && python app.py > /workspace/ui.log 2>&1 &
+cd /app/ui && python3 app.py > /workspace/ui.log 2>&1 &
 
 # Start JupyterLab
 echo "📊 Starting JupyterLab on port 8888..."
@@ -155,7 +141,7 @@ EOF
 
 RUN chmod +x /start.sh
 
-# Create ComfyUI start script (called by control panel)
+# Create ComfyUI start script
 RUN cat > /app/start_comfyui.sh << 'EOF'
 #!/bin/bash
 
@@ -191,10 +177,7 @@ if [ ! -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
     cd /workspace/ComfyUI/custom_nodes
     if git clone https://github.com/ltdrdata/ComfyUI-Manager.git; then
         if [ -f "ComfyUI-Manager/requirements.txt" ]; then
-            # Install Manager requirements, ignore failures for optional packages
-            pip install -r ComfyUI-Manager/requirements.txt 2>/dev/null || \
-            pip install GitPython PyGithub 2>/dev/null || \
-            echo "Some Manager features may be limited"
+            pip install -r ComfyUI-Manager/requirements.txt 2>/dev/null || true
         fi
     fi
 fi
@@ -202,19 +185,25 @@ fi
 # Start ComfyUI
 cd /workspace/ComfyUI
 echo "Starting ComfyUI on port 8188..."
-exec python main.py --listen 0.0.0.0 --port 8188
+exec python3 main.py --listen 0.0.0.0 --port 8188
 EOF
 
 RUN chmod +x /app/start_comfyui.sh
 
+# Verify critical packages are installed
+RUN python3 -c "import flask; print(f'Flask {flask.__version__} OK')"
+RUN python3 -c "import torch; print(f'PyTorch {torch.__version__} OK')"
+
 # Environment
 ENV PYTHONUNBUFFERED=1
 ENV HF_HOME=/workspace
+ENV PYTHON=python3
+ENV PIP=pip3
 
 # Ports
 EXPOSE 7777 8188 8888
 
 WORKDIR /workspace
 
-# Only start control panel and JupyterLab
+# Start services
 CMD ["/start.sh"]
