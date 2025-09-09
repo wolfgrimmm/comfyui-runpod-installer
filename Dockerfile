@@ -59,9 +59,16 @@ echo "Current directory: $(pwd)"
 echo "Checking /workspace contents:"
 ls -la /workspace/ || echo "Cannot list /workspace"
 
-# Check if ComfyUI exists
-if [ ! -d "/workspace/ComfyUI" ]; then
-    echo "📦 ComfyUI not found - Installing from GitHub..."
+# Check if ComfyUI is properly installed (not just directory exists)
+if [ ! -f "/workspace/ComfyUI/main.py" ]; then
+    echo "📦 ComfyUI not found or incomplete - Installing from GitHub..."
+    
+    # Remove empty or incomplete directory if it exists
+    if [ -d "/workspace/ComfyUI" ]; then
+        echo "Removing incomplete ComfyUI directory..."
+        rm -rf /workspace/ComfyUI
+    fi
+    
     cd /workspace
     git clone https://github.com/comfyanonymous/ComfyUI.git ComfyUI || {
         echo "❌ Failed to clone ComfyUI!"
@@ -73,9 +80,16 @@ if [ ! -d "/workspace/ComfyUI" ]; then
         git fetch --depth=1 origin main
         git checkout main
     }
-    echo "✅ ComfyUI installed at /workspace/ComfyUI"
+    
+    # Verify installation
+    if [ -f "/workspace/ComfyUI/main.py" ]; then
+        echo "✅ ComfyUI installed at /workspace/ComfyUI"
+    else
+        echo "❌ Installation failed - main.py not found"
+        exit 1
+    fi
 else
-    echo "✅ ComfyUI found at /workspace/ComfyUI"
+    echo "✅ ComfyUI found at /workspace/ComfyUI (main.py exists)"
     
     # Optional: Update ComfyUI
     if [ "${COMFYUI_AUTO_UPDATE:-false}" == "true" ]; then
