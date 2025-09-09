@@ -21,29 +21,42 @@
                 <div class="spinner"></div>
             </div>
             
-            <!-- Step 2: Choose Setup Method -->
+            <!-- Step 2: Service Account Setup (Direct) -->
             <div class="setup-step" id="step-method" style="display: none;">
-                <h3>Choose Setup Method</h3>
-                <div class="setup-options">
-                    <button class="setup-option" onclick="startOAuthSetup()">
-                        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                        </svg>
-                        <span class="option-title">Sign in with Google</span>
-                        <span class="option-desc">Recommended - Use your Google account</span>
-                    </button>
-                    
-                    <button class="setup-option" onclick="showManualSetup()">
-                        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <line x1="16" y1="13" x2="8" y2="13"/>
-                            <line x1="16" y1="17" x2="8" y2="17"/>
-                            <polyline points="10 9 9 9 8 9"/>
-                        </svg>
-                        <span class="option-title">Service Account</span>
-                        <span class="option-desc">For enterprise/automated setup</span>
-                    </button>
+                <h3>Google Drive Setup</h3>
+                <div class="setup-notice">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                    <p>To set up Google Drive sync, you need a service account JSON file from Google Cloud Console.</p>
+                </div>
+                
+                <div class="setup-instructions">
+                    <h4>Quick Setup:</h4>
+                    <ol>
+                        <li>Get your service account JSON file from Google Cloud Console</li>
+                        <li>Share your Google Drive folder with the service account email</li>
+                        <li>Paste the JSON content below</li>
+                    </ol>
+                </div>
+                
+                <button class="setup-option" onclick="showManualSetup()">
+                    <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                    <span class="option-title">Configure with Service Account</span>
+                    <span class="option-desc">Paste your JSON credentials</span>
+                </button>
+                
+                <div class="help-link">
+                    <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank">
+                        Get Service Account from Google Cloud Console →
+                    </a>
                 </div>
             </div>
             
@@ -339,6 +352,45 @@
 .error-message {
     color: #ef4444;
     margin-bottom: 24px;
+}
+
+.setup-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.setup-notice svg {
+    color: #3b82f6;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.setup-notice p {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.help-link {
+    text-align: center;
+    margin-top: 24px;
+}
+
+.help-link a {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: opacity 0.3s ease;
+}
+
+.help-link a:hover {
+    opacity: 0.8;
+    text-decoration: underline;
 }
 </style>
 

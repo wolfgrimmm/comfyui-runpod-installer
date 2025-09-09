@@ -29,3 +29,14 @@ venv/
 
 # Claude
 .claude/
+
+# Sensitive files - NEVER commit these
+*service-account*.json
+*service_account*.json
+*credentials*.json
+*-key.json
+*ageless-answer*.json
+rclone.conf
+.rclone/
+.config/rclone/
+service_account.json

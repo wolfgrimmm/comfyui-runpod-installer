@@ -33,8 +33,8 @@ class GDriveOAuth:
         # Store auth state
         self.auth_state = {}
     
-    def get_auth_url(self, redirect_uri="urn:ietf:wg:oauth:2.0:oob"):
-        """Generate OAuth authorization URL"""
+    def get_auth_url(self, redirect_uri="http://localhost:8080"):
+        """Generate OAuth authorization URL with localhost redirect"""
         state = secrets.token_urlsafe(32)
         
         params = {
@@ -57,7 +57,7 @@ class GDriveOAuth:
         
         return auth_url, state
     
-    def exchange_code_for_token(self, code, state, redirect_uri="urn:ietf:wg:oauth:2.0:oob"):
+    def exchange_code_for_token(self, code, state, redirect_uri="http://localhost:8080"):
         """Exchange authorization code for access token"""
         
         # Verify state
