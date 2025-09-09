@@ -11,6 +11,7 @@ import json
 import time
 import psutil
 from pathlib import Path
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -23,20 +24,29 @@ WORKFLOWS_BASE = f"{WORKSPACE_DIR}/workflows"
 USERS_FILE = f"{WORKSPACE_DIR}/user_data/users.json"
 CURRENT_USER_FILE = f"{WORKSPACE_DIR}/user_data/.current_user"
 START_TIME_FILE = f"{WORKSPACE_DIR}/user_data/.start_time"
+USAGE_LOG_FILE = f"{WORKSPACE_DIR}/user_data/usage_log.json"
+USER_STATS_FILE = f"{WORKSPACE_DIR}/user_data/user_statistics.json"
 
 class ComfyUIManager:
     def __init__(self):
         self.comfyui_process = None
         self.current_user = None
         self.start_time = None
+        self.session_start = None  # Track session start for logging
         self.auto_update = False  # Not used but kept for compatibility
+        self.gpu_info = None
+        self.hourly_rate = float(os.environ.get('HOURLY_RATE', '0.74'))  # Default RunPod rate
         self.init_system()
+        self.load_user_stats()
     
     def init_system(self):
         """Initialize directories and default users"""
         os.makedirs(INPUT_BASE, exist_ok=True)
         os.makedirs(OUTPUT_BASE, exist_ok=True)
         os.makedirs(f"{WORKSPACE_DIR}/user_data", exist_ok=True)
+        
+        # Detect GPU on startup
+        self.detect_gpu()
         
         # Load or create users list
         if os.path.exists(USERS_FILE):
@@ -64,6 +74,8 @@ class ComfyUIManager:
                 self.start_time = time.time()
                 with open(START_TIME_FILE, 'w') as f:
                     f.write(str(self.start_time))
+        else:
+            self.start_time = None
     
     def save_users(self):
         """Save users list"""
@@ -202,6 +214,11 @@ class ComfyUIManager:
                                     # Save start time to file
                                     with open(START_TIME_FILE, 'w') as f:
                                         f.write(str(self.start_time))
+                                    
+                                    # Log session start
+                                    self.session_start = self.start_time
+                                    self.log_session_start(username)
+                                    
                                     return True, "ComfyUI started successfully"
                             time.sleep(0.5)
                         except urllib.error.HTTPError as e:
@@ -213,6 +230,11 @@ class ComfyUIManager:
                                     # Save start time to file
                                     with open(START_TIME_FILE, 'w') as f:
                                         f.write(str(self.start_time))
+                                    
+                                    # Log session start
+                                    self.session_start = self.start_time
+                                    self.log_session_start(username)
+                                    
                                     return True, "ComfyUI started successfully"
                         except:
                             consecutive_success = 0  # Reset on failure
@@ -238,8 +260,13 @@ class ComfyUIManager:
         # Kill any remaining process on port
         os.system("fuser -k 8188/tcp 2>/dev/null || true")
         
+        # Log session end before clearing
+        if self.start_time and self.current_user:
+            self.log_session_end()
+        
         # Clear start time
         self.start_time = None
+        self.session_start = None
         if os.path.exists(START_TIME_FILE):
             os.remove(START_TIME_FILE)
         
@@ -310,6 +337,157 @@ class ComfyUIManager:
             return len([f for f in os.listdir(models_dir) if os.path.isfile(os.path.join(models_dir, f))])
         return 0
     
+    def detect_gpu(self):
+        """Detect GPU information"""
+        try:
+            result = subprocess.run(
+                ['nvidia-smi', '--query-gpu=name,memory.total', '--format=csv,noheader'],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0:
+                gpu_data = result.stdout.strip().split(', ')
+                self.gpu_info = {
+                    'name': gpu_data[0] if len(gpu_data) > 0 else 'Unknown',
+                    'memory': gpu_data[1] if len(gpu_data) > 1 else 'Unknown'
+                }
+            else:
+                self.gpu_info = {'name': 'Unknown', 'memory': 'Unknown'}
+        except:
+            self.gpu_info = {'name': 'Unknown', 'memory': 'Unknown'}
+    
+    def load_user_stats(self):
+        """Load user statistics from file"""
+        self.user_stats = {}
+        if os.path.exists(USER_STATS_FILE):
+            try:
+                with open(USER_STATS_FILE, 'r') as f:
+                    self.user_stats = json.load(f)
+            except:
+                self.user_stats = {}
+    
+    def save_user_stats(self):
+        """Save user statistics to file"""
+        try:
+            with open(USER_STATS_FILE, 'w') as f:
+                json.dump(self.user_stats, f, indent=2)
+        except Exception as e:
+            print(f"Error saving user stats: {e}")
+    
+    def log_session_start(self, username):
+        """Log the start of a user session"""
+        try:
+            # Initialize user stats if not exists
+            if username not in self.user_stats:
+                self.user_stats[username] = {
+                    'total_hours': 0,
+                    'total_cost': 0,
+                    'sessions': [],
+                    'gpu_used': self.gpu_info['name'] if self.gpu_info else 'Unknown'
+                }
+            
+            # Create session entry
+            session_entry = {
+                'start_time': self.session_start,
+                'start_datetime': datetime.fromtimestamp(self.session_start).isoformat(),
+                'gpu': self.gpu_info['name'] if self.gpu_info else 'Unknown',
+                'hourly_rate': self.hourly_rate,
+                'status': 'active'
+            }
+            
+            # Add to usage log
+            usage_log = []
+            if os.path.exists(USAGE_LOG_FILE):
+                try:
+                    with open(USAGE_LOG_FILE, 'r') as f:
+                        usage_log = json.load(f)
+                except:
+                    usage_log = []
+            
+            usage_log.append({
+                'user': username,
+                'action': 'start',
+                'timestamp': self.session_start,
+                'datetime': datetime.fromtimestamp(self.session_start).isoformat(),
+                'gpu': self.gpu_info['name'] if self.gpu_info else 'Unknown'
+            })
+            
+            with open(USAGE_LOG_FILE, 'w') as f:
+                json.dump(usage_log, f, indent=2)
+            
+            # Store current session info
+            self.current_session = session_entry
+            
+        except Exception as e:
+            print(f"Error logging session start: {e}")
+    
+    def log_session_end(self):
+        """Log the end of a user session and calculate costs"""
+        try:
+            if not self.session_start or not self.current_user:
+                return
+            
+            end_time = time.time()
+            duration_hours = (end_time - self.session_start) / 3600
+            session_cost = duration_hours * self.hourly_rate
+            
+            # Update user stats
+            if self.current_user in self.user_stats:
+                self.user_stats[self.current_user]['total_hours'] += duration_hours
+                self.user_stats[self.current_user]['total_cost'] += session_cost
+                
+                # Add completed session
+                session_entry = {
+                    'start_time': self.session_start,
+                    'end_time': end_time,
+                    'start_datetime': datetime.fromtimestamp(self.session_start).isoformat(),
+                    'end_datetime': datetime.fromtimestamp(end_time).isoformat(),
+                    'duration_hours': round(duration_hours, 3),
+                    'cost': round(session_cost, 2),
+                    'gpu': self.gpu_info['name'] if self.gpu_info else 'Unknown',
+                    'hourly_rate': self.hourly_rate
+                }
+                
+                self.user_stats[self.current_user]['sessions'].append(session_entry)
+                
+                # Keep only last 100 sessions per user
+                if len(self.user_stats[self.current_user]['sessions']) > 100:
+                    self.user_stats[self.current_user]['sessions'] = \
+                        self.user_stats[self.current_user]['sessions'][-100:]
+                
+                self.save_user_stats()
+            
+            # Update usage log
+            usage_log = []
+            if os.path.exists(USAGE_LOG_FILE):
+                try:
+                    with open(USAGE_LOG_FILE, 'r') as f:
+                        usage_log = json.load(f)
+                except:
+                    usage_log = []
+            
+            usage_log.append({
+                'user': self.current_user,
+                'action': 'stop',
+                'timestamp': end_time,
+                'datetime': datetime.fromtimestamp(end_time).isoformat(),
+                'duration_hours': round(duration_hours, 3),
+                'cost': round(session_cost, 2)
+            })
+            
+            # Keep only last 1000 log entries
+            if len(usage_log) > 1000:
+                usage_log = usage_log[-1000:]
+            
+            with open(USAGE_LOG_FILE, 'w') as f:
+                json.dump(usage_log, f, indent=2)
+            
+        except Exception as e:
+            print(f"Error logging session end: {e}")
+    
+    def get_user_statistics(self):
+        """Get statistics for all users"""
+        return self.user_stats
+
 
 # Initialize manager
 manager = ComfyUIManager()
@@ -379,6 +557,15 @@ def add_user():
 def get_resources():
     """Get system resource usage"""
     return jsonify(manager.get_resource_usage())
+
+@app.route('/api/user_stats')
+def get_user_stats():
+    """Get user statistics"""
+    stats = manager.get_user_statistics()
+    # Add current GPU info
+    stats['current_gpu'] = manager.gpu_info
+    stats['hourly_rate'] = manager.hourly_rate
+    return jsonify(stats)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=7777, debug=False)
