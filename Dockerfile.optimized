@@ -7,10 +7,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies (cached layer)
 RUN apt-get update && \
-    apt-get install -y python3.10 python3-pip git wget psmisc lsof && \
+    apt-get install -y python3.10 python3-pip git wget psmisc lsof curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    ln -s /usr/bin/python3 /usr/bin/python
+    ln -s /usr/bin/python3 /usr/bin/python && \
+    curl https://rclone.org/install.sh | bash
 
 # Stage 2: Python dependencies (changes less frequently)
 FROM base AS python-deps

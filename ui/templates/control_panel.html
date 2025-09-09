@@ -862,6 +862,9 @@
         </div>
         
         
+        <!-- Google Drive Sync Panel -->
+        {% include 'gdrive_panel.html' %}
+        
         </div>
     </div>
     
@@ -1218,6 +1221,9 @@
                 console.error('Status check failed:', error);
             }
         }, 5000);
+        
+        // Store current user globally for Google Drive sync
+        window.currentUser = '{{ current_user }}';
     </script>
 </body>
 </html>

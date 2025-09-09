@@ -12,6 +12,7 @@ import time
 import psutil
 from pathlib import Path
 from datetime import datetime, timedelta
+from gdrive_sync import GDriveSync
 
 app = Flask(__name__)
 
@@ -492,6 +493,9 @@ class ComfyUIManager:
 # Initialize manager
 manager = ComfyUIManager()
 
+# Initialize Google Drive sync
+gdrive = GDriveSync(WORKSPACE_DIR)
+
 @app.route('/')
 def index():
     """Main UI page - new control panel"""
@@ -566,6 +570,110 @@ def get_user_stats():
     stats['current_gpu'] = manager.gpu_info
     stats['hourly_rate'] = manager.hourly_rate
     return jsonify(stats)
+
+# Google Drive API endpoints
+@app.route('/api/gdrive/status')
+def gdrive_status():
+    """Check Google Drive configuration status"""
+    return jsonify({
+        'configured': gdrive.rclone_available,
+        'mount_point': f"{WORKSPACE_DIR}/gdrive",
+        'sync_status': gdrive.get_sync_status()
+    })
+
+@app.route('/api/gdrive/sync', methods=['POST'])
+def gdrive_sync():
+    """Sync user output folder with Google Drive"""
+    data = request.json
+    username = data.get('username', manager.current_user)
+    direction = data.get('direction', 'to_gdrive')  # 'to_gdrive' or 'from_gdrive'
+    
+    if not username:
+        return jsonify({'success': False, 'error': 'No user selected'}), 400
+    
+    success, message = gdrive.sync_user_output(username, direction)
+    return jsonify({'success': success, 'message': message})
+
+@app.route('/api/gdrive/sync_all', methods=['POST'])
+def gdrive_sync_all():
+    """Sync all users' output folders"""
+    data = request.json
+    direction = data.get('direction', 'to_gdrive')
+    
+    results = gdrive.sync_all_users(manager.users, direction)
+    return jsonify({'success': True, 'results': results})
+
+@app.route('/api/gdrive/mount', methods=['POST'])
+def gdrive_mount():
+    """Mount Google Drive as filesystem"""
+    success, message = gdrive.mount_gdrive()
+    return jsonify({'success': success, 'message': message})
+
+@app.route('/api/gdrive/unmount', methods=['POST'])
+def gdrive_unmount():
+    """Unmount Google Drive"""
+    success, message = gdrive.unmount_gdrive()
+    return jsonify({'success': success, 'message': message})
+
+@app.route('/api/gdrive/symlink', methods=['POST'])
+def gdrive_symlink():
+    """Create symlink from user output to Google Drive mount"""
+    data = request.json
+    username = data.get('username', manager.current_user)
+    
+    if not username:
+        return jsonify({'success': False, 'error': 'No user selected'}), 400
+    
+    success, message = gdrive.create_symlink_to_gdrive(username)
+    return jsonify({'success': success, 'message': message})
+
+@app.route('/api/gdrive/list')
+def gdrive_list():
+    """List files in Google Drive"""
+    path = request.args.get('path', '')
+    files, error = gdrive.list_gdrive_files(path)
+    
+    if error:
+        return jsonify({'success': False, 'error': error}), 400
+    
+    return jsonify({'success': True, 'files': files})
+
+@app.route('/api/gdrive/storage')
+def gdrive_storage():
+    """Get Google Drive storage statistics"""
+    username = request.args.get('username')
+    stats, error = gdrive.get_storage_stats(username)
+    
+    if error:
+        return jsonify({'success': False, 'error': error}), 400
+    
+    return jsonify({'success': True, 'stats': stats})
+
+@app.route('/api/gdrive/auto_sync', methods=['POST'])
+def gdrive_auto_sync():
+    """Setup automatic sync to Google Drive"""
+    data = request.json
+    interval = data.get('interval', 30)  # Default 30 minutes
+    
+    success, message = gdrive.setup_auto_sync(interval)
+    return jsonify({'success': success, 'message': message})
+
+@app.route('/api/gdrive/install_rclone', methods=['POST'])
+def install_rclone():
+    """Install rclone if not present"""
+    success = gdrive.install_rclone()
+    if success:
+        gdrive.rclone_available = gdrive.check_rclone()
+    return jsonify({'success': success, 'message': 'rclone installed' if success else 'Installation failed'})
+
+@app.route('/api/gdrive/configure', methods=['POST'])
+def configure_gdrive():
+    """Configure Google Drive with provided credentials"""
+    data = request.json
+    success = gdrive.configure_rclone(data)
+    if success:
+        gdrive.rclone_available = True
+    return jsonify({'success': success, 'message': 'Configuration saved' if success else 'Configuration failed'})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=7777, debug=False)
