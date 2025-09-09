@@ -103,35 +103,52 @@ install_comfyui() {
     if [ ! -f "/workspace/ComfyUI/main.py" ]; then
         echo "📦 Installing ComfyUI..."
         
-        # Remove any incomplete installation
+        # Remove any incomplete installation (including folders created by this script)
         if [ -d "/workspace/ComfyUI" ]; then
             echo "Removing incomplete ComfyUI directory..."
             rm -rf /workspace/ComfyUI
         fi
         
+        # Also clean up any symlinks that might exist
+        if [ -L "/workspace/ComfyUI/input" ]; then
+            rm -f /workspace/ComfyUI/input
+        fi
+        if [ -L "/workspace/ComfyUI/output" ]; then
+            rm -f /workspace/ComfyUI/output
+        fi
+        if [ -L "/workspace/ComfyUI/models" ]; then
+            rm -f /workspace/ComfyUI/models
+        fi
+        
         cd /workspace
         
         # Try multiple methods to clone
+        echo "Attempting to clone ComfyUI repository..."
         echo "Method 1: Standard clone..."
-        if ! git clone https://github.com/comfyanonymous/ComfyUI.git ComfyUI; then
+        if git clone https://github.com/comfyanonymous/ComfyUI.git ComfyUI 2>&1; then
+            echo "✅ Successfully cloned ComfyUI"
+        else
             echo "Method 1 failed, trying shallow clone..."
-            if ! git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git ComfyUI; then
-                echo "Method 2 failed, trying with different protocol..."
-                if ! git clone https://github.com/comfyanonymous/ComfyUI ComfyUI; then
-                    echo "❌ ERROR: Failed to clone ComfyUI!"
-                    echo "Trying wget as last resort..."
-                    
-                    # Last resort: download as zip
-                    wget -q https://github.com/comfyanonymous/ComfyUI/archive/refs/heads/master.zip -O comfyui.zip
-                    if [ -f "comfyui.zip" ]; then
-                        unzip -q comfyui.zip
+            if git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git ComfyUI 2>&1; then
+                echo "✅ Successfully cloned ComfyUI (shallow)"
+            else
+                echo "Method 2 failed, trying wget download..."
+                
+                # Last resort: download as zip
+                if wget https://github.com/comfyanonymous/ComfyUI/archive/refs/heads/master.zip -O comfyui.zip 2>&1; then
+                    echo "Downloaded zip, extracting..."
+                    if unzip -q comfyui.zip; then
                         mv ComfyUI-master ComfyUI
                         rm comfyui.zip
                         echo "✅ Downloaded ComfyUI via wget"
                     else
-                        echo "❌ FATAL: Could not download ComfyUI"
+                        echo "❌ FATAL: Failed to extract ComfyUI zip"
                         return 1
                     fi
+                else
+                    echo "❌ FATAL: Could not download ComfyUI via any method"
+                    echo "Please check your internet connection"
+                    return 1
                 fi
             fi
         fi
@@ -254,13 +271,23 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Step 2: ComfyUI Installation"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-install_comfyui
+if ! install_comfyui; then
+    echo "❌ FATAL: ComfyUI installation failed!"
+    echo "Please check your internet connection and try again."
+    exit 1
+fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Step 3: Directory Structure"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-mkdir -p /workspace/ComfyUI/custom_nodes
+# Only create these if ComfyUI exists
+if [ -f "/workspace/ComfyUI/main.py" ]; then
+    mkdir -p /workspace/ComfyUI/custom_nodes
+else
+    echo "❌ ERROR: ComfyUI not found at /workspace/ComfyUI/main.py"
+    exit 1
+fi
 mkdir -p /workspace/models/{audio_encoders,checkpoints,clip,clip_vision,configs,controlnet,diffusers,diffusion_models,embeddings,gligen,hypernetworks,loras,model_patches,photomaker,style_models,text_encoders,unet,upscale_models,vae,vae_approx}
 mkdir -p /workspace/output
 mkdir -p /workspace/input
