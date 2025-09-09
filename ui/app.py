@@ -13,6 +13,7 @@ import psutil
 from pathlib import Path
 from datetime import datetime, timedelta
 from gdrive_sync import GDriveSync
+from gdrive_oauth import GDriveOAuth
 
 app = Flask(__name__)
 
@@ -493,8 +494,9 @@ class ComfyUIManager:
 # Initialize manager
 manager = ComfyUIManager()
 
-# Initialize Google Drive sync
+# Initialize Google Drive sync and OAuth
 gdrive = GDriveSync(WORKSPACE_DIR)
+gdrive_oauth = GDriveOAuth(WORKSPACE_DIR)
 
 @app.route('/')
 def index():
@@ -653,7 +655,7 @@ def gdrive_storage():
 def gdrive_auto_sync():
     """Setup automatic sync to Google Drive"""
     data = request.json
-    interval = data.get('interval', 30)  # Default 30 minutes
+    interval = data.get('interval', 1)  # Default 1 minute for near real-time sync
     
     success, message = gdrive.setup_auto_sync(interval)
     return jsonify({'success': success, 'message': message})
@@ -674,6 +676,81 @@ def configure_gdrive():
     if success:
         gdrive.rclone_available = True
     return jsonify({'success': success, 'message': 'Configuration saved' if success else 'Configuration failed'})
+
+# OAuth setup endpoints
+@app.route('/api/gdrive/oauth/start')
+def oauth_start():
+    """Start OAuth flow - get authorization URL"""
+    # Check if already configured
+    configured, message = gdrive_oauth.check_existing_config()
+    if configured:
+        return jsonify({
+            'configured': True,
+            'message': message
+        })
+    
+    # Get OAuth URL
+    instructions = gdrive_oauth.get_simple_auth_instructions()
+    return jsonify({
+        'configured': False,
+        'instructions': instructions
+    })
+
+@app.route('/api/gdrive/oauth/callback', methods=['POST'])
+def oauth_callback():
+    """Handle OAuth callback with authorization code"""
+    data = request.json
+    code = data.get('code')
+    state = data.get('state')
+    
+    if not code or not state:
+        return jsonify({'success': False, 'error': 'Missing code or state'}), 400
+    
+    # Exchange code for token
+    token, error = gdrive_oauth.exchange_code_for_token(code, state)
+    
+    if error:
+        return jsonify({'success': False, 'error': error}), 400
+    
+    # Save rclone config
+    success, message = gdrive_oauth.save_rclone_config(token)
+    
+    if success:
+        # Update gdrive sync status
+        gdrive.rclone_available = gdrive.check_rclone()
+        return jsonify({
+            'success': True,
+            'message': 'Google Drive configured successfully!'
+        })
+    else:
+        return jsonify({'success': False, 'error': message}), 400
+
+@app.route('/api/gdrive/oauth/check')
+def oauth_check():
+    """Check if Google Drive is already configured"""
+    configured, message = gdrive_oauth.check_existing_config()
+    return jsonify({
+        'configured': configured,
+        'message': message,
+        'rclone_available': gdrive.rclone_available
+    })
+
+@app.route('/api/gdrive/oauth/setup_service_account', methods=['POST'])
+def setup_service_account():
+    """Setup using service account JSON (for enterprise/automated setup)"""
+    data = request.json
+    service_account_json = data.get('service_account')
+    
+    if not service_account_json:
+        return jsonify({'success': False, 'error': 'No service account data provided'}), 400
+    
+    success, message = gdrive_oauth.setup_from_service_account(service_account_json)
+    
+    if success:
+        gdrive.rclone_available = gdrive.check_rclone()
+        return jsonify({'success': True, 'message': message})
+    else:
+        return jsonify({'success': False, 'error': message}), 400
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=7777, debug=False)

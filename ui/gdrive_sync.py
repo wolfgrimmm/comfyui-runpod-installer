@@ -24,6 +24,9 @@ class GDriveSync:
         self.sync_threads = {}
         self.rclone_config_file = f"{workspace_dir}/.config/rclone/rclone.conf"
         
+        # Company Google Drive root folder
+        self.company_drive_root = "ComfyUI-Output"
+        
         # Check if rclone is installed
         self.rclone_available = self.check_rclone()
         
@@ -106,7 +109,8 @@ team_drive = {config_data.get('team_drive', '')}
             return False, "rclone not configured"
         
         user_output = f"{self.output_base}/{username}"
-        gdrive_path = f"{self.gdrive_remote}:ComfyUI/outputs/{username}"
+        # All users sync to company Drive with user subfolders
+        gdrive_path = f"{self.gdrive_remote}:{self.company_drive_root}/outputs/{username}"
         
         # Set sync status
         self.sync_status[username] = {
@@ -187,10 +191,10 @@ team_drive = {config_data.get('team_drive', '')}
             # Create mount point
             os.makedirs(mount_point, exist_ok=True)
             
-            # Mount Google Drive
+            # Mount Google Drive folder
             cmd = [
                 'rclone', 'mount',
-                f'{self.gdrive_remote}:ComfyUI',
+                f'{self.gdrive_remote}:{self.company_drive_root}',
                 mount_point,
                 '--daemon',
                 '--allow-non-empty',
@@ -241,7 +245,7 @@ team_drive = {config_data.get('team_drive', '')}
             return None, "rclone not configured"
         
         try:
-            full_path = f"{self.gdrive_remote}:ComfyUI/{path}" if path else f"{self.gdrive_remote}:ComfyUI"
+            full_path = f"{self.gdrive_remote}:{self.company_drive_root}/{path}" if path else f"{self.gdrive_remote}:{self.company_drive_root}"
             cmd = ['rclone', 'lsjson', full_path]
             
             result = subprocess.run(cmd, capture_output=True, text=True)
@@ -263,6 +267,7 @@ team_drive = {config_data.get('team_drive', '')}
         
         try:
             user_output = f"{self.output_base}/{username}"
+            # Google Drive structure with user folders
             gdrive_output = f"{self.workspace_dir}/gdrive/outputs/{username}"
             
             # Create Google Drive directory if it doesn't exist
@@ -284,18 +289,42 @@ team_drive = {config_data.get('team_drive', '')}
         except Exception as e:
             return False, str(e)
     
-    def setup_auto_sync(self, interval_minutes=30):
-        """Setup automatic sync to Google Drive"""
+    def setup_auto_sync(self, interval_minutes=1):
+        """Setup automatic sync to Google Drive with smart sync"""
         try:
-            # Create sync script
+            # Create sync script with incremental sync and performance optimizations
             sync_script = f"""#!/bin/bash
-# Auto-sync ComfyUI outputs to Google Drive
+# Auto-sync ComfyUI outputs to Google Drive with smart sync
+LAST_SYNC_FILE="/tmp/last_gdrive_sync"
+MIN_INTERVAL={interval_minutes}
+
 while true; do
     for user_dir in {self.output_base}/*/; do
         if [ -d "$user_dir" ]; then
             username=$(basename "$user_dir")
+            
+            # Check if files changed since last sync
+            if [ -f "$LAST_SYNC_FILE.$username" ]; then
+                changed=$(find "$user_dir" -newer "$LAST_SYNC_FILE.$username" -type f | head -1)
+                if [ -z "$changed" ]; then
+                    echo "No changes for $username, skipping sync"
+                    continue
+                fi
+            fi
+            
             echo "Syncing $username outputs to Google Drive..."
-            rclone sync "$user_dir" "{self.gdrive_remote}:ComfyUI/outputs/$username" --exclude "*.tmp"
+            # Use incremental sync with bandwidth limit and minimal checks
+            rclone sync "$user_dir" "{self.gdrive_remote}:{self.company_drive_root}/outputs/$username" \\
+                --exclude "*.tmp" \\
+                --exclude "*.partial" \\
+                --transfers 4 \\
+                --checkers 2 \\
+                --bwlimit 50M \\
+                --fast-list \\
+                --min-age 5s
+            
+            # Mark last sync time
+            touch "$LAST_SYNC_FILE.$username"
         fi
     done
     sleep {interval_minutes * 60}
@@ -324,9 +353,9 @@ done
         
         try:
             if username:
-                path = f"{self.gdrive_remote}:ComfyUI/outputs/{username}"
+                path = f"{self.gdrive_remote}:{self.company_drive_root}/outputs/{username}"
             else:
-                path = f"{self.gdrive_remote}:ComfyUI"
+                path = f"{self.gdrive_remote}:{self.company_drive_root}"
             
             cmd = ['rclone', 'size', path, '--json']
             result = subprocess.run(cmd, capture_output=True, text=True)

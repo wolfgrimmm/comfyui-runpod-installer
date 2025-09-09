@@ -1,3 +1,6 @@
+<!-- Include Setup Wizard -->
+{% include 'gdrive_setup.html' %}
+
 <!-- Google Drive Sync Panel -->
 <div class="gdrive-panel glass-panel">
     <div class="panel-header">
@@ -6,7 +9,7 @@
                 <path d="M12 2L2 7l10 5 10-5-10-5z"/>
                 <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
-            Google Drive Sync
+            Google Drive Output Sync
         </h3>
         <div class="gdrive-status" id="gdriveStatus">
             <span class="status-indicator" data-status="checking"></span>
@@ -17,7 +20,7 @@
     <div class="panel-body">
         <!-- Configuration Section -->
         <div class="gdrive-config" id="gdriveConfig" style="display: none;">
-            <p class="info-text">Google Drive is not configured. Set it up to enable cloud sync.</p>
+            <p class="info-text">Google Drive is not configured. Set it up to enable output sync for all users.</p>
             <button class="btn btn-secondary" onclick="installRclone()">
                 <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -39,8 +42,8 @@
         <div class="gdrive-controls" id="gdriveControls" style="display: none;">
             <div class="sync-info">
                 <div class="info-item">
-                    <span class="info-label">Mount Point:</span>
-                    <span class="info-value" id="mountPoint">/workspace/gdrive</span>
+                    <span class="info-label">Drive Folder:</span>
+                    <span class="info-value" id="mountPoint">ComfyUI-Output</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Storage Used:</span>
@@ -50,6 +53,15 @@
                     <span class="info-label">Last Sync:</span>
                     <span class="info-value" id="lastSync">Never</span>
                 </div>
+            </div>
+            
+            <div class="info-notice" style="padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; color: var(--text-secondary);">
+                <svg class="inline-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                All users sync to the shared Google Drive. Each user has their own folder: <code style="color: var(--primary);">ComfyUI-Output/outputs/[username]/</code>
             </div>
             
             <div class="sync-actions">
@@ -103,7 +115,7 @@
                     </label>
                     <div class="interval-control" id="intervalControl" style="display: none;">
                         <label for="syncInterval">Interval (minutes):</label>
-                        <input type="number" id="syncInterval" min="5" max="120" value="30" class="input-field">
+                        <input type="number" id="syncInterval" min="1" max="120" value="1" class="input-field">
                         <button class="btn btn-small" onclick="updateSyncInterval()">Update</button>
                     </div>
                 </div>
@@ -393,12 +405,21 @@ function updateGDriveUI(data) {
     const statusText = document.querySelector('.status-text');
     const configSection = document.getElementById('gdriveConfig');
     const controlsSection = document.getElementById('gdriveControls');
+    const autoSyncToggle = document.getElementById('autoSyncToggle');
     
     if (data.configured) {
         statusIndicator.dataset.status = 'configured';
         statusText.textContent = 'Configured';
         configSection.style.display = 'none';
         controlsSection.style.display = 'block';
+        
+        // Enable auto-sync by default if not already enabled
+        if (!autoSyncToggle.checked && !window.autoSyncInitialized) {
+            autoSyncToggle.checked = true;
+            document.getElementById('intervalControl').style.display = 'flex';
+            setupAutoSync();
+            window.autoSyncInitialized = true;
+        }
         
         // Update storage stats if available
         getStorageStats();

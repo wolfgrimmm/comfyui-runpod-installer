@@ -30,7 +30,8 @@ RUN pip install --no-cache-dir \
     ipywidgets \
     notebook \
     flask==3.0.0 \
-    psutil==5.9.0
+    psutil==5.9.0 \
+    requests==2.31.0
 
 # Copy configuration files
 COPY config /app/config
