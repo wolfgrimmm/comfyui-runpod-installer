@@ -3,65 +3,67 @@ FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 WORKDIR /
 
-# Install system dependencies
+# Install system dependencies including Python build tools
 RUN apt-get update && apt-get install -y \
     git wget curl psmisc lsof unzip \
-    python3-pip python3-venv \
+    python3.11-dev python3.11-venv python3-pip \
+    build-essential \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Fix potential pip issues in RunPod base image
-RUN python3 -m pip uninstall -y pip && \
-    apt-get update && \
-    apt-get install -y python3-pip && \
-    apt-get clean
+# Create and activate a virtual environment to avoid conflicts
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3.11 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Reinstall and upgrade pip properly
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3
-RUN python3 -m pip install --upgrade pip wheel setuptools
+# Upgrade pip in virtual environment
+RUN pip install --upgrade pip wheel setuptools
 
-# Verify pip is working
-RUN python3 -m pip --version
-
-# Install Python packages one by one to identify conflicts
+# Install Python packages in virtual environment
 # Core ComfyUI requirements
-RUN python3 -m pip install --no-cache-dir einops
-RUN python3 -m pip install --no-cache-dir torchsde
-RUN python3 -m pip install --no-cache-dir "kornia>=0.7.1"
-RUN python3 -m pip install --no-cache-dir spandrel
-RUN python3 -m pip install --no-cache-dir "safetensors>=0.4.2"
+RUN pip install --no-cache-dir \
+    einops \
+    torchsde \
+    "kornia>=0.7.1" \
+    spandrel \
+    "safetensors>=0.4.2"
 
 # Web and async packages
-RUN python3 -m pip install --no-cache-dir aiohttp
-RUN python3 -m pip install --no-cache-dir pyyaml
-RUN python3 -m pip install --no-cache-dir Pillow
-RUN python3 -m pip install --no-cache-dir tqdm
-RUN python3 -m pip install --no-cache-dir scipy
+RUN pip install --no-cache-dir \
+    aiohttp \
+    pyyaml \
+    Pillow \
+    tqdm \
+    scipy
 
 # ML packages
-RUN python3 -m pip install --no-cache-dir transformers
-RUN python3 -m pip install --no-cache-dir diffusers
-RUN python3 -m pip install --no-cache-dir accelerate
+RUN pip install --no-cache-dir \
+    transformers \
+    diffusers \
+    accelerate
 
 # ONNX and CV
-RUN python3 -m pip install --no-cache-dir onnxruntime-gpu || \
-    python3 -m pip install --no-cache-dir onnxruntime
+RUN pip install --no-cache-dir onnxruntime-gpu || \
+    pip install --no-cache-dir onnxruntime
 
-RUN python3 -m pip install --no-cache-dir opencv-python
+RUN pip install --no-cache-dir opencv-python
 
 # Core Web UI requirements
-RUN python3 -m pip install --no-cache-dir flask==3.0.0
-RUN python3 -m pip install --no-cache-dir psutil
-RUN python3 -m pip install --no-cache-dir requests
+RUN pip install --no-cache-dir \
+    flask==3.0.0 \
+    psutil \
+    requests
 
 # Git integration (for ComfyUI Manager)
-RUN python3 -m pip install --no-cache-dir GitPython
-RUN python3 -m pip install --no-cache-dir PyGithub==1.59.1
+RUN pip install --no-cache-dir \
+    GitPython \
+    PyGithub==1.59.1
 
 # Jupyter
-RUN python3 -m pip install --no-cache-dir jupyterlab
-RUN python3 -m pip install --no-cache-dir ipywidgets
-RUN python3 -m pip install --no-cache-dir notebook
+RUN pip install --no-cache-dir \
+    jupyterlab \
+    ipywidgets \
+    notebook
 
 # Create app directory
 RUN mkdir -p /app
@@ -103,12 +105,15 @@ set -e
 echo "🚀 Starting RunPod Services..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+# Activate virtual environment
+source /opt/venv/bin/activate
+
 # Initialize environment
 /app/init.sh
 
 # Start Control Panel UI
 echo "🌐 Starting Control Panel on port 7777..."
-cd /app/ui && python3 app.py > /workspace/ui.log 2>&1 &
+cd /app/ui && python app.py > /workspace/ui.log 2>&1 &
 
 # Start JupyterLab
 echo "📊 Starting JupyterLab on port 8888..."
@@ -146,6 +151,9 @@ RUN cat > /app/start_comfyui.sh << 'EOF'
 #!/bin/bash
 
 echo "🎨 Starting ComfyUI..."
+
+# Activate virtual environment
+source /opt/venv/bin/activate
 
 # Check if ComfyUI is installed
 if [ ! -f "/workspace/ComfyUI/main.py" ]; then
@@ -185,20 +193,18 @@ fi
 # Start ComfyUI
 cd /workspace/ComfyUI
 echo "Starting ComfyUI on port 8188..."
-exec python3 main.py --listen 0.0.0.0 --port 8188
+exec python main.py --listen 0.0.0.0 --port 8188
 EOF
 
 RUN chmod +x /app/start_comfyui.sh
 
 # Verify critical packages are installed
-RUN python3 -c "import flask; print(f'Flask {flask.__version__} OK')"
-RUN python3 -c "import torch; print(f'PyTorch {torch.__version__} OK')"
+RUN python -c "import flask; print(f'Flask {flask.__version__} OK')"
+RUN python -c "import torch; print(f'PyTorch {torch.__version__} OK')"
 
 # Environment
 ENV PYTHONUNBUFFERED=1
 ENV HF_HOME=/workspace
-ENV PYTHON=python3
-ENV PIP=pip3
 
 # Ports
 EXPOSE 7777 8188 8888
