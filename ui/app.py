@@ -23,6 +23,7 @@ OUTPUT_BASE = f"{WORKSPACE_DIR}/output"
 WORKFLOWS_BASE = f"{WORKSPACE_DIR}/workflows"
 USERS_FILE = f"{WORKSPACE_DIR}/user_data/users.json"
 CURRENT_USER_FILE = f"{WORKSPACE_DIR}/user_data/.current_user"
+START_TIME_FILE = f"{WORKSPACE_DIR}/user_data/.start_time"
 
 class ComfyUIManager:
     def __init__(self):
@@ -44,13 +45,26 @@ class ComfyUIManager:
                 self.users = json.load(f)
         else:
             # Default users
-            self.users = ["serhii", "artist", "guest"]
+            self.users = ["serhii", "marcin", "vlad", "ksenija", "max", "ivan"]
             self.save_users()
         
         # Check if user was previously selected
         if os.path.exists(CURRENT_USER_FILE):
             with open(CURRENT_USER_FILE, 'r') as f:
                 self.current_user = f.read().strip()
+        
+        # Check if ComfyUI is running and load start time
+        if self.is_comfyui_running():
+            if os.path.exists(START_TIME_FILE):
+                try:
+                    with open(START_TIME_FILE, 'r') as f:
+                        self.start_time = float(f.read().strip())
+                except:
+                    self.start_time = time.time()
+            else:
+                self.start_time = time.time()
+                with open(START_TIME_FILE, 'w') as f:
+                    f.write(str(self.start_time))
     
     def save_users(self):
         """Save users list"""
@@ -186,6 +200,9 @@ class ComfyUIManager:
                                     # ComfyUI is consistently responding
                                     print(f"ComfyUI fully initialized after {i+1} seconds")
                                     self.start_time = time.time()
+                                    # Save start time to file
+                                    with open(START_TIME_FILE, 'w') as f:
+                                        f.write(str(self.start_time))
                                     return True, "ComfyUI started successfully"
                             time.sleep(0.5)
                         except urllib.error.HTTPError as e:
@@ -194,6 +211,9 @@ class ComfyUIManager:
                                 if consecutive_success >= required_success:
                                     print(f"ComfyUI fully initialized after {i+1} seconds")
                                     self.start_time = time.time()
+                                    # Save start time to file
+                                    with open(START_TIME_FILE, 'w') as f:
+                                        f.write(str(self.start_time))
                                     return True, "ComfyUI started successfully"
                         except:
                             consecutive_success = 0  # Reset on failure
@@ -218,6 +238,12 @@ class ComfyUIManager:
         
         # Kill any remaining process on port
         os.system("fuser -k 8188/tcp 2>/dev/null || true")
+        
+        # Clear start time
+        self.start_time = None
+        if os.path.exists(START_TIME_FILE):
+            os.remove(START_TIME_FILE)
+        
         return True
     
     def is_comfyui_running(self):
@@ -244,7 +270,8 @@ class ComfyUIManager:
             "ready": is_running,  # Additional ready check
             "current_user": self.current_user,
             "users": self.users,
-            "uptime": self.get_uptime() if is_running and self.start_time else "0m"
+            "uptime": self.get_uptime() if is_running and self.start_time else "0m",
+            "start_time": self.start_time  # Pass timestamp for JS
         }
     
     def get_uptime(self):
@@ -295,11 +322,13 @@ def index():
     resources = manager.get_resource_usage()
     models_count = manager.count_models()
     
+    # Ensure start_time is passed properly
     return render_template('control_panel.html', 
                          **status, 
                          **resources,
                          models_count=models_count,
                          queue_size=0,
+                         start_time=manager.start_time,
                          is_admin=os.environ.get('COMFYUI_ADMIN_KEY') is not None)
 
 @app.route('/classic')

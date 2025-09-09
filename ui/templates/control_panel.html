@@ -70,6 +70,7 @@
             color: var(--text-primary);
             min-height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 20px;
@@ -392,6 +393,14 @@
             padding: 10px;
         }
         
+        select option:disabled {
+            color: rgba(255, 255, 255, 0.3);
+        }
+        
+        select:has(option:disabled:checked) {
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
         .add-user-section {
             display: flex;
             gap: 10px;
@@ -596,10 +605,12 @@
         
         .footer {
             text-align: center;
-            margin-top: 32px;
-            padding-top: 24px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            margin-top: auto;
+            padding: 40px 20px 30px;
+            width: 100%;
             animation: fadeIn 1s ease-out 0.5s both;
+            position: relative;
+            z-index: 1;
         }
         
         .footer-links {
@@ -610,19 +621,20 @@
         }
         
         .footer-link {
-            color: var(--text-tertiary);
+            color: rgba(255, 255, 255, 0.4);
             text-decoration: none;
             font-size: 13px;
             transition: color 0.3s;
         }
         
         .footer-link:hover {
-            color: var(--text-secondary);
+            color: rgba(255, 255, 255, 0.7);
         }
         
         .footer-copyright {
-            color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.25);
             font-size: 11px;
+            margin-top: 8px;
         }
         
         .loading-overlay {
@@ -760,13 +772,11 @@
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
                 </svg>
-                <span class="tooltip">JupyterLab</span>
             </button>
             <button class="action-btn" onclick="openDocs()">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                 </svg>
-                <span class="tooltip">Documentation</span>
             </button>
         </div>
         
@@ -812,9 +822,12 @@
             <label class="form-label" for="username">Active Profile</label>
             <div class="select-wrapper">
                 <select id="username" {% if running %}disabled{% endif %}>
+                    {% if not current_user %}
+                        <option value="" selected disabled>Select User</option>
+                    {% endif %}
                     {% for user in users %}
                         <option value="{{ user }}" {% if user == current_user %}selected{% endif %}>
-                            {{ user }}{% if is_admin and user == 'admin' %} (Admin){% endif %}
+                            {{ user }}{% if user == 'serhii' %} (Admin){% endif %}
                         </option>
                     {% endfor %}
                 </select>
@@ -822,46 +835,33 @@
         </div>
         
         
-        <div class="actions-grid">
-            {% if not running %}
-                <button class="btn btn-primary" id="startBtn" onclick="startComfyUI()">
-                    Launch ComfyUI
-                </button>
-            {% else %}
-                <button class="btn btn-primary" onclick="openComfyUI()">
+        <div class="actions-grid" id="actionsGrid">
+            <button class="btn btn-primary" id="primaryBtn" onclick="startComfyUI()" {% if running %}style="display: none;"{% elif not current_user %}disabled{% endif %}>
+                Launch ComfyUI
+            </button>
+            {% if running %}
+                <button class="btn btn-primary" id="openBtn" onclick="openComfyUI()">
                     Open ComfyUI
                 </button>
-                <button class="btn btn-secondary" onclick="stopComfyUI()">
-                    Stop ComfyUI
+                <button class="btn btn-secondary" id="restartBtn" onclick="restartService()">
+                    Restart
+                </button>
+                <button class="btn btn-secondary" id="stopBtn" onclick="stopComfyUI()">
+                    Stop
                 </button>
             {% endif %}
         </div>
         
-        <div class="resource-monitor">
-            <div class="resource-item">
-                <div class="resource-icon">💾</div>
-                <div class="resource-info">
-                    <div class="resource-label">Memory</div>
-                    <div class="resource-value" id="memUsage">{{ mem_usage|default('0 GB') }}</div>
-                </div>
-            </div>
-            <div class="resource-item">
-                <div class="resource-icon">📦</div>
-                <div class="resource-info">
-                    <div class="resource-label">Storage</div>
-                    <div class="resource-value" id="storage">{{ disk_usage|default('0 GB') }}</div>
-                </div>
-            </div>
-        </div>
         
-        <div class="footer">
-            <div class="footer-links">
-                <a href="https://github.com/wolfgrimmm/comfyui-runpod-installer" class="footer-link">GitHub</a>
-                <a href="https://github.com/comfyanonymous/ComfyUI" class="footer-link">ComfyUI</a>
-                <a href="https://www.runpod.io/" class="footer-link">RunPod</a>
-            </div>
-            <div class="footer-copyright">© 2025 ComfyUI RunPod Installer</div>
+    </div>
+    
+    <div class="footer">
+        <div class="footer-links">
+            <a href="https://github.com/wolfgrimmm/comfyui-runpod-installer" class="footer-link">GitHub</a>
+            <a href="https://github.com/comfyanonymous/ComfyUI" class="footer-link">ComfyUI</a>
+            <a href="https://www.runpod.io/" class="footer-link">RunPod</a>
         </div>
+        <div class="footer-copyright">© 2025 Web Group Limited</div>
     </div>
     
     <div class="loading-overlay" id="loadingOverlay">
@@ -878,6 +878,34 @@
     <script>
         let checkInterval = null;
         let checkAttempts = 0;
+        
+        // Enable/disable Launch button based on user selection
+        document.addEventListener('DOMContentLoaded', () => {
+            const usernameSelect = document.getElementById('username');
+            const primaryBtn = document.getElementById('primaryBtn');
+            
+            if (usernameSelect && primaryBtn) {
+                // Style the select based on selection
+                function updateSelectStyle() {
+                    if (!usernameSelect.value || usernameSelect.value === '') {
+                        usernameSelect.style.color = 'rgba(255, 255, 255, 0.4)';
+                    } else {
+                        usernameSelect.style.color = '';
+                    }
+                }
+                
+                updateSelectStyle(); // Initial style
+                
+                usernameSelect.addEventListener('change', (e) => {
+                    updateSelectStyle();
+                    if (e.target.value && e.target.value !== '') {
+                        primaryBtn.disabled = false;
+                    } else {
+                        primaryBtn.disabled = true;
+                    }
+                });
+            }
+        });
         
         function showToast(message, type = 'info') {
             const toast = document.getElementById('toast');
@@ -921,10 +949,14 @@
         
         async function startComfyUI() {
             const username = document.getElementById('username').value;
-            if (!username) {
-                showToast('Please select a user', 'error');
+            if (!username || username === '') {
+                showToast('Please select a user from the dropdown', 'error');
                 return;
             }
+            
+            const primaryBtn = document.getElementById('primaryBtn');
+            primaryBtn.disabled = true;
+            primaryBtn.textContent = 'Starting...';
             
             showLoading(true, 'Starting ComfyUI...', 'Initializing workspace');
             checkAttempts = 0;
@@ -941,6 +973,9 @@
                 if (data.success) {
                     showToast('ComfyUI process started! Waiting for full initialization...', 'success');
                     
+                    // Change button text but keep disabled
+                    primaryBtn.textContent = 'Initializing...';
+                    
                     // Start checking for readiness
                     checkInterval = setInterval(async () => {
                         checkAttempts++;
@@ -955,16 +990,60 @@
                             if (statusData.running && statusData.ready) {
                                 clearInterval(checkInterval);
                                 showLoading(false);
-                                showToast('ComfyUI is ready! Redirecting...', 'success');
                                 
-                                setTimeout(() => {
-                                    window.location.href = getRunPodUrl(8188);
-                                }, 1500);
+                                // Hide Launch button and show action buttons
+                                primaryBtn.style.display = 'none';
+                                
+                                const actionsGrid = document.getElementById('actionsGrid');
+                                
+                                // Create Open button if it doesn't exist
+                                if (!document.getElementById('openBtn')) {
+                                    const openBtn = document.createElement('button');
+                                    openBtn.className = 'btn btn-primary';
+                                    openBtn.id = 'openBtn';
+                                    openBtn.textContent = 'Open ComfyUI';
+                                    openBtn.onclick = openComfyUI;
+                                    actionsGrid.appendChild(openBtn);
+                                }
+                                
+                                // Create secondary buttons if they don't exist
+                                if (!document.getElementById('restartBtn')) {
+                                    const restartBtn = document.createElement('button');
+                                    restartBtn.className = 'btn btn-secondary';
+                                    restartBtn.id = 'restartBtn';
+                                    restartBtn.textContent = 'Restart';
+                                    restartBtn.onclick = restartService;
+                                    actionsGrid.appendChild(restartBtn);
+                                }
+                                
+                                if (!document.getElementById('stopBtn')) {
+                                    const stopBtn = document.createElement('button');
+                                    stopBtn.className = 'btn btn-secondary';
+                                    stopBtn.id = 'stopBtn';
+                                    stopBtn.textContent = 'Stop';
+                                    stopBtn.onclick = stopComfyUI;
+                                    actionsGrid.appendChild(stopBtn);
+                                }
+                                
+                                // Update status
+                                const statusDot = document.getElementById('statusDot');
+                                const statusText = document.getElementById('statusText');
+                                statusDot.className = 'status-dot';
+                                statusText.textContent = `Active • ${username}`;
+                                
+                                showToast('ComfyUI is ready! Click "Open ComfyUI" to access it.', 'success');
+                                
+                                // Update start time for uptime tracking
+                                if (statusData.start_time) {
+                                    startTime = statusData.start_time * 1000;
+                                    updateUptime();
+                                }
                             } else if (checkAttempts >= 40) {
                                 clearInterval(checkInterval);
                                 showLoading(false);
-                                showToast('ComfyUI is taking longer than expected. Try opening manually.', 'error');
-                                setTimeout(() => location.reload(), 2000);
+                                showToast('ComfyUI is taking longer than expected. Try refreshing the page.', 'error');
+                                primaryBtn.textContent = 'Launch ComfyUI';
+                                primaryBtn.disabled = false;
                             }
                         } catch (error) {
                             console.error('Status check error:', error);
@@ -973,10 +1052,14 @@
                 } else {
                     showLoading(false);
                     showToast(data.error || 'Failed to start ComfyUI', 'error');
+                    primaryBtn.textContent = 'Launch ComfyUI';
+                    primaryBtn.disabled = false;
                 }
             } catch (error) {
                 showLoading(false);
                 showToast('Error: ' + error.message, 'error');
+                primaryBtn.textContent = 'Launch ComfyUI';
+                primaryBtn.disabled = false;
             }
         }
         
@@ -993,7 +1076,32 @@
                 const data = await response.json();
                 showLoading(false);
                 showToast('ComfyUI stopped', 'success');
-                setTimeout(() => location.reload(), 1000);
+                
+                // Show Launch button again
+                const primaryBtn = document.getElementById('primaryBtn');
+                if (primaryBtn) {
+                    primaryBtn.style.display = '';
+                    primaryBtn.textContent = 'Launch ComfyUI';
+                    primaryBtn.disabled = false;
+                }
+                
+                // Remove action buttons
+                const openBtn = document.getElementById('openBtn');
+                const restartBtn = document.getElementById('restartBtn');
+                const stopBtn = document.getElementById('stopBtn');
+                if (openBtn) openBtn.remove();
+                if (restartBtn) restartBtn.remove();
+                if (stopBtn) stopBtn.remove();
+                
+                // Update status
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                statusDot.className = 'status-dot inactive';
+                statusText.textContent = 'System Inactive';
+                
+                // Clear uptime
+                startTime = null;
+                document.getElementById('uptime').textContent = '0m';
             } catch (error) {
                 showLoading(false);
                 showToast('Error: ' + error.message, 'error');
@@ -1005,7 +1113,7 @@
             const url = getRunPodUrl(8188);
             showToast('Opening ComfyUI...', 'info');
             setTimeout(() => {
-                window.location.href = url;
+                window.open(url, '_blank');
             }, 500);
         }
         
@@ -1020,19 +1128,46 @@
         }
         
         
-        // Update resource monitor periodically
-        setInterval(async () => {
+        async function restartService() {
+            showLoading(true, 'Restarting ComfyUI...');
+            
             try {
-                const response = await fetch('/api/resources');
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('memUsage').textContent = data.mem_usage || '0 GB';
-                    document.getElementById('storage').textContent = data.disk_usage || '0 GB';
-                }
+                await fetch('/api/stop', { method: 'POST' });
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                const username = document.getElementById('username').value || '{{ current_user }}';
+                const response = await fetch('/api/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username: username})
+                });
+                
+                showLoading(false);
+                showToast('ComfyUI restarted successfully', 'success');
+                setTimeout(() => location.reload(), 1500);
             } catch (error) {
-                console.error('Failed to fetch resources:', error);
+                showLoading(false);
+                showToast('Error: ' + error.message, 'error');
             }
-        }, 5000);
+        }
+        
+        // Update uptime display
+        let startTime = {% if running and start_time %}{{ start_time * 1000 }}{% else %}null{% endif %};
+        
+        function updateUptime() {
+            if (startTime) {
+                const elapsed = Date.now() - startTime;
+                const hours = Math.floor(elapsed / 3600000);
+                const minutes = Math.floor((elapsed % 3600000) / 60000);
+                const uptimeText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                document.getElementById('uptime').textContent = uptimeText;
+            }
+        }
+        
+        // Update uptime every minute
+        setInterval(updateUptime, 60000);
+        updateUptime(); // Initial update
+        
         
         // Check status periodically
         setInterval(async () => {
@@ -1047,9 +1182,15 @@
                 if (data.running) {
                     statusDot.className = 'status-dot';
                     statusText.textContent = data.current_user ? `Active • ${data.current_user}` : 'System Active';
+                    // Update start time if we just started
+                    if (data.start_time && !startTime) {
+                        startTime = data.start_time * 1000;
+                        updateUptime();
+                    }
                 } else {
                     statusDot.className = 'status-dot inactive';
                     statusText.textContent = 'System Inactive';
+                    startTime = null;
                 }
             } catch (error) {
                 console.error('Status check failed:', error);
