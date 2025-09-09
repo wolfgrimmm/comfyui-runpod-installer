@@ -11,15 +11,10 @@ if [ -f "/workspace/.gdrive_configured" ]; then
     exit 0
 fi
 
-# Check for RunPod Secret or environment variable
-if [ -n "$GOOGLE_SERVICE_ACCOUNT_JSON" ] || [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
-    # Use RunPod secret if available, otherwise fall back to regular env var
-    if [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
-        echo "📝 Found service account in RunPod Secret"
-        export GOOGLE_SERVICE_ACCOUNT_JSON="$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT"
-    else
-        echo "📝 Found service account in environment variable"
-    fi
+# Check for RunPod Secret
+if [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
+    echo "📝 Found service account in RunPod Secret"
+    export GOOGLE_SERVICE_ACCOUNT_JSON="$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT"
     
     # Create config directories
     mkdir -p /root/.config/rclone
@@ -73,16 +68,9 @@ EOF
         exit 1
     fi
     
-elif [ -f "$GOOGLE_SERVICE_ACCOUNT_FILE" ]; then
-    echo "📝 Found service account file at $GOOGLE_SERVICE_ACCOUNT_FILE"
-    
-    # Use the file path version
-    export GOOGLE_SERVICE_ACCOUNT_JSON=$(cat "$GOOGLE_SERVICE_ACCOUNT_FILE")
-    exec "$0" "$@"  # Re-run this script with JSON in env
-    
 else
-    echo "ℹ️  No Google Drive configuration provided"
-    echo "   Set GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_SERVICE_ACCOUNT_FILE to configure"
+    echo "⚠️  No Google Drive configuration found"
+    echo "   Please add GOOGLE_SERVICE_ACCOUNT secret in RunPod dashboard"
 fi
 
 exit 0

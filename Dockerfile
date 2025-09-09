@@ -193,14 +193,8 @@ RUN cat > /app/start.sh << 'EOF'
 echo "Initializing workspace..."
 /app/init_workspace.sh
 
-# Auto-configure Google Drive (if embedded credentials exist)
-if [ -f "/app/scripts/init_gdrive_temp.sh" ]; then
-    echo "🚀 Auto-configuring Google Drive..."
-    /app/scripts/init_gdrive_temp.sh || true
-elif [ -f "/app/scripts/init_gdrive_embedded.sh" ]; then
-    echo "🚀 Auto-configuring Google Drive..."
-    /app/scripts/init_gdrive_embedded.sh || true
-elif [ -f "/app/scripts/init_gdrive.sh" ]; then
+# Auto-configure Google Drive from RunPod Secrets
+if [ -f "/app/scripts/init_gdrive.sh" ]; then
     echo "Checking Google Drive configuration..."
     /app/scripts/init_gdrive.sh || true
 fi
