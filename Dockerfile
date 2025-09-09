@@ -9,18 +9,54 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install ComfyUI-specific Python packages (PyTorch already in base)
+# Install Python packages in smaller groups to avoid memory issues
+# Group 1: Core ComfyUI requirements
 RUN pip install --no-cache-dir \
-    einops torchsde "kornia>=0.7.1" spandrel "safetensors>=0.4.2" \
-    aiohttp pyyaml Pillow tqdm scipy transformers diffusers \
-    accelerate onnxruntime-gpu opencv-python \
-    flask==3.0.0 psutil requests GitPython PyGithub \
-    jupyterlab ipywidgets notebook
+    einops \
+    torchsde \
+    "kornia>=0.7.1" \
+    spandrel \
+    "safetensors>=0.4.2"
+
+# Group 2: Web and async packages
+RUN pip install --no-cache-dir \
+    aiohttp \
+    pyyaml \
+    Pillow \
+    tqdm \
+    scipy
+
+# Group 3: ML packages
+RUN pip install --no-cache-dir \
+    transformers \
+    diffusers \
+    accelerate
+
+# Group 4: ONNX and CV (these can be large)
+RUN pip install --no-cache-dir \
+    onnxruntime-gpu || pip install --no-cache-dir onnxruntime
+
+RUN pip install --no-cache-dir \
+    opencv-python
+
+# Group 5: Web UI and tools
+RUN pip install --no-cache-dir \
+    flask==3.0.0 \
+    psutil \
+    requests \
+    GitPython \
+    PyGithub
+
+# Group 6: Jupyter
+RUN pip install --no-cache-dir \
+    jupyterlab \
+    ipywidgets \
+    notebook
 
 # Create app directory
 RUN mkdir -p /app
 
-# Copy scripts and configs
+# Copy scripts and configs (separate layers for better caching)
 COPY scripts /app/scripts
 COPY config /app/config
 COPY ui /app/ui
