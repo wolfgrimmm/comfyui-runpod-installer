@@ -85,31 +85,6 @@ async function checkGDriveStatus() {
     }
 }
 
-// Open Google Drive with proper URL
-function openGoogleDrive() {
-    // Try to get the actual Drive folder URL from the backend
-    fetch('/api/gdrive/get_drive_url')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('API not found');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.url) {
-                window.open(data.url, '_blank');
-            } else {
-                // Fallback to generic Drive URL
-                window.open('https://drive.google.com/drive/my-drive', '_blank');
-            }
-        })
-        .catch((error) => {
-            console.error('Error fetching Drive URL:', error);
-            // Fallback to generic Drive URL
-            window.open('https://drive.google.com/drive/my-drive', '_blank');
-        });
-}
-
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
     checkGDriveStatus();
