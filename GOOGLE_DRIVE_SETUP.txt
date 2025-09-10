@@ -79,30 +79,33 @@ STEP 4: GENERATE JSON KEY
    - You'll need its contents in Step 6
 
 ================================================================================
-STEP 5: CREATE & SHARE GOOGLE DRIVE FOLDER
+STEP 5: GRANT ACCESS TO GOOGLE DRIVE
 ================================================================================
 
-1. Go to Google Drive:
-   https://drive.google.com
+OPTION A: If you have Google Workspace with Shared Drives (RECOMMENDED)
+-------------------------------------------------------------------------
+1. Go to Google Drive → Shared drives
+2. Open your Shared Drive (or create one)
+3. Click on the Shared Drive name → Manage members
+4. Add the service account email from your JSON:
+   - Find "client_email" in the JSON file
+   - Copy the email (e.g., comfyui-sync@project-name.iam.gserviceaccount.com)
+   - Add as member with "Content Manager" role
+5. Click "Share"
 
-2. Click "New" → "New folder"
+The system will automatically detect and use your Shared Drive.
 
-3. Name the folder: ComfyUI-Output
-   (MUST be exactly this name)
+OPTION B: Personal Google Drive (LIMITED - May not work for uploads)
+---------------------------------------------------------------------
+1. Go to Google Drive: https://drive.google.com
+2. Create folder "ComfyUI-Output" 
+3. Right-click → Share
+4. Add the service account email
+5. Set to "Editor"
+6. Click "Share"
 
-4. Right-click the created folder → "Share"
-
-5. In the sharing dialog:
-   - Open the JSON file from Step 4
-   - Find the line with "client_email": "..."
-   - Copy the email address (e.g., comfyui-sync@project-name.iam.gserviceaccount.com)
-   - Paste this email in the "Add people and groups" field
-
-6. Set permission to "Editor" (important!)
-
-7. Uncheck "Notify people" (optional)
-
-8. Click "Share"
+Note: Service accounts have limitations with personal Drive uploads.
+      Shared Drives are recommended for reliable syncing.
 
 ================================================================================
 STEP 6: ADD SECRET TO RUNPOD

@@ -166,7 +166,7 @@ if [ -n "$GOOGLE_SERVICE_ACCOUNT" ] && [ ! -f "/workspace/.gdrive_configured" ];
     chmod 600 /workspace/.config/rclone/service_account.json
     chmod 600 /root/.config/rclone/service_account.json
     
-    # Create rclone config
+    # Create initial rclone config
     cat > /workspace/.config/rclone/rclone.conf << 'RCLONE_EOF'
 [gdrive]
 type = drive
@@ -177,6 +177,33 @@ team_drive =
 RCLONE_EOF
     
     cp /workspace/.config/rclone/rclone.conf /root/.config/rclone/rclone.conf
+    
+    # Check for Shared Drives and auto-configure
+    echo "🔍 Checking for Shared Drives..."
+    SHARED_DRIVES=$(rclone backend drives gdrive: 2>/dev/null)
+    if [ -n "$SHARED_DRIVES" ] && [ "$SHARED_DRIVES" != "[]" ]; then
+        # Extract first Shared Drive ID
+        DRIVE_ID=$(echo "$SHARED_DRIVES" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
+        DRIVE_NAME=$(echo "$SHARED_DRIVES" | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
+        
+        if [ -n "$DRIVE_ID" ]; then
+            echo "✅ Found Shared Drive: $DRIVE_NAME ($DRIVE_ID)"
+            
+            # Update config with Shared Drive ID
+            cat > /workspace/.config/rclone/rclone.conf << RCLONE_EOF
+[gdrive]
+type = drive
+scope = drive
+service_account_file = /root/.config/rclone/service_account.json
+team_drive = $DRIVE_ID
+
+RCLONE_EOF
+            cp /workspace/.config/rclone/rclone.conf /root/.config/rclone/rclone.conf
+            echo "✅ Configured to use Shared Drive: $DRIVE_NAME"
+        fi
+    else
+        echo "ℹ️ No Shared Drives found, using service account's own Drive"
+    fi
     
     # Test configuration
     echo "🔍 Testing rclone configuration..."
