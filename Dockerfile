@@ -223,6 +223,9 @@ RCLONE_EOF
         # Save configuration status for UI
         echo "configured" > /workspace/.gdrive_status
         
+        # Kill any existing sync processes first
+        pkill -f "rclone sync" 2>/dev/null || true
+        
         # Start auto-sync in background - sync output and loras
         (
             while true; do
@@ -281,8 +284,9 @@ fi
 if [ -f "/workspace/.gdrive_configured" ]; then
     echo "✅ Google Drive already configured"
     
-    # Restart auto-sync if not running
+    # Check if auto-sync is running, start if not
     if ! pgrep -f "rclone sync" > /dev/null 2>&1; then
+        echo "🔄 Starting auto-sync..."
         (
             while true; do
                 sleep 60
@@ -304,7 +308,9 @@ if [ -f "/workspace/.gdrive_configured" ]; then
                 fi
             done
         ) &
-        echo "✅ Auto-sync restarted"
+        echo "✅ Auto-sync started"
+    else
+        echo "✅ Auto-sync already running"
     fi
 fi
 
