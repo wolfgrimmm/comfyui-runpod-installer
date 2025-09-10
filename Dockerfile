@@ -25,15 +25,23 @@ RUN cat > /app/init.sh << 'EOF'
 #!/bin/bash
 set -e
 
+# Quick check - if everything exists, exit fast
+if [ -d "/workspace/venv" ] && [ -f "/workspace/ComfyUI/main.py" ] && [ -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
+    echo "✅ Environment already initialized (fast path)"
+    exit 0
+fi
+
 echo "🚀 RunPod ComfyUI Installer Initializing..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Configure git
-git config --global --add safe.directory '*'
-git config --global user.email "comfyui@runpod.local" 2>/dev/null || true
-git config --global user.name "ComfyUI" 2>/dev/null || true
+# Configure git (only if not done)
+if ! git config --global --get user.email > /dev/null 2>&1; then
+    git config --global --add safe.directory '*'
+    git config --global user.email "comfyui@runpod.local" 2>/dev/null || true
+    git config --global user.name "ComfyUI" 2>/dev/null || true
+fi
 
-# Create necessary directories
+# Create necessary directories (mkdir -p is fast if they exist)
 mkdir -p /workspace/models/{checkpoints,loras,vae,controlnet,clip,clip_vision,diffusers,embeddings,upscale_models}
 mkdir -p /workspace/output /workspace/input /workspace/workflows
 

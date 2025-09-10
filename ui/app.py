@@ -163,7 +163,7 @@ class ComfyUIManager:
         
         # Start ComfyUI
         try:
-            # Always ensure ComfyUI is installed first
+            # Only run init if ComfyUI is not installed
             if not os.path.exists("/workspace/ComfyUI/main.py"):
                 print("ComfyUI not found, running init script...")
                 result = os.system("/app/init.sh")
@@ -173,6 +173,9 @@ class ComfyUIManager:
                 # Double-check it was installed
                 if not os.path.exists("/workspace/ComfyUI/main.py"):
                     return False, "ComfyUI installation failed - main.py not found"
+            else:
+                # ComfyUI exists, just ensure venv is activated (fast)
+                print("ComfyUI already installed, skipping init")
             
             # Check if script exists
             script_path = "/app/start_comfyui.sh"
