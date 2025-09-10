@@ -505,6 +505,16 @@ manager = ComfyUIManager()
 gdrive = GDriveSync(WORKSPACE_DIR)
 gdrive_oauth = GDriveOAuth(WORKSPACE_DIR)
 
+# Log Google Drive status at startup
+print(f"Google Drive status at startup:")
+print(f"  rclone available: {gdrive.rclone_available}")
+print(f"  configured: {gdrive.check_gdrive_configured()}")
+if os.path.exists('/workspace/.gdrive_status'):
+    with open('/workspace/.gdrive_status', 'r') as f:
+        print(f"  status file: {f.read().strip()}")
+else:
+    print(f"  status file: not found")
+
 @app.route('/health')
 def health():
     """Health check endpoint"""

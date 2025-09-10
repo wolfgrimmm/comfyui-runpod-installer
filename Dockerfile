@@ -196,6 +196,9 @@ RCLONE_EOF
         # Mark as configured
         touch /workspace/.gdrive_configured
         
+        # Save configuration status for UI
+        echo "configured" > /workspace/.gdrive_status
+        
         # Start auto-sync in background
         (
             while true; do
@@ -228,6 +231,9 @@ RCLONE_EOF
         echo ""
         echo "   Service account email from JSON:"
         echo "$GOOGLE_SERVICE_ACCOUNT" | grep -o '"client_email"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || echo "Could not extract email"
+        
+        # Still save that we attempted configuration for UI
+        echo "failed" > /workspace/.gdrive_status
     fi
 else
     if [ -z "$GOOGLE_SERVICE_ACCOUNT" ] && [ -z "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
