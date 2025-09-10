@@ -224,30 +224,37 @@ RCLONE_EOF
         echo "configured" > /workspace/.gdrive_status
         
         # Kill any existing sync processes first
-        pkill -f "rclone sync" 2>/dev/null || true
+        pkill -f "rclone_sync_loop" 2>/dev/null || true
         
-        # Start auto-sync in background - sync output and loras
-        (
-            while true; do
-                sleep 60  # Sync every minute
-                echo "Syncing to Google Drive..."
-                # Sync output folder
-                rclone sync /workspace/output "gdrive:ComfyUI-Output/output" \
-                    --exclude "*.tmp" \
-                    --exclude "*.partial" \
-                    --transfers 4 \
-                    --checkers 2 \
-                    --bwlimit 50M \
-                    --min-age 5s >/dev/null 2>&1
-                # Sync loras folder
-                if [ -d "/workspace/models/loras" ]; then
-                    rclone sync /workspace/models/loras "gdrive:ComfyUI-Output/loras" \
-                        --transfers 4 \
-                        --checkers 2 \
-                        --bwlimit 50M >/dev/null 2>&1
-                fi
-            done
-        ) &
+        # Create a sync script with unique identifier for process management
+        cat > /tmp/rclone_sync_loop.sh << 'SYNC_SCRIPT'
+#!/bin/bash
+while true; do
+    sleep 60  # Sync every minute
+    echo "[$(date)] Syncing to Google Drive..."
+    # Sync output folder with deduplication
+    rclone sync /workspace/output "gdrive:ComfyUI-Output/output" \
+        --exclude "*.tmp" \
+        --exclude "*.partial" \
+        --transfers 4 \
+        --checkers 2 \
+        --bwlimit 50M \
+        --min-age 5s \
+        --no-update-modtime >/dev/null 2>&1
+    # Sync loras folder
+    if [ -d "/workspace/models/loras" ]; then
+        rclone sync /workspace/models/loras "gdrive:ComfyUI-Output/loras" \
+            --transfers 4 \
+            --checkers 2 \
+            --bwlimit 50M \
+            --no-update-modtime >/dev/null 2>&1
+    fi
+done
+SYNC_SCRIPT
+        chmod +x /tmp/rclone_sync_loop.sh
+        
+        # Start auto-sync in background with unique process name
+        /tmp/rclone_sync_loop.sh &
         
         echo "✅ Auto-sync started (every 60 seconds)"
     else
@@ -285,29 +292,39 @@ if [ -f "/workspace/.gdrive_configured" ]; then
     echo "✅ Google Drive already configured"
     
     # Check if auto-sync is running, start if not
-    if ! pgrep -f "rclone sync" > /dev/null 2>&1; then
+    if ! pgrep -f "rclone_sync_loop" > /dev/null 2>&1; then
         echo "🔄 Starting auto-sync..."
-        (
-            while true; do
-                sleep 60
-                echo "Syncing to Google Drive..."
-                # Sync output folder
-                rclone sync /workspace/output "gdrive:ComfyUI-Output/output" \
-                    --exclude "*.tmp" \
-                    --exclude "*.partial" \
-                    --transfers 4 \
-                    --checkers 2 \
-                    --bwlimit 50M \
-                    --min-age 5s >/dev/null 2>&1
-                # Sync loras folder
-                if [ -d "/workspace/models/loras" ]; then
-                    rclone sync /workspace/models/loras "gdrive:ComfyUI-Output/loras" \
-                        --transfers 4 \
-                        --checkers 2 \
-                        --bwlimit 50M >/dev/null 2>&1
-                fi
-            done
-        ) &
+        
+        # Create the same sync script to ensure consistency
+        cat > /tmp/rclone_sync_loop.sh << 'SYNC_SCRIPT'
+#!/bin/bash
+while true; do
+    sleep 60  # Sync every minute
+    echo "[$(date)] Syncing to Google Drive..."
+    # Sync output folder with deduplication
+    rclone sync /workspace/output "gdrive:ComfyUI-Output/output" \
+        --exclude "*.tmp" \
+        --exclude "*.partial" \
+        --transfers 4 \
+        --checkers 2 \
+        --bwlimit 50M \
+        --min-age 5s \
+        --no-update-modtime >/dev/null 2>&1
+    # Sync loras folder
+    if [ -d "/workspace/models/loras" ]; then
+        rclone sync /workspace/models/loras "gdrive:ComfyUI-Output/loras" \
+            --transfers 4 \
+            --checkers 2 \
+            --bwlimit 50M \
+            --no-update-modtime >/dev/null 2>&1
+    fi
+done
+SYNC_SCRIPT
+        chmod +x /tmp/rclone_sync_loop.sh
+        
+        # Start auto-sync in background with unique process name
+        /tmp/rclone_sync_loop.sh &
+        
         echo "✅ Auto-sync started"
     else
         echo "✅ Auto-sync already running"
