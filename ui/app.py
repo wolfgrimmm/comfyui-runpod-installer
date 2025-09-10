@@ -166,7 +166,7 @@ class ComfyUIManager:
             # Always ensure ComfyUI is installed first
             if not os.path.exists("/workspace/ComfyUI/main.py"):
                 print("ComfyUI not found, running init script...")
-                result = os.system("/app/init_workspace.sh")
+                result = os.system("/app/init.sh")
                 if result != 0:
                     return False, "Failed to initialize workspace"
                 
