@@ -1,103 +1,23 @@
-<!-- Google Drive Auto-Sync Panel -->
-<div class="gdrive-panel glass-panel">
-    <div class="panel-header">
-        <h3 class="panel-title">
-            <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+<!-- Google Drive Auto-Sync Panel (Minimal) -->
+<div class="gdrive-panel glass-panel" style="padding: 15px;">
+    <div class="panel-header" style="margin-bottom: 0; padding-bottom: 0; border: none;">
+        <h3 class="panel-title" style="font-size: 1rem;">
+            <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 2L2 7l10 5 10-5-10-5z"/>
                 <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
-            Google Drive Auto-Sync
+            Google Drive Sync
         </h3>
         <div class="gdrive-status" id="gdriveStatus">
             <span class="status-indicator" data-status="checking"></span>
-            <span class="status-text">Checking...</span>
-        </div>
-    </div>
-    
-    <div class="panel-body">
-        <!-- Active Sync Status -->
-        <div class="gdrive-active" id="gdriveActive" style="display: none;">
-            <div class="sync-info">
-                <div class="info-item">
-                    <span class="info-label">Status:</span>
-                    <span class="info-value" id="syncStatus">Active - Syncing every 60 seconds</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Drive Folder:</span>
-                    <span class="info-value">ComfyUI-Output/outputs/[username]</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Last Sync:</span>
-                    <span class="info-value" id="lastSync">Never</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Total Synced:</span>
-                    <span class="info-value" id="totalSynced">0 files</span>
-                </div>
-            </div>
-            
-            <div class="sync-notice" style="padding: 15px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; margin-top: 15px;">
-                <svg class="inline-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align: middle; margin-right: 8px;">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                    <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-                <span style="color: #22c55e; font-weight: 500;">Auto-sync is active</span>
-                <p style="margin-top: 8px; margin-bottom: 0; color: var(--text-secondary); font-size: 0.9rem;">
-                    All ComfyUI outputs are automatically synced to Google Drive every 60 seconds.
-                    Each user has their own folder in the shared drive.
-                </p>
-            </div>
-            
-            <div class="sync-actions" style="margin-top: 20px;">
-                <button class="btn btn-primary" onclick="openGoogleDrive()" id="openDriveBtn">
-                    <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/>
-                        <polyline points="15 3 21 3 21 9"/>
-                        <line x1="10" y1="14" x2="21" y2="3"/>
-                    </svg>
-                    Open Google Drive
-                </button>
-                
-                <button class="btn btn-secondary" onclick="forceSyncNow()" id="forceSyncBtn">
-                    <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="23 4 23 10 17 10"/>
-                        <polyline points="1 20 1 14 7 14"/>
-                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                    </svg>
-                    Force Sync Now
-                </button>
-            </div>
-        </div>
-        
-        <!-- Not Configured Status -->
-        <div class="gdrive-inactive" id="gdriveInactive" style="display: none;">
-            <div class="config-notice" style="padding: 20px; background: rgba(251, 146, 60, 0.1); border-radius: 8px; text-align: center;">
-                <svg class="inline-icon" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#fb923c" stroke-width="2" style="margin-bottom: 10px;">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="8" x2="12" y2="12"/>
-                    <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-                <h4 style="color: #fb923c; margin-bottom: 10px;">Google Drive Not Configured</h4>
-                <p style="color: var(--text-secondary); margin-bottom: 15px;">
-                    To enable automatic sync, add a <code>GOOGLE_SERVICE_ACCOUNT</code> secret in your RunPod dashboard with your Google service account JSON.
-                </p>
-                <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" class="btn btn-secondary" style="display: inline-flex;">
-                    <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/>
-                        <polyline points="15 3 21 3 21 9"/>
-                        <line x1="10" y1="14" x2="21" y2="3"/>
-                    </svg>
-                    Create Service Account
-                </a>
-            </div>
         </div>
     </div>
 </div>
 
 <style>
 .gdrive-panel {
-    margin-top: 20px;
-    padding: 20px;
+    margin-top: 15px;
+    padding: 12px 15px !important;
 }
 
 .panel-header {
@@ -253,144 +173,19 @@ code {
 </style>
 
 <script>
-// Google Drive auto-sync status
-let driveUrl = 'https://drive.google.com/drive/folders/';
-let syncCheckInterval;
-
+// Simple Google Drive status check - just shows green/orange dot
 async function checkGDriveStatus() {
     try {
         const response = await fetch('/api/gdrive/status');
         const data = await response.json();
-        updateGDriveUI(data);
-        
-        // Store drive URL if available
-        if (data.drive_url) {
-            driveUrl = data.drive_url;
+        const statusIndicator = document.querySelector('.status-indicator');
+        if (statusIndicator) {
+            statusIndicator.dataset.status = (data.configured && data.rclone_installed) ? 'active' : 'inactive';
         }
     } catch (error) {
-        console.error('Error checking Google Drive status:', error);
-        // Show inactive state on error
-        showInactiveState();
+        const statusIndicator = document.querySelector('.status-indicator');
+        if (statusIndicator) statusIndicator.dataset.status = 'inactive';
     }
-}
-
-function updateGDriveUI(data) {
-    const statusIndicator = document.querySelector('.status-indicator');
-    const statusText = document.querySelector('.status-text');
-    const activeSection = document.getElementById('gdriveActive');
-    const inactiveSection = document.getElementById('gdriveInactive');
-    
-    if (data.configured && data.rclone_installed) {
-        // Google Drive is configured and working
-        statusIndicator.dataset.status = 'active';
-        statusText.textContent = 'Active';
-        activeSection.style.display = 'block';
-        inactiveSection.style.display = 'none';
-        
-        // Update sync stats if available
-        if (data.sync_status) {
-            updateSyncStats(data.sync_status);
-        }
-        
-        // Update last sync time periodically
-        updateLastSyncTime();
-    } else {
-        showInactiveState();
-    }
-}
-
-function showInactiveState() {
-    const statusIndicator = document.querySelector('.status-indicator');
-    const statusText = document.querySelector('.status-text');
-    const activeSection = document.getElementById('gdriveActive');
-    const inactiveSection = document.getElementById('gdriveInactive');
-    
-    statusIndicator.dataset.status = 'inactive';
-    statusText.textContent = 'Not Configured';
-    activeSection.style.display = 'none';
-    inactiveSection.style.display = 'block';
-}
-
-function updateSyncStats(syncStatus) {
-    // Count total synced files
-    let totalFiles = 0;
-    for (const [user, status] of Object.entries(syncStatus)) {
-        if (status.status === 'completed') {
-            // Update last sync time
-            document.getElementById('lastSync').textContent = new Date().toLocaleTimeString();
-        }
-    }
-}
-
-function updateLastSyncTime() {
-    // This would be called periodically to show time since last sync
-    const lastSyncEl = document.getElementById('lastSync');
-    if (lastSyncEl.textContent !== 'Never') {
-        // Update with relative time
-    }
-}
-
-function openGoogleDrive() {
-    window.open(driveUrl, '_blank');
-}
-
-async function forceSyncNow() {
-    const btn = document.getElementById('forceSyncBtn');
-    const originalContent = btn.innerHTML;
-    
-    try {
-        btn.disabled = true;
-        btn.innerHTML = '<svg class="btn-icon spin" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Syncing...';
-        
-        const currentUser = window.currentUser || 'default';
-        const response = await fetch('/api/gdrive/sync', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                username: currentUser,
-                direction: 'to_gdrive'
-            })
-        });
-        
-        if (response.ok) {
-            showNotification('Sync started successfully', 'success');
-            document.getElementById('lastSync').textContent = new Date().toLocaleTimeString();
-        } else {
-            showNotification('Sync failed', 'error');
-        }
-    } catch (error) {
-        showNotification('Error starting sync', 'error');
-    } finally {
-        setTimeout(() => {
-            btn.disabled = false;
-            btn.innerHTML = originalContent;
-        }, 3000);
-    }
-}
-
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.textContent = message;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 15px 20px;
-        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
-        color: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        z-index: 10000;
-        animation: slideInRight 0.3s ease;
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
 }
 
 // Initialize on load
@@ -399,25 +194,4 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check status every 30 seconds
     setInterval(checkGDriveStatus, 30000);
 });
-
-// Add animations
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slideOutRight {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-    @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-    .spin {
-        animation: spin 1s linear infinite;
-    }
-`;
-document.head.appendChild(style);
 </script>

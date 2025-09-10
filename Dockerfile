@@ -184,14 +184,11 @@ RCLONE_EOF
         echo "✅ Google Drive configured successfully"
         
         # Create folder structure
-        rclone mkdir gdrive:ComfyUI-Output/outputs >/dev/null 2>&1
-        rclone mkdir gdrive:ComfyUI-Output/models >/dev/null 2>&1
-        rclone mkdir gdrive:ComfyUI-Output/workflows >/dev/null 2>&1
-        
-        # Create user folders
-        for user in serhii marcin vlad ksenija max ivan; do
-            rclone mkdir "gdrive:ComfyUI-Output/outputs/$user" >/dev/null 2>&1
-        done
+        echo "Creating Google Drive folders..."
+        rclone mkdir gdrive:ComfyUI-Output
+        rclone mkdir gdrive:ComfyUI-Output/output
+        rclone mkdir gdrive:ComfyUI-Output/loras
+        rclone mkdir gdrive:ComfyUI-Output/workflows
         
         # Mark as configured
         touch /workspace/.gdrive_configured
@@ -199,22 +196,26 @@ RCLONE_EOF
         # Save configuration status for UI
         echo "configured" > /workspace/.gdrive_status
         
-        # Start auto-sync in background
+        # Start auto-sync in background - sync output and loras
         (
             while true; do
                 sleep 60  # Sync every minute
-                for user_dir in /workspace/output/*/; do
-                    if [ -d "$user_dir" ]; then
-                        username=$(basename "$user_dir")
-                        rclone sync "$user_dir" "gdrive:ComfyUI-Output/outputs/$username" \
-                            --exclude "*.tmp" \
-                            --exclude "*.partial" \
-                            --transfers 4 \
-                            --checkers 2 \
-                            --bwlimit 50M \
-                            --min-age 5s >/dev/null 2>&1 &
-                    fi
-                done
+                echo "Syncing to Google Drive..."
+                # Sync output folder
+                rclone sync /workspace/output "gdrive:ComfyUI-Output/output" \
+                    --exclude "*.tmp" \
+                    --exclude "*.partial" \
+                    --transfers 4 \
+                    --checkers 2 \
+                    --bwlimit 50M \
+                    --min-age 5s >/dev/null 2>&1
+                # Sync loras folder
+                if [ -d "/workspace/models/loras" ]; then
+                    rclone sync /workspace/models/loras "gdrive:ComfyUI-Output/loras" \
+                        --transfers 4 \
+                        --checkers 2 \
+                        --bwlimit 50M >/dev/null 2>&1
+                fi
             done
         ) &
         
@@ -258,18 +259,22 @@ if [ -f "/workspace/.gdrive_configured" ]; then
         (
             while true; do
                 sleep 60
-                for user_dir in /workspace/output/*/; do
-                    if [ -d "$user_dir" ]; then
-                        username=$(basename "$user_dir")
-                        rclone sync "$user_dir" "gdrive:ComfyUI-Output/outputs/$username" \
-                            --exclude "*.tmp" \
-                            --exclude "*.partial" \
-                            --transfers 4 \
-                            --checkers 2 \
-                            --bwlimit 50M \
-                            --min-age 5s >/dev/null 2>&1 &
-                    fi
-                done
+                echo "Syncing to Google Drive..."
+                # Sync output folder
+                rclone sync /workspace/output "gdrive:ComfyUI-Output/output" \
+                    --exclude "*.tmp" \
+                    --exclude "*.partial" \
+                    --transfers 4 \
+                    --checkers 2 \
+                    --bwlimit 50M \
+                    --min-age 5s >/dev/null 2>&1
+                # Sync loras folder
+                if [ -d "/workspace/models/loras" ]; then
+                    rclone sync /workspace/models/loras "gdrive:ComfyUI-Output/loras" \
+                        --transfers 4 \
+                        --checkers 2 \
+                        --bwlimit 50M >/dev/null 2>&1
+                fi
             done
         ) &
         echo "✅ Auto-sync restarted"
