@@ -142,8 +142,19 @@ else
 fi
 
 # Auto-configure Google Drive if RunPod secret is set
+echo "🔍 Checking for Google Drive configuration..."
+
+# RunPod prefixes secrets with RUNPOD_SECRET_
+if [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
+    export GOOGLE_SERVICE_ACCOUNT="$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT"
+    echo "   Found RunPod secret (${#GOOGLE_SERVICE_ACCOUNT} characters)"
+fi
+
+echo "   GOOGLE_SERVICE_ACCOUNT variable: ${GOOGLE_SERVICE_ACCOUNT:0:50}..." 
+
 if [ -n "$GOOGLE_SERVICE_ACCOUNT" ] && [ ! -f "/workspace/.gdrive_configured" ]; then
     echo "🔧 Setting up automatic Google Drive sync..."
+    echo "   Service account JSON detected (${#GOOGLE_SERVICE_ACCOUNT} characters)"
     
     # Create rclone config directories
     mkdir -p /workspace/.config/rclone
@@ -168,7 +179,8 @@ RCLONE_EOF
     cp /workspace/.config/rclone/rclone.conf /root/.config/rclone/rclone.conf
     
     # Test configuration
-    if rclone lsd gdrive: >/dev/null 2>&1; then
+    echo "🔍 Testing rclone configuration..."
+    if rclone lsd gdrive: 2>/tmp/rclone_error.txt; then
         echo "✅ Google Drive configured successfully"
         
         # Create folder structure
@@ -205,13 +217,38 @@ RCLONE_EOF
         
         echo "✅ Auto-sync started (every 60 seconds)"
     else
-        echo "⚠️ Google Drive not configured - add GOOGLE_SERVICE_ACCOUNT secret in RunPod"
+        echo "❌ Google Drive configuration failed!"
+        echo "   Error details:"
+        cat /tmp/rclone_error.txt 2>/dev/null
+        echo ""
+        echo "   Possible issues:"
+        echo "   1. Service account JSON may be invalid"
+        echo "   2. Google Drive folder not shared with service account"
+        echo "   3. Check that folder 'ComfyUI-Output' exists and is shared"
+        echo ""
+        echo "   Service account email from JSON:"
+        echo "$GOOGLE_SERVICE_ACCOUNT" | grep -o '"client_email"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || echo "Could not extract email"
     fi
-elif [ -f "/workspace/.gdrive_configured" ]; then
+else
+    if [ -z "$GOOGLE_SERVICE_ACCOUNT" ] && [ -z "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
+        echo "ℹ️ Google Drive sync not configured"
+        echo "   No Google service account credentials found"
+        echo ""
+        echo "   To enable automatic sync:"
+        echo "   1. Add GOOGLE_SERVICE_ACCOUNT secret in RunPod dashboard"
+        echo "   2. The secret will be available as RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT"
+        echo "   3. Restart the pod after adding the secret"
+        echo ""
+        echo "   Checking for RunPod secrets:"
+        env | grep RUNPOD_SECRET_ | head -5
+    fi
+fi
+
+if [ -f "/workspace/.gdrive_configured" ]; then
     echo "✅ Google Drive already configured"
     
     # Restart auto-sync if not running
-    if ! pgrep -f "rclone sync" > /dev/null; then
+    if ! pgrep -f "rclone sync" > /dev/null 2>&1; then
         (
             while true; do
                 sleep 60

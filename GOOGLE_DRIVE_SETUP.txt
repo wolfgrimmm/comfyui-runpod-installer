@@ -1,0 +1,242 @@
+================================================================================
+                    GOOGLE DRIVE AUTO-SYNC SETUP GUIDE
+           For ComfyUI RunPod - Automatic Output Synchronization
+================================================================================
+
+This guide will help you set up automatic Google Drive sync for ComfyUI outputs.
+Once configured, all generated images will automatically sync to Google Drive
+every 60 seconds with zero user interaction required.
+
+================================================================================
+STEP 1: CREATE GOOGLE CLOUD PROJECT
+================================================================================
+
+1. Go to Google Cloud Console:
+   https://console.cloud.google.com
+
+2. Click "Select a project" (top bar) → "New Project"
+
+3. Enter project details:
+   - Project name: ComfyUI-Sync (or any name you prefer)
+   - Leave organization as is
+   - Click "Create"
+
+4. Wait for project creation (takes ~10 seconds)
+
+================================================================================
+STEP 2: ENABLE GOOGLE DRIVE API
+================================================================================
+
+1. Make sure your new project is selected (check top bar)
+
+2. Navigate to "APIs & Services" → "Enable APIs and Services"
+   Or direct link: https://console.cloud.google.com/apis/library
+
+3. Search for "Google Drive API"
+
+4. Click on "Google Drive API" from results
+
+5. Click the blue "Enable" button
+
+6. Wait for API to be enabled (takes ~5 seconds)
+
+================================================================================
+STEP 3: CREATE SERVICE ACCOUNT
+================================================================================
+
+1. Go to "APIs & Services" → "Credentials"
+   Or direct link: https://console.cloud.google.com/apis/credentials
+
+2. Click "Create Credentials" → "Service Account"
+
+3. Fill in service account details:
+   - Service account name: comfyui-sync
+   - Service account ID: (auto-fills, leave as is)
+   - Description: ComfyUI RunPod sync service
+   - Click "Create and Continue"
+
+4. Skip optional steps:
+   - Click "Continue" (skip role selection)
+   - Click "Done" (skip user access)
+
+================================================================================
+STEP 4: GENERATE JSON KEY
+================================================================================
+
+1. You'll see your service account in the list
+   Click on the email address (comfyui-sync@...)
+
+2. Navigate to "Keys" tab at the top
+
+3. Click "Add Key" → "Create new key"
+
+4. Select "JSON" format
+
+5. Click "Create"
+
+6. IMPORTANT: A JSON file will automatically download
+   - Save this file securely
+   - You'll need its contents in Step 6
+
+================================================================================
+STEP 5: CREATE & SHARE GOOGLE DRIVE FOLDER
+================================================================================
+
+1. Go to Google Drive:
+   https://drive.google.com
+
+2. Click "New" → "New folder"
+
+3. Name the folder: ComfyUI-Output
+   (MUST be exactly this name)
+
+4. Right-click the created folder → "Share"
+
+5. In the sharing dialog:
+   - Open the JSON file from Step 4
+   - Find the line with "client_email": "..."
+   - Copy the email address (e.g., comfyui-sync@project-name.iam.gserviceaccount.com)
+   - Paste this email in the "Add people and groups" field
+
+6. Set permission to "Editor" (important!)
+
+7. Uncheck "Notify people" (optional)
+
+8. Click "Share"
+
+================================================================================
+STEP 6: ADD SECRET TO RUNPOD
+================================================================================
+
+1. Go to your RunPod dashboard:
+   https://www.runpod.io/console/secrets
+
+2. Click "Add Secret"
+
+3. Configure the secret:
+   - Name: GOOGLE_SERVICE_ACCOUNT
+   (MUST be exactly this name, all caps)
+   
+   - Value: 
+     a. Open the JSON file from Step 4 in a text editor
+     b. Select ALL contents (Ctrl+A or Cmd+A)
+     c. Copy (Ctrl+C or Cmd+C)
+     d. Paste entire JSON content into the value field
+
+4. Click "Save" or "Create"
+
+NOTE: RunPod will make this available in your pod as:
+      RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT
+      The container automatically detects and uses this.
+
+================================================================================
+STEP 7: DEPLOY/RESTART YOUR POD
+================================================================================
+
+1. Deploy a new pod with the ComfyUI image:
+   wolfgrimmm/comfyui-runpod:latest
+
+   OR
+
+2. If pod is already running:
+   - Stop the pod
+   - Start it again
+
+3. The pod will automatically:
+   - Detect the GOOGLE_SERVICE_ACCOUNT secret
+   - Configure Google Drive access
+   - Create folder structure
+   - Start syncing every 60 seconds
+
+================================================================================
+VERIFICATION
+================================================================================
+
+After pod starts:
+
+1. Open Control Panel (port 7777)
+
+2. Check "Google Drive Auto-Sync" panel:
+   - Should show "Active" status with green indicator
+   - No configuration needed from users
+
+3. Generate a test image in ComfyUI
+
+4. Wait 60 seconds
+
+5. Check Google Drive:
+   - Navigate to ComfyUI-Output/outputs/[username]/
+   - Your generated images should appear
+
+================================================================================
+FOLDER STRUCTURE IN GOOGLE DRIVE
+================================================================================
+
+ComfyUI-Output/
+├── outputs/
+│   ├── serhii/
+│   ├── marcin/
+│   ├── vlad/
+│   ├── ksenija/
+│   ├── max/
+│   └── ivan/
+├── models/
+└── workflows/
+
+Each user's outputs automatically sync to their own folder.
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+If sync is not working:
+
+1. Check Control Panel shows "Active" status
+   - If shows "Not Configured": Secret not detected, verify Step 6
+
+2. Verify service account email has Editor access to Drive folder
+
+3. Check pod logs for any error messages:
+   - Look for "Google Drive configured successfully" message
+   - Look for "Auto-sync started" message
+
+4. Common issues:
+   - Wrong secret name (must be GOOGLE_SERVICE_ACCOUNT)
+   - JSON formatting error (copy entire file contents)
+   - Folder not shared with service account
+   - Wrong folder name (must be ComfyUI-Output)
+
+================================================================================
+WHAT THE JSON LOOKS LIKE
+================================================================================
+
+Your service account JSON should look similar to this:
+
+{
+  "type": "service_account",
+  "project_id": "comfyui-sync-xxxxx",
+  "private_key_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhk...\n-----END PRIVATE KEY-----\n",
+  "client_email": "comfyui-sync@comfyui-sync-xxxxx.iam.gserviceaccount.com",
+  "client_id": "xxxxxxxxxxxxxxxxxxxxx",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/..."
+}
+
+Copy EVERYTHING including the curly braces { }
+
+================================================================================
+END OF SETUP GUIDE
+================================================================================
+
+Once configured, the sync is completely automatic:
+- No user configuration required
+- Syncs every 60 seconds
+- Excludes temporary files
+- Bandwidth limited to not affect performance
+- Each user has their own folder
+
+For support, check the GitHub repository:
+https://github.com/wolfgrimmm/comfyui-runpod-installer
