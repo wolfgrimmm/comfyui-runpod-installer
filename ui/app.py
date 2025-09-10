@@ -690,33 +690,48 @@ def gdrive_symlink():
 def gdrive_get_url():
     """Get the Google Drive folder URL"""
     try:
+        # For local testing, just return the root Drive URL
+        # In production on RunPod, this would check for actual folder IDs
+        
         # Check if we have a stored Drive URL
         if os.path.exists('/workspace/.gdrive_url'):
-            with open('/workspace/.gdrive_url', 'r') as f:
-                url = f.read().strip()
-                if url:
-                    return jsonify({'url': url})
+            try:
+                with open('/workspace/.gdrive_url', 'r') as f:
+                    url = f.read().strip()
+                    if url:
+                        return jsonify({'success': True, 'url': url})
+            except:
+                pass
         
-        # Try to construct URL based on configuration
-        # Check for Shared Drive ID
-        config_file = '/root/.config/rclone/rclone.conf'
-        if os.path.exists(config_file):
-            with open(config_file, 'r') as f:
-                config = f.read()
-                # Look for team_drive ID
-                import re
-                match = re.search(r'team_drive\s*=\s*([^\s]+)', config)
-                if match and match.group(1):
-                    drive_id = match.group(1)
-                    # Construct Shared Drive URL
-                    url = f'https://drive.google.com/drive/folders/ComfyUI-Output?resourcekey={drive_id}'
-                    return jsonify({'url': url})
+        # Try to find the ComfyUI-Output folder ID from rclone
+        # This would be set during the Google Drive setup process
+        config_files = [
+            '/workspace/.config/rclone/rclone.conf',
+            '/root/.config/rclone/rclone.conf',
+            os.path.expanduser('~/.config/rclone/rclone.conf')
+        ]
         
-        # Default to generic URL
-        return jsonify({'url': 'https://drive.google.com/drive/folders/'})
+        for config_file in config_files:
+            if os.path.exists(config_file):
+                try:
+                    with open(config_file, 'r') as f:
+                        config = f.read()
+                        # Look for team_drive ID (Shared Drive)
+                        import re
+                        match = re.search(r'team_drive\s*=\s*([^\s]+)', config)
+                        if match and match.group(1):
+                            drive_id = match.group(1)
+                            # For Shared Drives, construct the URL differently
+                            url = f'https://drive.google.com/drive/folders/ComfyUI-Output'
+                            return jsonify({'success': True, 'url': url})
+                except:
+                    continue
+        
+        # Default to generic Drive URL
+        return jsonify({'success': True, 'url': 'https://drive.google.com/drive/my-drive'})
     except Exception as e:
         print(f"Error getting Drive URL: {e}")
-        return jsonify({'url': 'https://drive.google.com/drive/folders/'})
+        return jsonify({'success': False, 'url': 'https://drive.google.com/drive/my-drive', 'error': str(e)})
 
 @app.route('/api/gdrive/list')
 def gdrive_list():
