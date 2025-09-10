@@ -1,7 +1,4 @@
-<!-- Include Setup Wizard -->
-{% include 'gdrive_setup.html' %}
-
-<!-- Google Drive Sync Panel -->
+<!-- Google Drive Auto-Sync Panel -->
 <div class="gdrive-panel glass-panel">
     <div class="panel-header">
         <h3 class="panel-title">
@@ -9,7 +6,7 @@
                 <path d="M12 2L2 7l10 5 10-5-10-5z"/>
                 <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
-            Google Drive Output Sync
+            Google Drive Auto-Sync
         </h3>
         <div class="gdrive-status" id="gdriveStatus">
             <span class="status-indicator" data-status="checking"></span>
@@ -18,119 +15,80 @@
     </div>
     
     <div class="panel-body">
-        <!-- Configuration Section -->
-        <div class="gdrive-config" id="gdriveConfig" style="display: none;">
-            <p class="info-text">Google Drive sync is managed by administrator.</p>
-            <div class="admin-notice" style="padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; margin-top: 10px;">
-                <svg class="inline-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                    <line x1="12" y1="9" x2="12" y2="13"/>
-                    <line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-                Contact administrator to configure Google Drive sync.
-            </div>
-        </div>
-        
-        <!-- Sync Controls -->
-        <div class="gdrive-controls" id="gdriveControls" style="display: none;">
+        <!-- Active Sync Status -->
+        <div class="gdrive-active" id="gdriveActive" style="display: none;">
             <div class="sync-info">
                 <div class="info-item">
-                    <span class="info-label">Drive Folder:</span>
-                    <span class="info-value" id="mountPoint">ComfyUI-Output</span>
+                    <span class="info-label">Status:</span>
+                    <span class="info-value" id="syncStatus">Active - Syncing every 60 seconds</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Storage Used:</span>
-                    <span class="info-value" id="storageUsed">-</span>
+                    <span class="info-label">Drive Folder:</span>
+                    <span class="info-value">ComfyUI-Output/outputs/[username]</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Last Sync:</span>
                     <span class="info-value" id="lastSync">Never</span>
                 </div>
+                <div class="info-item">
+                    <span class="info-label">Total Synced:</span>
+                    <span class="info-value" id="totalSynced">0 files</span>
+                </div>
             </div>
             
-            <div class="info-notice" style="padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; color: var(--text-secondary);">
-                <svg class="inline-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="16" x2="12" y2="12"/>
-                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+            <div class="sync-notice" style="padding: 15px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; margin-top: 15px;">
+                <svg class="inline-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align: middle; margin-right: 8px;">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
                 </svg>
-                All users sync to the shared Google Drive. Each user has their own folder: <code style="color: var(--primary);">ComfyUI-Output/outputs/[username]/</code>
+                <span style="color: #22c55e; font-weight: 500;">Auto-sync is active</span>
+                <p style="margin-top: 8px; margin-bottom: 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    All ComfyUI outputs are automatically synced to Google Drive every 60 seconds.
+                    Each user has their own folder in the shared drive.
+                </p>
             </div>
             
-            <div class="sync-actions">
-                <h4 class="section-title">Quick Actions</h4>
-                <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="openGoogleDrive()" id="openDriveBtn">
-                        <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/>
-                            <polyline points="15 3 21 3 21 9"/>
-                            <line x1="10" y1="14" x2="21" y2="3"/>
-                        </svg>
-                        Open in Google Drive
-                    </button>
-                    
-                    <button class="btn btn-primary" onclick="syncToGDrive()" id="syncToBtn">
-                        <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="17 8 12 3 7 8"/>
-                            <line x1="12" y1="3" x2="12" y2="15"/>
-                        </svg>
-                        Upload to Drive
-                    </button>
-                    
-                    <button class="btn btn-secondary" onclick="syncFromGDrive()" id="syncFromBtn">
-                        <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        Download from Drive
-                    </button>
-                </div>
+            <div class="sync-actions" style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="openGoogleDrive()" id="openDriveBtn">
+                    <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                    Open Google Drive
+                </button>
                 
-                <div class="action-buttons">
-                    <button class="btn btn-secondary" onclick="mountGDrive()" id="mountBtn">
-                        <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 9v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9"/>
-                            <path d="M9 22V12h6v10M2 10.6L12 2l10 8.6"/>
-                        </svg>
-                        Mount Drive
-                    </button>
-                    
-                    <button class="btn btn-secondary" onclick="createSymlink()" id="symlinkBtn">
-                        <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                        </svg>
-                        Create Symlink
-                    </button>
-                </div>
+                <button class="btn btn-secondary" onclick="forceSyncNow()" id="forceSyncBtn">
+                    <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <polyline points="1 20 1 14 7 14"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
+                    Force Sync Now
+                </button>
             </div>
-            
-            <div class="auto-sync-section">
-                <h4 class="section-title">Auto Sync</h4>
-                <div class="auto-sync-controls">
-                    <label class="toggle-label">
-                        <input type="checkbox" id="autoSyncToggle" onchange="toggleAutoSync()">
-                        <span class="toggle-slider"></span>
-                        <span class="toggle-text">Enable Auto Sync</span>
-                    </label>
-                    <div class="interval-control" id="intervalControl" style="display: none;">
-                        <label for="syncInterval">Interval (minutes):</label>
-                        <input type="number" id="syncInterval" min="1" max="120" value="1" class="input-field">
-                        <button class="btn btn-small" onclick="updateSyncInterval()">Update</button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="sync-status-section" id="syncStatusSection" style="display: none;">
-                <h4 class="section-title">Sync Progress</h4>
-                <div class="sync-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill"></div>
-                    </div>
-                    <div class="progress-text" id="progressText">Idle</div>
-                </div>
+        </div>
+        
+        <!-- Not Configured Status -->
+        <div class="gdrive-inactive" id="gdriveInactive" style="display: none;">
+            <div class="config-notice" style="padding: 20px; background: rgba(251, 146, 60, 0.1); border-radius: 8px; text-align: center;">
+                <svg class="inline-icon" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#fb923c" stroke-width="2" style="margin-bottom: 10px;">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <h4 style="color: #fb923c; margin-bottom: 10px;">Google Drive Not Configured</h4>
+                <p style="color: var(--text-secondary); margin-bottom: 15px;">
+                    To enable automatic sync, add a <code>GOOGLE_SERVICE_ACCOUNT</code> secret in your RunPod dashboard with your Google service account JSON.
+                </p>
+                <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" class="btn btn-secondary" style="display: inline-flex;">
+                    <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                    Create Service Account
+                </a>
             </div>
         </div>
     </div>
@@ -174,19 +132,24 @@
     position: relative;
 }
 
-.status-indicator[data-status="configured"] {
+.status-indicator[data-status="active"] {
     background: #10b981;
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    animation: pulse 2s ease-in-out infinite;
 }
 
-.status-indicator[data-status="not-configured"] {
-    background: #ef4444;
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+.status-indicator[data-status="inactive"] {
+    background: #fb923c;
 }
 
 .status-indicator[data-status="syncing"] {
-    background: #f59e0b;
-    animation: pulse 1.5s ease-in-out infinite;
+    background: #3b82f6;
+    animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 .sync-info {
@@ -218,21 +181,10 @@
     font-weight: 500;
 }
 
-.section-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 15px;
+.sync-actions {
     display: flex;
-    align-items: center;
     gap: 10px;
-}
-
-.action-buttons {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 10px;
-    margin-bottom: 20px;
+    flex-wrap: wrap;
 }
 
 .btn {
@@ -250,6 +202,7 @@
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
     color: var(--text-primary);
+    text-decoration: none;
 }
 
 .btn:hover {
@@ -262,10 +215,6 @@
     border: none;
 }
 
-.btn-primary:hover {
-    box-shadow: 0 5px 20px rgba(231, 51, 29, 0.4);
-}
-
 .btn-secondary {
     background: rgba(255, 255, 255, 0.05);
 }
@@ -275,123 +224,38 @@
     height: 16px;
 }
 
-.auto-sync-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+.inline-icon {
+    display: inline-block;
+    vertical-align: middle;
 }
 
-.toggle-label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-}
-
-.toggle-slider {
-    width: 50px;
-    height: 25px;
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: 25px;
-    position: relative;
-    transition: all 0.3s ease;
-}
-
-.toggle-slider::after {
-    content: '';
-    position: absolute;
-    width: 19px;
-    height: 19px;
-    background: var(--text-secondary);
-    border-radius: 50%;
-    top: 2px;
-    left: 2px;
-    transition: all 0.3s ease;
-}
-
-input[type="checkbox"]:checked + .toggle-slider {
-    background: var(--primary);
-    border-color: var(--primary);
-}
-
-input[type="checkbox"]:checked + .toggle-slider::after {
-    transform: translateX(25px);
-    background: white;
-}
-
-input[type="checkbox"] {
-    display: none;
-}
-
-.interval-control {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 8px;
-}
-
-.input-field {
-    width: 80px;
-    padding: 5px 10px;
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: 5px;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-}
-
-.btn-small {
-    padding: 5px 15px;
-    font-size: 0.85rem;
-}
-
-.sync-progress {
-    padding: 15px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 10px;
-}
-
-.progress-bar {
-    width: 100%;
-    height: 8px;
+code {
+    padding: 2px 6px;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
-    overflow: hidden;
-    margin-bottom: 10px;
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary), #ff5722);
-    border-radius: 4px;
-    width: 0%;
-    transition: width 0.3s ease;
-}
-
-.progress-text {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    text-align: center;
+    font-family: monospace;
+    color: var(--primary);
 }
 
 @media (max-width: 768px) {
-    .action-buttons {
+    .sync-info {
         grid-template-columns: 1fr;
     }
     
-    .sync-info {
-        grid-template-columns: 1fr;
+    .sync-actions {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
     }
 }
 </style>
 
 <script>
-// Google Drive sync functions
-let syncCheckInterval;
+// Google Drive auto-sync status
 let driveUrl = 'https://drive.google.com/drive/folders/';
+let syncCheckInterval;
 
 async function checkGDriveStatus() {
     try {
@@ -399,123 +263,86 @@ async function checkGDriveStatus() {
         const data = await response.json();
         updateGDriveUI(data);
         
-        // Use the drive URL from the backend
+        // Store drive URL if available
         if (data.drive_url) {
             driveUrl = data.drive_url;
         }
     } catch (error) {
         console.error('Error checking Google Drive status:', error);
+        // Show inactive state on error
+        showInactiveState();
     }
-}
-
-function openGoogleDrive() {
-    // Open Google Drive folder in new tab
-    window.open(driveUrl, '_blank');
 }
 
 function updateGDriveUI(data) {
     const statusIndicator = document.querySelector('.status-indicator');
     const statusText = document.querySelector('.status-text');
-    const configSection = document.getElementById('gdriveConfig');
-    const controlsSection = document.getElementById('gdriveControls');
-    const autoSyncToggle = document.getElementById('autoSyncToggle');
+    const activeSection = document.getElementById('gdriveActive');
+    const inactiveSection = document.getElementById('gdriveInactive');
     
-    // Check if rclone is installed first
-    if (!data.rclone_installed) {
-        statusIndicator.dataset.status = 'not-configured';
-        statusText.textContent = 'rclone Not Installed';
-        configSection.style.display = 'block';
-        controlsSection.style.display = 'none';
-        // Show install button, hide configure button
-        document.querySelector('button[onclick="installRclone()"]').style.display = 'inline-flex';
-        document.querySelector('button[onclick="showConfigureDialog()"]').style.display = 'none';
-    } else if (data.configured) {
-        statusIndicator.dataset.status = 'configured';
-        statusText.textContent = 'Configured';
-        configSection.style.display = 'none';
-        controlsSection.style.display = 'block';
+    if (data.configured && data.rclone_installed) {
+        // Google Drive is configured and working
+        statusIndicator.dataset.status = 'active';
+        statusText.textContent = 'Active';
+        activeSection.style.display = 'block';
+        inactiveSection.style.display = 'none';
         
-        // Enable auto-sync by default if not already enabled
-        if (!autoSyncToggle.checked && !window.autoSyncInitialized) {
-            autoSyncToggle.checked = true;
-            document.getElementById('intervalControl').style.display = 'flex';
-            setupAutoSync();
-            window.autoSyncInitialized = true;
+        // Update sync stats if available
+        if (data.sync_status) {
+            updateSyncStats(data.sync_status);
         }
         
-        // Update storage stats if available
-        getStorageStats();
+        // Update last sync time periodically
+        updateLastSyncTime();
     } else {
-        statusIndicator.dataset.status = 'not-configured';
-        
-        // Show detailed status for debugging
-        if (data.config_details) {
-            let statusMsg = 'Not Configured';
-            if (!data.config_details.has_runpod_secret) {
-                statusMsg = 'Missing RunPod Secret';
-            } else if (!data.config_details.has_rclone_config) {
-                statusMsg = 'Initializing...';
-            }
-            statusText.textContent = statusMsg;
-            
-            // Show hint about RunPod secret
-            if (!data.config_details.has_runpod_secret) {
-                statusText.title = 'Add GOOGLE_SERVICE_ACCOUNT secret in RunPod dashboard';
-            }
-        } else {
-            statusText.textContent = 'Not Configured';
-        }
-        
-        configSection.style.display = 'block';
-        controlsSection.style.display = 'none';
-        // Hide install button, show configure button
-        document.querySelector('button[onclick="installRclone()"]').style.display = 'none';
-        document.querySelector('button[onclick="showConfigureDialog()"]').style.display = 'inline-flex';
-    }
-    
-    // Update sync status if syncing
-    if (data.sync_status && Object.keys(data.sync_status).length > 0) {
-        updateSyncStatus(data.sync_status);
+        showInactiveState();
     }
 }
 
-async function installRclone() {
-    try {
-        const btn = event.target;
-        btn.disabled = true;
-        btn.textContent = 'Installing...';
-        
-        const response = await fetch('/api/gdrive/install_rclone', {
-            method: 'POST'
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showNotification('rclone installed successfully', 'success');
-            checkGDriveStatus();
-        } else {
-            showNotification('Failed to install rclone', 'error');
+function showInactiveState() {
+    const statusIndicator = document.querySelector('.status-indicator');
+    const statusText = document.querySelector('.status-text');
+    const activeSection = document.getElementById('gdriveActive');
+    const inactiveSection = document.getElementById('gdriveInactive');
+    
+    statusIndicator.dataset.status = 'inactive';
+    statusText.textContent = 'Not Configured';
+    activeSection.style.display = 'none';
+    inactiveSection.style.display = 'block';
+}
+
+function updateSyncStats(syncStatus) {
+    // Count total synced files
+    let totalFiles = 0;
+    for (const [user, status] of Object.entries(syncStatus)) {
+        if (status.status === 'completed') {
+            // Update last sync time
+            document.getElementById('lastSync').textContent = new Date().toLocaleTimeString();
         }
-    } catch (error) {
-        showNotification('Error installing rclone', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Install rclone';
     }
 }
 
-async function syncToGDrive() {
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-        showNotification('Please select a user first', 'warning');
-        return;
+function updateLastSyncTime() {
+    // This would be called periodically to show time since last sync
+    const lastSyncEl = document.getElementById('lastSync');
+    if (lastSyncEl.textContent !== 'Never') {
+        // Update with relative time
     }
+}
+
+function openGoogleDrive() {
+    window.open(driveUrl, '_blank');
+}
+
+async function forceSyncNow() {
+    const btn = document.getElementById('forceSyncBtn');
+    const originalContent = btn.innerHTML;
     
     try {
-        const btn = document.getElementById('syncToBtn');
         btn.disabled = true;
-        btn.textContent = 'Syncing...';
+        btn.innerHTML = '<svg class="btn-icon spin" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Syncing...';
         
+        const currentUser = window.currentUser || 'default';
         const response = await fetch('/api/gdrive/sync', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -524,238 +351,24 @@ async function syncToGDrive() {
                 direction: 'to_gdrive'
             })
         });
-        const data = await response.json();
         
-        if (data.success) {
-            showNotification('Upload started', 'success');
-            startSyncMonitoring();
-        } else {
-            showNotification(data.message || 'Sync failed', 'error');
-        }
-    } catch (error) {
-        showNotification('Error starting sync', 'error');
-    } finally {
-        setTimeout(() => {
-            const btn = document.getElementById('syncToBtn');
-            btn.disabled = false;
-            btn.innerHTML = '<svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Upload to Drive';
-        }, 2000);
-    }
-}
-
-async function syncFromGDrive() {
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-        showNotification('Please select a user first', 'warning');
-        return;
-    }
-    
-    try {
-        const btn = document.getElementById('syncFromBtn');
-        btn.disabled = true;
-        btn.textContent = 'Syncing...';
-        
-        const response = await fetch('/api/gdrive/sync', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                username: currentUser,
-                direction: 'from_gdrive'
-            })
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showNotification('Download started', 'success');
-            startSyncMonitoring();
-        } else {
-            showNotification(data.message || 'Sync failed', 'error');
-        }
-    } catch (error) {
-        showNotification('Error starting sync', 'error');
-    } finally {
-        setTimeout(() => {
-            const btn = document.getElementById('syncFromBtn');
-            btn.disabled = false;
-            btn.innerHTML = '<svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download from Drive';
-        }, 2000);
-    }
-}
-
-async function mountGDrive() {
-    try {
-        const btn = document.getElementById('mountBtn');
-        btn.disabled = true;
-        btn.textContent = 'Mounting...';
-        
-        const response = await fetch('/api/gdrive/mount', {
-            method: 'POST'
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showNotification('Google Drive mounted', 'success');
-            document.getElementById('mountPoint').textContent = '/workspace/gdrive';
-        } else {
-            showNotification(data.message || 'Mount failed', 'error');
-        }
-    } catch (error) {
-        showNotification('Error mounting drive', 'error');
-    } finally {
-        const btn = document.getElementById('mountBtn');
-        btn.disabled = false;
-        btn.innerHTML = '<svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 9v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9"/><path d="M9 22V12h6v10M2 10.6L12 2l10 8.6"/></svg>Mount Drive';
-    }
-}
-
-async function createSymlink() {
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-        showNotification('Please select a user first', 'warning');
-        return;
-    }
-    
-    try {
-        const btn = document.getElementById('symlinkBtn');
-        btn.disabled = true;
-        btn.textContent = 'Creating...';
-        
-        const response = await fetch('/api/gdrive/symlink', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({username: currentUser})
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showNotification('Symlink created successfully', 'success');
-        } else {
-            showNotification(data.message || 'Failed to create symlink', 'error');
-        }
-    } catch (error) {
-        showNotification('Error creating symlink', 'error');
-    } finally {
-        const btn = document.getElementById('symlinkBtn');
-        btn.disabled = false;
-        btn.innerHTML = '<svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Create Symlink';
-    }
-}
-
-async function getStorageStats() {
-    try {
-        const response = await fetch('/api/gdrive/storage');
-        const data = await response.json();
-        
-        if (data.success && data.stats) {
-            document.getElementById('storageUsed').textContent = data.stats.human_size;
-        }
-    } catch (error) {
-        console.error('Error getting storage stats:', error);
-    }
-}
-
-function toggleAutoSync() {
-    const toggle = document.getElementById('autoSyncToggle');
-    const intervalControl = document.getElementById('intervalControl');
-    
-    if (toggle.checked) {
-        intervalControl.style.display = 'flex';
-        setupAutoSync();
-    } else {
-        intervalControl.style.display = 'none';
-        // Cancel auto sync
-    }
-}
-
-async function setupAutoSync() {
-    const interval = document.getElementById('syncInterval').value;
-    
-    try {
-        const response = await fetch('/api/gdrive/auto_sync', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({interval: parseInt(interval)})
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            showNotification(`Auto-sync enabled (every ${interval} minutes)`, 'success');
-        } else {
-            showNotification('Failed to enable auto-sync', 'error');
-            document.getElementById('autoSyncToggle').checked = false;
-        }
-    } catch (error) {
-        showNotification('Error setting up auto-sync', 'error');
-        document.getElementById('autoSyncToggle').checked = false;
-    }
-}
-
-function updateSyncInterval() {
-    if (document.getElementById('autoSyncToggle').checked) {
-        setupAutoSync();
-    }
-}
-
-function startSyncMonitoring() {
-    const statusSection = document.getElementById('syncStatusSection');
-    statusSection.style.display = 'block';
-    
-    // Poll for sync status
-    syncCheckInterval = setInterval(async () => {
-        try {
-            const response = await fetch('/api/gdrive/status');
-            const data = await response.json();
-            
-            if (data.sync_status) {
-                updateSyncStatus(data.sync_status);
-            }
-        } catch (error) {
-            console.error('Error checking sync status:', error);
-        }
-    }, 2000);
-}
-
-function updateSyncStatus(syncStatus) {
-    const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('progressText');
-    const statusIndicator = document.querySelector('.status-indicator');
-    
-    // Check if any user is syncing
-    let anySyncing = false;
-    for (const [user, status] of Object.entries(syncStatus)) {
-        if (status.status === 'syncing') {
-            anySyncing = true;
-            progressText.textContent = `Syncing ${user}...`;
-            statusIndicator.dataset.status = 'syncing';
-            // Animate progress bar
-            progressFill.style.width = '50%';
-            break;
-        } else if (status.status === 'completed') {
-            progressText.textContent = `Completed sync for ${user}`;
-            progressFill.style.width = '100%';
+        if (response.ok) {
+            showNotification('Sync started successfully', 'success');
             document.getElementById('lastSync').textContent = new Date().toLocaleTimeString();
-        } else if (status.status === 'error') {
-            progressText.textContent = `Error: ${status.error}`;
-            progressFill.style.width = '0%';
+        } else {
+            showNotification('Sync failed', 'error');
         }
-    }
-    
-    if (!anySyncing) {
-        statusIndicator.dataset.status = 'configured';
-        clearInterval(syncCheckInterval);
+    } catch (error) {
+        showNotification('Error starting sync', 'error');
+    } finally {
         setTimeout(() => {
-            document.getElementById('syncStatusSection').style.display = 'none';
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
         }, 3000);
     }
 }
 
-function getCurrentUser() {
-    // Get current user from the main app state
-    return window.currentUser || null;
-}
-
 function showNotification(message, type = 'info') {
-    // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.textContent = message;
@@ -764,7 +377,7 @@ function showNotification(message, type = 'info') {
         top: 20px;
         right: 20px;
         padding: 15px 20px;
-        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#f59e0b'};
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
         color: white;
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
@@ -797,6 +410,13 @@ style.textContent = `
     @keyframes slideOutRight {
         from { transform: translateX(0); opacity: 1; }
         to { transform: translateX(100%); opacity: 0; }
+    }
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    .spin {
+        animation: spin 1s linear infinite;
     }
 `;
 document.head.appendChild(style);

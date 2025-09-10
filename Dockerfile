@@ -3,11 +3,12 @@ FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 WORKDIR /
 
-# Install system dependencies including Python build tools
+# Install system dependencies including Python build tools and rclone
 RUN apt-get update && apt-get install -y \
     git wget curl psmisc lsof unzip \
     python3.11-dev python3.11-venv python3-pip \
     build-essential \
+    && curl https://rclone.org/install.sh | bash \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -137,6 +138,98 @@ else
         if [ -f "ComfyUI-Manager/requirements.txt" ]; then
             pip install -r ComfyUI-Manager/requirements.txt 2>/dev/null || true
         fi
+    fi
+fi
+
+# Auto-configure Google Drive if RunPod secret is set
+if [ -n "$GOOGLE_SERVICE_ACCOUNT" ] && [ ! -f "/workspace/.gdrive_configured" ]; then
+    echo "🔧 Setting up automatic Google Drive sync..."
+    
+    # Create rclone config directories
+    mkdir -p /workspace/.config/rclone
+    mkdir -p /root/.config/rclone
+    
+    # Save service account JSON
+    echo "$GOOGLE_SERVICE_ACCOUNT" > /workspace/.config/rclone/service_account.json
+    echo "$GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
+    chmod 600 /workspace/.config/rclone/service_account.json
+    chmod 600 /root/.config/rclone/service_account.json
+    
+    # Create rclone config
+    cat > /workspace/.config/rclone/rclone.conf << 'RCLONE_EOF'
+[gdrive]
+type = drive
+scope = drive
+service_account_file = /root/.config/rclone/service_account.json
+team_drive = 
+
+RCLONE_EOF
+    
+    cp /workspace/.config/rclone/rclone.conf /root/.config/rclone/rclone.conf
+    
+    # Test configuration
+    if rclone lsd gdrive: >/dev/null 2>&1; then
+        echo "✅ Google Drive configured successfully"
+        
+        # Create folder structure
+        rclone mkdir gdrive:ComfyUI-Output/outputs >/dev/null 2>&1
+        rclone mkdir gdrive:ComfyUI-Output/models >/dev/null 2>&1
+        rclone mkdir gdrive:ComfyUI-Output/workflows >/dev/null 2>&1
+        
+        # Create user folders
+        for user in serhii marcin vlad ksenija max ivan; do
+            rclone mkdir "gdrive:ComfyUI-Output/outputs/$user" >/dev/null 2>&1
+        done
+        
+        # Mark as configured
+        touch /workspace/.gdrive_configured
+        
+        # Start auto-sync in background
+        (
+            while true; do
+                sleep 60  # Sync every minute
+                for user_dir in /workspace/output/*/; do
+                    if [ -d "$user_dir" ]; then
+                        username=$(basename "$user_dir")
+                        rclone sync "$user_dir" "gdrive:ComfyUI-Output/outputs/$username" \
+                            --exclude "*.tmp" \
+                            --exclude "*.partial" \
+                            --transfers 4 \
+                            --checkers 2 \
+                            --bwlimit 50M \
+                            --min-age 5s >/dev/null 2>&1 &
+                    fi
+                done
+            done
+        ) &
+        
+        echo "✅ Auto-sync started (every 60 seconds)"
+    else
+        echo "⚠️ Google Drive not configured - add GOOGLE_SERVICE_ACCOUNT secret in RunPod"
+    fi
+elif [ -f "/workspace/.gdrive_configured" ]; then
+    echo "✅ Google Drive already configured"
+    
+    # Restart auto-sync if not running
+    if ! pgrep -f "rclone sync" > /dev/null; then
+        (
+            while true; do
+                sleep 60
+                for user_dir in /workspace/output/*/; do
+                    if [ -d "$user_dir" ]; then
+                        username=$(basename "$user_dir")
+                        rclone sync "$user_dir" "gdrive:ComfyUI-Output/outputs/$username" \
+                            --exclude "*.tmp" \
+                            --exclude "*.partial" \
+                            --transfers 4 \
+                            --checkers 2 \
+                            --bwlimit 50M \
+                            --min-age 5s >/dev/null 2>&1 &
+                    fi
+                done
+            done
+        ) &
+        echo "✅ Auto-sync restarted"
     fi
 fi
 
