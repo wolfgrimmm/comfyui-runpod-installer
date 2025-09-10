@@ -9,10 +9,10 @@
             <span style="font-size: 1rem; font-weight: 500;">Google Drive Sync</span>
             <span class="status-indicator" data-status="checking" style="margin-left: 8px;"></span>
         </div>
-        <button class="btn-minimal" onclick="window.open('https://drive.google.com/drive/folders/', '_blank')" title="Open Google Drive">
+        <button class="btn-minimal" onclick="openGoogleDrive()" title="Open Google Drive">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/>
-                <polyline points="15 3 21 3 21 9"/>
+                <path d="M15 3h6v6"/>
                 <line x1="10" y1="14" x2="21" y2="3"/>
             </svg>
         </button>
@@ -69,6 +69,9 @@
 </style>
 
 <script>
+// Store the drive folder ID globally
+let driveFolderId = null;
+
 // Simple Google Drive status check - just shows green/orange dot
 async function checkGDriveStatus() {
     try {
@@ -78,10 +81,34 @@ async function checkGDriveStatus() {
         if (statusIndicator) {
             statusIndicator.dataset.status = (data.configured && data.rclone_installed) ? 'active' : 'inactive';
         }
+        
+        // Store the drive URL if available
+        if (data.drive_url) {
+            driveFolderId = data.drive_url;
+        }
     } catch (error) {
         const statusIndicator = document.querySelector('.status-indicator');
         if (statusIndicator) statusIndicator.dataset.status = 'inactive';
     }
+}
+
+// Open Google Drive with proper URL
+function openGoogleDrive() {
+    // Try to get the actual Drive folder URL from the backend
+    fetch('/api/gdrive/get_drive_url')
+        .then(response => response.json())
+        .then(data => {
+            if (data.url) {
+                window.open(data.url, '_blank');
+            } else {
+                // Fallback to generic Drive URL
+                window.open('https://drive.google.com/drive/folders/ComfyUI-Output', '_blank');
+            }
+        })
+        .catch(() => {
+            // Fallback to generic Drive URL
+            window.open('https://drive.google.com/drive/folders/', '_blank');
+        });
 }
 
 // Initialize on load

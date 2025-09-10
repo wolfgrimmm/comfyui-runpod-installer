@@ -686,6 +686,38 @@ def gdrive_symlink():
     success, message = gdrive.create_symlink_to_gdrive(username)
     return jsonify({'success': success, 'message': message})
 
+@app.route('/api/gdrive/get_drive_url')
+def gdrive_get_url():
+    """Get the Google Drive folder URL"""
+    try:
+        # Check if we have a stored Drive URL
+        if os.path.exists('/workspace/.gdrive_url'):
+            with open('/workspace/.gdrive_url', 'r') as f:
+                url = f.read().strip()
+                if url:
+                    return jsonify({'url': url})
+        
+        # Try to construct URL based on configuration
+        # Check for Shared Drive ID
+        config_file = '/root/.config/rclone/rclone.conf'
+        if os.path.exists(config_file):
+            with open(config_file, 'r') as f:
+                config = f.read()
+                # Look for team_drive ID
+                import re
+                match = re.search(r'team_drive\s*=\s*([^\s]+)', config)
+                if match and match.group(1):
+                    drive_id = match.group(1)
+                    # Construct Shared Drive URL
+                    url = f'https://drive.google.com/drive/folders/ComfyUI-Output?resourcekey={drive_id}'
+                    return jsonify({'url': url})
+        
+        # Default to generic URL
+        return jsonify({'url': 'https://drive.google.com/drive/folders/'})
+    except Exception as e:
+        print(f"Error getting Drive URL: {e}")
+        return jsonify({'url': 'https://drive.google.com/drive/folders/'})
+
 @app.route('/api/gdrive/list')
 def gdrive_list():
     """List files in Google Drive"""
