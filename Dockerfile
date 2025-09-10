@@ -69,6 +69,69 @@ else
     source /workspace/venv/bin/activate
 fi
 
+# Install ComfyUI if not present
+if [ ! -f "/workspace/ComfyUI/main.py" ]; then
+    echo "📦 Installing ComfyUI..."
+    cd /workspace
+    rm -rf ComfyUI 2>/dev/null || true
+    
+    if git clone https://github.com/comfyanonymous/ComfyUI.git; then
+        echo "✅ ComfyUI cloned successfully"
+    else
+        echo "⚠️ Regular clone failed, trying shallow clone..."
+        git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git
+    fi
+    
+    if [ -f "/workspace/ComfyUI/main.py" ]; then
+        echo "✅ ComfyUI installed at /workspace/ComfyUI"
+        
+        # Install ComfyUI Python requirements
+        cd /workspace/ComfyUI
+        if [ -f "requirements.txt" ]; then
+            echo "📦 Installing ComfyUI requirements..."
+            pip install -r requirements.txt 2>/dev/null || true
+        fi
+        
+        # Install ComfyUI Manager
+        echo "📦 Installing ComfyUI Manager..."
+        mkdir -p /workspace/ComfyUI/custom_nodes
+        cd /workspace/ComfyUI/custom_nodes
+        if git clone https://github.com/ltdrdata/ComfyUI-Manager.git; then
+            echo "✅ ComfyUI Manager cloned"
+            if [ -f "ComfyUI-Manager/requirements.txt" ]; then
+                echo "📦 Installing Manager requirements..."
+                pip install -r ComfyUI-Manager/requirements.txt 2>/dev/null || true
+            fi
+        else
+            echo "⚠️ Failed to install ComfyUI Manager"
+        fi
+        
+        # Setup model symlink
+        cd /workspace
+        if [ -e /workspace/ComfyUI/models ]; then
+            rm -rf /workspace/ComfyUI/models
+        fi
+        ln -sf /workspace/models /workspace/ComfyUI/models
+        echo "✅ Model symlink created"
+    else
+        echo "❌ Failed to install ComfyUI"
+        exit 1
+    fi
+else
+    echo "✅ ComfyUI already installed"
+    
+    # Ensure Manager is installed even if ComfyUI exists
+    if [ ! -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
+        echo "📦 Installing ComfyUI Manager..."
+        mkdir -p /workspace/ComfyUI/custom_nodes
+        cd /workspace/ComfyUI/custom_nodes
+        git clone https://github.com/ltdrdata/ComfyUI-Manager.git 2>/dev/null || true
+        if [ -f "ComfyUI-Manager/requirements.txt" ]; then
+            pip install -r ComfyUI-Manager/requirements.txt 2>/dev/null || true
+        fi
+    fi
+fi
+
 echo "✅ Environment prepared"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 EOF
