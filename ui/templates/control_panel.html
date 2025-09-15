@@ -1223,7 +1223,7 @@
 
                         function checkAndRedirect() {
                             attempts++;
-                            document.getElementById('status').textContent = \`Attempt \${attempts} of \${maxAttempts}...\`;
+                            document.getElementById('status').textContent = 'Attempt ' + attempts + ' of ' + maxAttempts + '...';
 
                             fetch('${url}')
                                 .then(response => {
@@ -1284,7 +1284,7 @@
                 await fetch('/api/stop', { method: 'POST' });
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
-                const username = document.getElementById('username').value || '{{ current_user }}';
+                const username = document.getElementById('username').value || {% if current_user %}'{{ current_user }}'{% else %}''{% endif %};
                 const response = await fetch('/api/start', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -1347,7 +1347,7 @@
         }, 5000);
         
         // Store current user globally for Google Drive sync
-        window.currentUser = '{{ current_user }}';
+        window.currentUser = {% if current_user %}'{{ current_user }}'{% else %}null{% endif %};
 
         // Make functions globally accessible for onclick handlers
         window.startComfyUI = startComfyUI;
