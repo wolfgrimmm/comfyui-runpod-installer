@@ -1,8 +1,9 @@
 #!/bin/bash
 
-# Sync models, workflows FROM Google Drive to ComfyUI
+# Download models, workflows FROM Google Drive to ComfyUI
+# Note: Using 'copy' instead of 'sync' to prevent deletion of local files
 echo "=========================================="
-echo "📥 Syncing from Google Drive"
+echo "📥 Downloading from Google Drive"
 echo "=========================================="
 
 # Check if rclone is configured
@@ -24,40 +25,52 @@ mkdir -p /workspace/ComfyUI/user/default/workflows
 mkdir -p /workspace/ComfyUI/output
 mkdir -p /workspace/ComfyUI/input
 
-echo "🔄 Syncing checkpoints..."
-rclone sync gdrive:ComfyUI/models/checkpoints /workspace/ComfyUI/models/checkpoints --progress
+# Optimized rclone settings for RunPod
+# --transfers: Number of parallel transfers (reduced from default 4)
+# --checkers: Number of checkers running in parallel (reduced from default 8)
+# --bwlimit: Bandwidth limit to prevent network saturation
+# --buffer-size: Per-transfer buffer size (reduced for memory efficiency)
+# --use-mmap: Use memory mapping for better memory efficiency
+# --ignore-existing: Skip files that already exist locally
+# --retries: Number of retries for failed transfers
+# --low-level-retries: Number of retries for low level errors
 
-echo "🔄 Syncing LoRAs..."
-rclone sync gdrive:ComfyUI/models/loras /workspace/ComfyUI/models/loras --progress
+RCLONE_FLAGS="--transfers 2 --checkers 2 --bwlimit 30M --buffer-size 16M --use-mmap --ignore-existing --retries 3 --low-level-retries 10 --progress"
 
-echo "🔄 Syncing VAE..."
-rclone sync gdrive:ComfyUI/models/vae /workspace/ComfyUI/models/vae --progress
+echo "📥 Downloading checkpoints (large files, limited bandwidth)..."
+rclone copy gdrive:ComfyUI/models/checkpoints /workspace/ComfyUI/models/checkpoints $RCLONE_FLAGS --bwlimit 20M
 
-echo "🔄 Syncing embeddings..."
-rclone sync gdrive:ComfyUI/models/embeddings /workspace/ComfyUI/models/embeddings --progress
+echo "📥 Downloading LoRAs..."
+rclone copy gdrive:ComfyUI/models/loras /workspace/ComfyUI/models/loras $RCLONE_FLAGS
 
-echo "🔄 Syncing ControlNet..."
-rclone sync gdrive:ComfyUI/models/controlnet /workspace/ComfyUI/models/controlnet --progress
+echo "📥 Downloading VAE..."
+rclone copy gdrive:ComfyUI/models/vae /workspace/ComfyUI/models/vae $RCLONE_FLAGS
 
-echo "🔄 Syncing upscale models..."
-rclone sync gdrive:ComfyUI/models/upscale_models /workspace/ComfyUI/models/upscale_models --progress
+echo "📥 Downloading embeddings..."
+rclone copy gdrive:ComfyUI/models/embeddings /workspace/ComfyUI/models/embeddings $RCLONE_FLAGS
 
-echo "🔄 Syncing workflows..."
-rclone sync gdrive:ComfyUI/workflows /workspace/ComfyUI/user/default/workflows --progress
+echo "📥 Downloading ControlNet..."
+rclone copy gdrive:ComfyUI/models/controlnet /workspace/ComfyUI/models/controlnet $RCLONE_FLAGS
 
-echo "🔄 Syncing input images..."
-rclone sync gdrive:ComfyUI/input /workspace/ComfyUI/input --progress
+echo "📥 Downloading upscale models..."
+rclone copy gdrive:ComfyUI/models/upscale_models /workspace/ComfyUI/models/upscale_models $RCLONE_FLAGS
 
-# Optional: sync previous outputs (might be large)
-read -p "Sync previous outputs from Google Drive? (y/n) " -n 1 -r
+echo "📥 Downloading workflows (small files, can use more transfers)..."
+rclone copy gdrive:ComfyUI/workflows /workspace/ComfyUI/user/default/workflows --transfers 4 --checkers 2 --buffer-size 8M --ignore-existing --progress
+
+echo "📥 Downloading input images..."
+rclone copy gdrive:ComfyUI/input /workspace/ComfyUI/input --transfers 4 --checkers 2 --buffer-size 8M --ignore-existing --progress
+
+# Optional: download previous outputs (might be large)
+read -p "Download previous outputs from Google Drive? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "🔄 Syncing outputs..."
-    rclone sync gdrive:ComfyUI/output /workspace/ComfyUI/output --progress
+    echo "📥 Downloading outputs (may be large, using conservative settings)..."
+    rclone copy gdrive:ComfyUI/output /workspace/ComfyUI/output --transfers 2 --checkers 2 --bwlimit 20M --buffer-size 16M --use-mmap --ignore-existing --progress
 fi
 
 echo ""
-echo "✅ Sync complete!"
+echo "✅ Download complete!"
 echo "📊 Storage used:"
 du -sh /workspace/ComfyUI/models/
 du -sh /workspace/ComfyUI/user/default/workflows/

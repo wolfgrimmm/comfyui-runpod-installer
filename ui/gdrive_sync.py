@@ -128,8 +128,14 @@ team_drive = {config_data.get('team_drive', '')}
             print(f"Error getting OAuth URL: {e}")
             return None
     
-    def sync_user_output(self, username, direction='to_gdrive'):
-        """Sync user's output folder with Google Drive"""
+    def sync_user_output(self, username, direction='to_gdrive', mode='copy'):
+        """Copy or sync user's output folder with Google Drive
+        
+        Args:
+            username: User to sync
+            direction: 'to_gdrive' or 'from_gdrive'
+            mode: 'copy' (safe, no deletions) or 'sync' (mirror, can delete)
+        """
         if not self.rclone_available:
             return False, "rclone not configured"
         
@@ -141,16 +147,31 @@ team_drive = {config_data.get('team_drive', '')}
         self.sync_status[username] = {
             'status': 'syncing',
             'direction': direction,
+            'mode': mode,
             'start_time': time.time()
         }
         
         try:
+            # Use copy by default (safe), sync only if explicitly requested
+            operation = 'copy' if mode == 'copy' else 'sync'
+            
             if direction == 'to_gdrive':
-                # Upload to Google Drive
-                cmd = ['rclone', 'sync', user_output, gdrive_path, '--progress']
+                # Upload to Google Drive with RunPod optimizations
+                cmd = ['rclone', operation, user_output, gdrive_path, 
+                       '--transfers', '2', '--checkers', '2', 
+                       '--bwlimit', '15M', '--buffer-size', '16M',
+                       '--use-mmap', '--ignore-existing',
+                       '--min-age', '10s', '--exclude', '*.tmp',
+                       '--exclude', '*.partial', '--retries', '3',
+                       '--low-level-retries', '10', '--progress']
             else:
-                # Download from Google Drive
-                cmd = ['rclone', 'sync', gdrive_path, user_output, '--progress']
+                # Download from Google Drive with RunPod optimizations  
+                cmd = ['rclone', operation, gdrive_path, user_output,
+                       '--transfers', '2', '--checkers', '2',
+                       '--bwlimit', '30M', '--buffer-size', '16M', 
+                       '--use-mmap', '--ignore-existing',
+                       '--retries', '3', '--low-level-retries', '10',
+                       '--progress']
             
             # Run sync in thread
             thread = threading.Thread(
@@ -160,7 +181,7 @@ team_drive = {config_data.get('team_drive', '')}
             thread.start()
             self.sync_threads[username] = thread
             
-            return True, f"Sync started for {username}"
+            return True, f"{operation.capitalize()} started for {username}"
         except Exception as e:
             self.sync_status[username] = {
                 'status': 'error',
@@ -196,11 +217,17 @@ team_drive = {config_data.get('team_drive', '')}
                 'end_time': time.time()
             }
     
-    def sync_all_users(self, users, direction='to_gdrive'):
-        """Sync all users' output folders"""
+    def sync_all_users(self, users, direction='to_gdrive', mode='copy'):
+        """Copy or sync all users' output folders
+        
+        Args:
+            users: List of users to sync
+            direction: 'to_gdrive' or 'from_gdrive'
+            mode: 'copy' (safe, no deletions) or 'sync' (mirror, can delete)
+        """
         results = {}
         for user in users:
-            success, message = self.sync_user_output(user, direction)
+            success, message = self.sync_user_output(user, direction, mode)
             results[user] = {'success': success, 'message': message}
         return results
     
@@ -337,16 +364,20 @@ while true; do
                 fi
             fi
             
-            echo "Syncing $username outputs to Google Drive..."
-            # Use incremental sync with bandwidth limit and minimal checks
-            rclone sync "$user_dir" "{self.gdrive_remote}:{self.company_drive_root}/outputs/$username" \\
+            echo "Uploading $username outputs to Google Drive..."
+            # Optimized for RunPod: reduced parallel transfers and bandwidth to prevent overload
+            rclone copy "$user_dir" "{self.gdrive_remote}:{self.company_drive_root}/outputs/$username" \\
                 --exclude "*.tmp" \\
                 --exclude "*.partial" \\
-                --transfers 4 \\
+                --transfers 2 \\
                 --checkers 2 \\
-                --bwlimit 50M \\
-                --fast-list \\
-                --min-age 5s
+                --bwlimit 15M \\
+                --buffer-size 16M \\
+                --use-mmap \\
+                --min-age 10s \\
+                --ignore-existing \\
+                --retries 3 \\
+                --low-level-retries 10
             
             # Mark last sync time
             touch "$LAST_SYNC_FILE.$username"
