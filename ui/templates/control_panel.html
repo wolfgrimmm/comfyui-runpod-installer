@@ -891,7 +891,7 @@
     <script>
         let checkInterval = null;
         let checkAttempts = 0;
-        
+
         // Enable/disable Launch button based on user selection
         document.addEventListener('DOMContentLoaded', () => {
             const usernameSelect = document.getElementById('username');
@@ -1077,16 +1077,19 @@
             } catch (error) {
                 showLoading(false);
                 showToast('Error: ' + error.message, 'error');
-                primaryBtn.textContent = 'Launch ComfyUI';
-                primaryBtn.disabled = false;
+                const primaryBtn = document.getElementById('primaryBtn');
+                if (primaryBtn) {
+                    primaryBtn.textContent = 'Launch ComfyUI';
+                    primaryBtn.disabled = false;
+                }
             }
         }
         
         async function stopComfyUI() {
             if (!confirm('Stop ComfyUI? All unsaved work will be lost.')) return;
-            
+
             showLoading(true, 'Stopping ComfyUI...');
-            
+
             try {
                 const response = await fetch('/api/stop', {
                     method: 'POST'
@@ -1186,7 +1189,7 @@
         
         async function restartService() {
             showLoading(true, 'Restarting ComfyUI...');
-            
+
             try {
                 await fetch('/api/stop', { method: 'POST' });
                 await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1255,6 +1258,14 @@
         
         // Store current user globally for Google Drive sync
         window.currentUser = '{{ current_user }}';
+
+        // Make functions globally accessible for onclick handlers
+        window.startComfyUI = startComfyUI;
+        window.stopComfyUI = stopComfyUI;
+        window.openComfyUI = openComfyUI;
+        window.openJupyterLab = openJupyterLab;
+        window.openDocs = openDocs;
+        window.restartService = restartService;
     </script>
 </body>
 </html>
