@@ -989,18 +989,34 @@
                     // Change button text but keep disabled
                     primaryBtn.textContent = 'Initializing...';
                     
-                    // Start checking for readiness
+                    // Start real-time progress monitoring
+                    const eventSource = new EventSource('/api/startup-stream');
+
+                    eventSource.onmessage = (event) => {
+                        const progress = JSON.parse(event.data);
+
+                        // Update loading text and progress
+                        document.getElementById('loadingText').textContent = progress.message || 'Starting ComfyUI...';
+                        document.getElementById('loadingProgress').textContent = `${progress.percent}%`;
+
+                        // Show detailed status
+                        if (progress.stage === 'importing') {
+                            document.getElementById('loadingSubtext').textContent = 'Loading custom nodes...';
+                        } else if (progress.stage === 'starting_server') {
+                            document.getElementById('loadingSubtext').textContent = 'Starting web server...';
+                        } else if (progress.stage === 'ready') {
+                            eventSource.close();
+                            // Continue with original ready logic below
+                        }
+                    };
+
+                    eventSource.onerror = () => {
+                        eventSource.close();
+                    };
+
+                    // Also check status periodically as backup
                     checkInterval = setInterval(async () => {
                         checkAttempts++;
-                        const maxAttempts = 160;  // 4 minutes (160 * 1.5 seconds)
-                        const progress = Math.min(95, Math.round((checkAttempts / maxAttempts) * 100));
-                        const elapsedMinutes = Math.floor(checkAttempts * 1.5 / 60);
-                        const elapsedSeconds = Math.round(checkAttempts * 1.5) % 60;
-                        const timeText = elapsedMinutes > 0 ?
-                            `${elapsedMinutes}m ${elapsedSeconds}s` :
-                            `${elapsedSeconds}s`;
-                        document.getElementById('loadingProgress').textContent =
-                            `${progress}% • ${timeText} elapsed`;
 
                         try {
                             const statusResponse = await fetch('/api/status');
@@ -1063,13 +1079,8 @@
                                     startTime = statusData.start_time * 1000;
                                     updateUptime();
                                 }
-                            } else if (checkAttempts >= 160) {  // 4 minutes timeout
-                                clearInterval(checkInterval);
-                                showLoading(false);
-                                showToast('ComfyUI startup timed out. Please refresh the page to check status.', 'error');
-                                primaryBtn.textContent = 'Launch ComfyUI';
-                                primaryBtn.disabled = false;
                             }
+                            // No fixed timeout - ComfyUI will start when it's ready!
                         } catch (error) {
                             console.error('Status check error:', error);
                         }

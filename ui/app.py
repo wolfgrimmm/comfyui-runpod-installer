@@ -4,12 +4,14 @@ ComfyUI Control Panel - Modern UI for user selection and system management
 Single user per pod model with resource monitoring
 """
 
-from flask import Flask, render_template, request, jsonify, redirect
+from flask import Flask, render_template, request, jsonify, redirect, Response
 import os
 import subprocess
 import json
 import time
 import psutil
+import threading
+import queue
 from pathlib import Path
 from datetime import datetime, timedelta
 from gdrive_sync import GDriveSync
@@ -38,6 +40,9 @@ class ComfyUIManager:
         self.auto_update = False  # Not used but kept for compatibility
         self.gpu_info = None
         self.hourly_rate = float(os.environ.get('HOURLY_RATE', '0.74'))  # Default RunPod rate
+        self.startup_logs = queue.Queue()  # Store startup logs
+        self.startup_progress = {"stage": "idle", "message": "", "percent": 0}
+        self.log_thread = None
         self.init_system()
         self.load_user_stats()
     
@@ -105,6 +110,51 @@ class ComfyUIManager:
         os.makedirs(f"{WORKFLOWS_BASE}/{username}", exist_ok=True)
         print(f"Created folders for user: {username}")
     
+    def monitor_startup_logs(self):
+        """Monitor ComfyUI startup logs in a separate thread"""
+        if not self.comfyui_process:
+            return
+
+        def read_output():
+            loaded_nodes = 0
+            while self.comfyui_process and self.comfyui_process.poll() is None:
+                try:
+                    line = self.comfyui_process.stdout.readline()
+                    if not line:
+                        break
+
+                    line = line.decode('utf-8', errors='ignore').strip()
+                    if not line:
+                        continue
+
+                    # Parse progress from ComfyUI output
+                    if "Loading" in line and "custom nodes" in line.lower():
+                        self.startup_progress = {"stage": "loading_nodes", "message": "Loading custom nodes...", "percent": 15}
+                    elif "Importing" in line or "import times" in line.lower():
+                        loaded_nodes += 1
+                        percent = min(75, 15 + loaded_nodes)  # Progress from 15% to 75%
+                        node_name = line.split(":")[-1].strip() if ":" in line else line[:50]
+                        self.startup_progress = {"stage": "importing", "message": f"Loading: {node_name}", "percent": percent}
+                    elif "Starting server" in line or "0.0.0.0:8188" in line:
+                        self.startup_progress = {"stage": "starting_server", "message": "Starting web server...", "percent": 85}
+                    elif "To see the GUI go to" in line or "ComfyUI is running" in line:
+                        self.startup_progress = {"stage": "ready", "message": "ComfyUI is ready!", "percent": 100}
+                    elif "error" in line.lower() and "import" in line.lower():
+                        # Don't fail on import errors, some nodes might be optional
+                        self.startup_progress = {"stage": "importing", "message": f"Skipping failed node...", "percent": self.startup_progress.get('percent', 50)}
+                    elif "Total time taken" in line or "Startup complete" in line:
+                        self.startup_progress = {"stage": "finalizing", "message": "Finalizing startup...", "percent": 95}
+                except Exception as e:
+                    print(f"Error reading startup log: {e}")
+                    break
+
+            # If we exit the loop and haven't marked as ready, check if it's actually ready
+            if self.startup_progress.get('stage') != 'ready' and self.is_comfyui_ready():
+                self.startup_progress = {"stage": "ready", "message": "ComfyUI is ready!", "percent": 100}
+
+        self.log_thread = threading.Thread(target=read_output, daemon=True)
+        self.log_thread.start()
+
     def setup_symlinks(self, username):
         """Setup ComfyUI symlinks to user folders"""
         # Define paths
@@ -185,16 +235,24 @@ class ComfyUIManager:
             else:
                 cmd = [script_path]
             
+            # Reset startup progress
+            self.startup_progress = {"stage": "starting", "message": "Launching ComfyUI process...", "percent": 5}
+
             self.comfyui_process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.STDOUT,  # Combine stderr with stdout for better logging
                 env={**os.environ, "COMFYUI_USER": username},
-                cwd="/workspace/ComfyUI"
+                cwd="/workspace/ComfyUI",
+                bufsize=1,  # Line buffered
+                universal_newlines=False  # We'll decode manually
             )
-            
-            # Wait for ComfyUI to actually start listening
-            max_wait = 90  # Increased to 90 seconds for full initialization on RunPod
+
+            # Start monitoring thread
+            self.monitor_startup_logs()
+
+            # Wait for ComfyUI to actually start - no fixed timeout!
+            max_wait = 600  # 10 minutes max (for extremely heavy setups)
             for i in range(max_wait):
                 time.sleep(1)
                 
@@ -203,51 +261,28 @@ class ComfyUIManager:
                     stderr = self.comfyui_process.stderr.read().decode() if self.comfyui_process.stderr else ""
                     return False, f"ComfyUI process died: {stderr[:200]}"
                 
-                # Check if port is listening
-                if self.is_comfyui_running():
-                    # More thorough check - try to actually get a valid response
-                    import urllib.request
-                    import urllib.error
-                    consecutive_success = 0
-                    required_success = 3  # Need 3 consecutive successful checks
-                    
-                    for retry in range(5):
-                        try:
-                            response = urllib.request.urlopen('http://127.0.0.1:8188', timeout=2)
-                            if response.getcode() in [200, 301, 302]:
-                                consecutive_success += 1
-                                if consecutive_success >= required_success:
-                                    # ComfyUI is consistently responding
-                                    print(f"ComfyUI fully initialized after {i+1} seconds")
-                                    self.start_time = time.time()
-                                    # Save start time to file
-                                    with open(START_TIME_FILE, 'w') as f:
-                                        f.write(str(self.start_time))
-                                    
-                                    # Log session start
-                                    self.session_start = self.start_time
-                                    self.log_session_start(username)
-                                    
-                                    return True, "ComfyUI started successfully"
-                            time.sleep(0.5)
-                        except urllib.error.HTTPError as e:
-                            if e.code in [301, 302]:  # Redirects are OK
-                                consecutive_success += 1
-                                if consecutive_success >= required_success:
-                                    print(f"ComfyUI fully initialized after {i+1} seconds")
-                                    self.start_time = time.time()
-                                    # Save start time to file
-                                    with open(START_TIME_FILE, 'w') as f:
-                                        f.write(str(self.start_time))
-                                    
-                                    # Log session start
-                                    self.session_start = self.start_time
-                                    self.log_session_start(username)
-                                    
-                                    return True, "ComfyUI started successfully"
-                        except:
-                            consecutive_success = 0  # Reset on failure
-                            time.sleep(0.5)
+                # Check startup progress
+                if self.startup_progress.get('stage') == 'ready' or self.is_comfyui_ready():
+                    # ComfyUI is ready!
+                    print(f"ComfyUI fully initialized after {i+1} seconds")
+                    self.start_time = time.time()
+                    # Save start time to file
+                    with open(START_TIME_FILE, 'w') as f:
+                        f.write(str(self.start_time))
+
+                    # Log session start
+                    self.session_start = self.start_time
+                    self.log_session_start(username)
+
+                    # Ensure progress shows ready
+                    self.startup_progress = {"stage": "ready", "message": "ComfyUI is ready!", "percent": 100}
+
+                    return True, "ComfyUI started successfully"
+
+                # Update progress message with elapsed time if still starting
+                if i % 5 == 0 and self.startup_progress.get('stage') not in ['ready', 'failed']:
+                    current_msg = self.startup_progress.get('message', 'Starting...')
+                    self.startup_progress['message'] = f"{current_msg} ({i}s elapsed)"
                 
                 # Show progress
                 if i % 5 == 0:
@@ -584,7 +619,33 @@ def stop_comfyui():
 @app.route('/api/status')
 def get_status():
     """Get current status"""
-    return jsonify(manager.get_status())
+    status = manager.get_status()
+    # Add startup progress to status
+    status['startup_progress'] = manager.startup_progress
+    return jsonify(status)
+
+@app.route('/api/startup-stream')
+def startup_stream():
+    """Stream startup progress via Server-Sent Events"""
+    def generate():
+        last_progress = None
+        while True:
+            # Get current progress
+            progress = manager.startup_progress.copy()
+
+            # Only send if changed
+            if progress != last_progress:
+                data = json.dumps(progress)
+                yield f"data: {data}\n\n"
+                last_progress = progress
+
+            # Stop streaming once ready or failed
+            if progress.get('stage') in ['ready', 'failed']:
+                break
+
+            time.sleep(0.5)  # Check every 500ms
+
+    return Response(generate(), mimetype='text/event-stream')
 
 @app.route('/api/add_user', methods=['POST'])
 def add_user():
