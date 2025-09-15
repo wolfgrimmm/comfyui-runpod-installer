@@ -194,7 +194,7 @@ class ComfyUIManager:
             )
             
             # Wait for ComfyUI to actually start listening
-            max_wait = 60  # Increased to 60 seconds for full initialization
+            max_wait = 90  # Increased to 90 seconds for full initialization on RunPod
             for i in range(max_wait):
                 time.sleep(1)
                 

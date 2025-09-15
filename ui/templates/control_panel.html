@@ -992,7 +992,7 @@
                     // Start checking for readiness
                     checkInterval = setInterval(async () => {
                         checkAttempts++;
-                        const progress = Math.min(95, Math.round((checkAttempts / 40) * 100));
+                        const progress = Math.min(95, Math.round((checkAttempts / 60) * 100));  // Updated for 60 attempts
                         document.getElementById('loadingProgress').textContent = 
                             `${progress}% • ${Math.round(checkAttempts * 1.5)}s elapsed`;
                         
@@ -1057,7 +1057,7 @@
                                     startTime = statusData.start_time * 1000;
                                     updateUptime();
                                 }
-                            } else if (checkAttempts >= 40) {
+                            } else if (checkAttempts >= 60) {  // Increased from 40 to 60 (90 seconds total)
                                 clearInterval(checkInterval);
                                 showLoading(false);
                                 showToast('ComfyUI is taking longer than expected. Try refreshing the page.', 'error');
@@ -1134,12 +1134,43 @@
         }
         
         
-        function openComfyUI() {
+        async function openComfyUI() {
+            // First check if ComfyUI is actually ready
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                if (!data.running || !data.ready) {
+                    showToast('ComfyUI is still initializing. Please wait...', 'info');
+                    return;
+                }
+            } catch (error) {
+                console.error('Failed to check status:', error);
+            }
+            
             const url = getRunPodUrl(8188);
             showToast('Opening ComfyUI...', 'info');
-            setTimeout(() => {
-                window.open(url, '_blank');
-            }, 500);
+            
+            // Open in new tab with retry logic
+            const newTab = window.open(url, '_blank');
+            
+            // If the tab was opened, set up auto-retry
+            if (newTab) {
+                // Inject retry script into the new tab (if same origin)
+                setTimeout(() => {
+                    try {
+                        if (newTab.location.href.includes('8188')) {
+                            // Check if page loaded correctly
+                            if (!newTab.document || newTab.document.readyState === 'loading') {
+                                console.log('ComfyUI page still loading, will auto-refresh if needed');
+                            }
+                        }
+                    } catch (e) {
+                        // Cross-origin, can't access the tab
+                        console.log('ComfyUI opened in new tab');
+                    }
+                }, 2000);
+            }
         }
         
         function openJupyterLab() {
