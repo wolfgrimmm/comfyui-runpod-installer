@@ -40,3 +40,4 @@ rclone.conf
 .rclone/
 .config/rclone/
 service_account.json
+.github_token
