@@ -286,7 +286,7 @@ class ComfyUIManager:
         # First check our process handle
         if self.comfyui_process and self.comfyui_process.poll() is None:
             return True
-        
+
         # Check if port 8188 is actually listening
         import socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -296,13 +296,32 @@ class ComfyUIManager:
             return result == 0
         except:
             return False
+
+    def is_comfyui_ready(self):
+        """Check if ComfyUI is fully ready to accept connections"""
+        if not self.is_comfyui_running():
+            return False
+
+        # Try to actually connect to ComfyUI's HTTP endpoint
+        import urllib.request
+        import urllib.error
+        try:
+            with urllib.request.urlopen('http://127.0.0.1:8188/', timeout=2) as response:
+                # If we get any response, ComfyUI is ready
+                return response.status == 200
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
+            # ComfyUI is running but not yet accepting HTTP requests
+            return False
+        except:
+            return False
     
     def get_status(self):
         """Get current status"""
         is_running = self.is_comfyui_running()
+        is_ready = self.is_comfyui_ready() if is_running else False
         return {
             "running": is_running,
-            "ready": is_running,  # Additional ready check
+            "ready": is_ready,  # Now properly checks if HTTP is responding
             "current_user": self.current_user,
             "users": self.users,
             "uptime": self.get_uptime() if is_running and self.start_time else "0m",
