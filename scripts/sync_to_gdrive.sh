@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Upload outputs and workflows TO Google Drive
-# Note: Using 'copy' instead of 'sync' to prevent deletion of files on Google Drive
+# Sync outputs and workflows TO Google Drive
+# Note: Using 'sync' to make Google Drive match local exactly (will delete extra files on Drive)
 echo "=========================================="
-echo "📤 Uploading to Google Drive"
+echo "📤 Syncing to Google Drive (Full Clone)"
 echo "=========================================="
 
 # Check if rclone is configured
@@ -18,19 +18,20 @@ fi
 # Lower bandwidth and parallel transfers to avoid saturating the connection
 # --min-age: Only upload files older than 10s (avoid uploading files being written)
 # --exclude: Skip temporary and partial files
-RCLONE_FLAGS="--transfers 2 --checkers 2 --bwlimit 15M --buffer-size 16M --use-mmap --ignore-existing --min-age 10s --exclude '*.tmp' --exclude '*.partial' --progress"
+# Note: Removed --ignore-existing since sync handles this better
+RCLONE_FLAGS="--transfers 2 --checkers 2 --bwlimit 15M --buffer-size 16M --use-mmap --min-age 10s --exclude '*.tmp' --exclude '*.partial' --progress"
 
-echo "📤 Uploading outputs to Google Drive (bandwidth limited)..."
-rclone copy /workspace/ComfyUI/output gdrive:ComfyUI/output $RCLONE_FLAGS
+echo "📤 Syncing outputs to Google Drive (bandwidth limited)..."
+rclone sync /workspace/ComfyUI/output gdrive:ComfyUI/output $RCLONE_FLAGS
 
-echo "📤 Uploading workflows to Google Drive..."
-rclone copy /workspace/ComfyUI/user/default/workflows gdrive:ComfyUI/workflows --transfers 4 --buffer-size 8M --ignore-existing --progress
+echo "📤 Syncing workflows to Google Drive..."
+rclone sync /workspace/ComfyUI/user/default/workflows gdrive:ComfyUI/workflows --transfers 4 --buffer-size 8M --progress
 
-echo "📤 Uploading input images to Google Drive..."
-rclone copy /workspace/ComfyUI/input gdrive:ComfyUI/input $RCLONE_FLAGS
+echo "📤 Syncing input images to Google Drive..."
+rclone sync /workspace/ComfyUI/input gdrive:ComfyUI/input $RCLONE_FLAGS
 
 echo ""
-echo "✅ Upload complete!"
-echo "📊 Files uploaded:"
+echo "✅ Sync complete!"
+echo "📊 Files synced:"
 echo "Outputs: $(find /workspace/ComfyUI/output -type f | wc -l) files"
 echo "Workflows: $(find /workspace/ComfyUI/user/default/workflows -name "*.json" | wc -l) workflows"
