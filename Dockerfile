@@ -43,6 +43,14 @@ if [ -f "/workspace/.config/rclone/rclone.conf" ] && [ ! -f "/root/.config/rclon
     if [ -f "/workspace/.config/rclone/service_account.json" ]; then
         cp /workspace/.config/rclone/service_account.json /root/.config/rclone/
     fi
+
+    # Fix broken config that points to non-existent service account
+    if grep -q "service_account_file" /root/.config/rclone/rclone.conf && [ ! -f "/root/.config/rclone/service_account.json" ]; then
+        echo "🔧 Fixing broken service account reference in config..."
+        sed -i '/service_account_file/d' /root/.config/rclone/rclone.conf
+        sed -i '/service_account_file/d' /workspace/.config/rclone/rclone.conf
+    fi
+
     echo "✅ Rclone config restored from workspace"
 fi
 
@@ -170,15 +178,15 @@ if [ -n "$RCLONE_TOKEN" ]; then
     mkdir -p /workspace/.config/rclone
     mkdir -p /root/.config/rclone
 
-    # Check if token has team_drive field
+    # Parse the token to get team_drive if it exists
     if echo "$RCLONE_TOKEN" | grep -q '"team_drive"'; then
-        TEAM_DRIVE=$(echo "$RCLONE_TOKEN" | grep -o '"team_drive"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
+        TEAM_DRIVE=$(echo "$RCLONE_TOKEN" | sed -n 's/.*"team_drive"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
     else
         TEAM_DRIVE=""
     fi
 
-    # Create rclone config with token
-    cat > /workspace/.config/rclone/rclone.conf << RCLONE_EOF
+    # Create rclone config with JUST token, no service account
+    cat > /root/.config/rclone/rclone.conf << RCLONE_EOF
 [gdrive]
 type = drive
 scope = drive
@@ -187,7 +195,8 @@ team_drive = $TEAM_DRIVE
 
 RCLONE_EOF
 
-    cp /workspace/.config/rclone/rclone.conf /root/.config/rclone/rclone.conf
+    # Also save to workspace for persistence
+    cp /root/.config/rclone/rclone.conf /workspace/.config/rclone/rclone.conf
 
     # Test and mark as configured
     if rclone lsd gdrive: 2>/dev/null; then
