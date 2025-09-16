@@ -282,9 +282,10 @@ RCLONE_EOF
         
         # Kill any existing sync processes first
         pkill -f "rclone_sync_loop" 2>/dev/null || true
-        
-        # Create a sync script with unique identifier for process management
-        cat > /tmp/rclone_sync_loop.sh << 'SYNC_SCRIPT'
+
+        # Store sync script in persistent location so it survives restarts
+        mkdir -p /workspace/.sync
+        cat > /workspace/.sync/rclone_sync_loop.sh << 'SYNC_SCRIPT'
 #!/bin/bash
 while true; do
     sleep 60  # Sync every minute
@@ -365,12 +366,16 @@ while true; do
     echo "  Sync cycle completed" >> /tmp/rclone_sync.log
 done
 SYNC_SCRIPT
+        chmod +x /workspace/.sync/rclone_sync_loop.sh
+
+        # Also copy to /tmp for immediate use
+        cp /workspace/.sync/rclone_sync_loop.sh /tmp/rclone_sync_loop.sh
         chmod +x /tmp/rclone_sync_loop.sh
-        
-        # Start auto-sync in background with unique process name
-        /tmp/rclone_sync_loop.sh &
-        
-        echo "✅ Auto-sync started (every 60 seconds)"
+
+        # Start auto-sync in background
+        /workspace/.sync/rclone_sync_loop.sh &
+
+        echo "✅ Auto-sync started (every 60 seconds, persists across restarts)"
     else
         echo "❌ Google Drive configuration failed!"
         echo "   Error details:"
@@ -404,13 +409,16 @@ fi
 
 if [ -f "/workspace/.gdrive_configured" ]; then
     echo "✅ Google Drive already configured"
-    
-    # Check if auto-sync is running, start if not
-    if ! pgrep -f "rclone_sync_loop" > /dev/null 2>&1; then
-        echo "🔄 Starting auto-sync..."
-        
-        # Create the same sync script to ensure consistency
-        cat > /tmp/rclone_sync_loop.sh << 'SYNC_SCRIPT'
+
+    # ALWAYS restart sync on pod start (it doesn't persist across restarts)
+    echo "🔄 Starting auto-sync..."
+
+    # Kill any existing sync first
+    pkill -f "rclone_sync_loop" 2>/dev/null || true
+
+    # Store sync script in persistent location
+    mkdir -p /workspace/.sync
+    cat > /workspace/.sync/rclone_sync_loop.sh << 'SYNC_SCRIPT'
 #!/bin/bash
 while true; do
     sleep 60  # Sync every minute
@@ -491,15 +499,16 @@ while true; do
     echo "  Sync cycle completed" >> /tmp/rclone_sync.log
 done
 SYNC_SCRIPT
-        chmod +x /tmp/rclone_sync_loop.sh
-        
-        # Start auto-sync in background with unique process name
-        /tmp/rclone_sync_loop.sh &
-        
-        echo "✅ Auto-sync started"
-    else
-        echo "✅ Auto-sync already running"
-    fi
+    chmod +x /workspace/.sync/rclone_sync_loop.sh
+
+    # Also copy to /tmp for immediate use
+    cp /workspace/.sync/rclone_sync_loop.sh /tmp/rclone_sync_loop.sh
+    chmod +x /tmp/rclone_sync_loop.sh
+
+    # Start auto-sync in background
+    /workspace/.sync/rclone_sync_loop.sh &
+
+    echo "✅ Auto-sync started (will persist across restarts)"
 fi
 
 echo "✅ Environment prepared"
