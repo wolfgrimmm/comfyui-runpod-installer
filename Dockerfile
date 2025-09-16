@@ -35,6 +35,17 @@ fi
 echo "🚀 RunPod ComfyUI Installer Initializing..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+# Restore rclone config from workspace if it exists
+if [ -f "/workspace/.config/rclone/rclone.conf" ] && [ ! -f "/root/.config/rclone/rclone.conf" ]; then
+    echo "📋 Restoring rclone config from workspace..."
+    mkdir -p /root/.config/rclone
+    cp /workspace/.config/rclone/rclone.conf /root/.config/rclone/
+    if [ -f "/workspace/.config/rclone/service_account.json" ]; then
+        cp /workspace/.config/rclone/service_account.json /root/.config/rclone/
+    fi
+    echo "✅ Rclone config restored from workspace"
+fi
+
 # Configure git (only if not done)
 if ! git config --global --get user.email > /dev/null 2>&1; then
     git config --global --add safe.directory '*'
@@ -147,13 +158,50 @@ echo "🔍 Checking for Google Drive configuration..."
 # RunPod prefixes secrets with RUNPOD_SECRET_
 if [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
     export GOOGLE_SERVICE_ACCOUNT="$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT"
-    echo "   Found RunPod secret (${#GOOGLE_SERVICE_ACCOUNT} characters)"
+    echo "   Found RunPod secret: SERVICE_ACCOUNT (${#GOOGLE_SERVICE_ACCOUNT} characters)"
+elif [ -n "$RUNPOD_SECRET_RCLONE_TOKEN" ]; then
+    export RCLONE_TOKEN="$RUNPOD_SECRET_RCLONE_TOKEN"
+    echo "   Found RunPod secret: RCLONE_TOKEN"
 fi
 
-echo "   GOOGLE_SERVICE_ACCOUNT variable: ${GOOGLE_SERVICE_ACCOUNT:0:50}..." 
+# Option 1: OAuth Token (simplest for users)
+if [ -n "$RCLONE_TOKEN" ] && [ ! -f "/workspace/.gdrive_configured" ]; then
+    echo "🔧 Setting up Google Drive with OAuth token..."
+    mkdir -p /workspace/.config/rclone
+    mkdir -p /root/.config/rclone
 
+    # Check if token has team_drive field
+    if echo "$RCLONE_TOKEN" | grep -q '"team_drive"'; then
+        TEAM_DRIVE=$(echo "$RCLONE_TOKEN" | grep -o '"team_drive"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
+    else
+        TEAM_DRIVE=""
+    fi
+
+    # Create rclone config with token
+    cat > /workspace/.config/rclone/rclone.conf << RCLONE_EOF
+[gdrive]
+type = drive
+scope = drive
+token = $RCLONE_TOKEN
+team_drive = $TEAM_DRIVE
+
+RCLONE_EOF
+
+    cp /workspace/.config/rclone/rclone.conf /root/.config/rclone/rclone.conf
+
+    # Test and mark as configured
+    if rclone lsd gdrive: 2>/dev/null; then
+        touch /workspace/.gdrive_configured
+        echo "configured" > /workspace/.gdrive_status
+        echo "✅ Google Drive configured with OAuth token!"
+    else
+        echo "❌ Failed to configure with OAuth token"
+    fi
+fi
+
+# Option 2: Service Account (enterprise users)
 if [ -n "$GOOGLE_SERVICE_ACCOUNT" ] && [ ! -f "/workspace/.gdrive_configured" ]; then
-    echo "🔧 Setting up automatic Google Drive sync..."
+    echo "🔧 Setting up Google Drive with Service Account..."
     echo "   Service account JSON detected (${#GOOGLE_SERVICE_ACCOUNT} characters)"
     
     # Create rclone config directories
