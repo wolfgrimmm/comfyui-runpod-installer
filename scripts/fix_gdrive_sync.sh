@@ -113,11 +113,10 @@ while true; do
     sleep 60  # Sync every minute
     echo "[$(date)] Starting sync cycle..." >> /tmp/rclone_sync.log
 
-    # Sync OUTPUT directory
-    OUTPUT_DIR=$(resolve_dir "/workspace/ComfyUI/output")
-    [ -z "$OUTPUT_DIR" ] && OUTPUT_DIR=$(resolve_dir "/workspace/output")
+    # Sync OUTPUT directory - ALWAYS use /workspace/output (the real location)
+    OUTPUT_DIR="/workspace/output"
 
-    if [ -n "$OUTPUT_DIR" ] && [ -d "$OUTPUT_DIR" ]; then
+    if [ -d "$OUTPUT_DIR" ]; then
         echo "  Syncing output from: $OUTPUT_DIR" >> /tmp/rclone_sync.log
 
         # Count files to sync
@@ -139,11 +138,10 @@ while true; do
         echo "  Warning: No output directory found" >> /tmp/rclone_sync.log
     fi
 
-    # Sync INPUT directory
-    INPUT_DIR=$(resolve_dir "/workspace/ComfyUI/input")
-    [ -z "$INPUT_DIR" ] && INPUT_DIR=$(resolve_dir "/workspace/input")
+    # Sync INPUT directory - ALWAYS use /workspace/input (the real location)
+    INPUT_DIR="/workspace/input"
 
-    if [ -n "$INPUT_DIR" ] && [ -d "$INPUT_DIR" ]; then
+    if [ -d "$INPUT_DIR" ]; then
         echo "  Syncing input from: $INPUT_DIR" >> /tmp/rclone_sync.log
         # Use copy for inputs (don't delete from Drive)
         rclone copy "$INPUT_DIR" "gdrive:ComfyUI-Output/input" \
@@ -154,11 +152,10 @@ while true; do
             --log-level ERROR >> /tmp/rclone_sync.log 2>&1
     fi
 
-    # Sync WORKFLOWS directory
-    WORKFLOWS_DIR=$(resolve_dir "/workspace/ComfyUI/user/workflows")
-    [ -z "$WORKFLOWS_DIR" ] && WORKFLOWS_DIR=$(resolve_dir "/workspace/workflows")
+    # Sync WORKFLOWS directory - ALWAYS use /workspace/workflows (the real location)
+    WORKFLOWS_DIR="/workspace/workflows"
 
-    if [ -n "$WORKFLOWS_DIR" ] && [ -d "$WORKFLOWS_DIR" ]; then
+    if [ -d "$WORKFLOWS_DIR" ]; then
         echo "  Syncing workflows from: $WORKFLOWS_DIR" >> /tmp/rclone_sync.log
         rclone sync "$WORKFLOWS_DIR" "gdrive:ComfyUI-Output/workflows" \
             --transfers 4 \

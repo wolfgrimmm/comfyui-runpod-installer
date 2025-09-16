@@ -305,11 +305,9 @@ while true; do
         fi
     }
 
-    # Sync OUTPUT directory
-    OUTPUT_DIR=$(resolve_dir "/workspace/ComfyUI/output")
-    if [ -z "$OUTPUT_DIR" ]; then
-        OUTPUT_DIR=$(resolve_dir "/workspace/output")
-    fi
+    # Sync OUTPUT directory - ALWAYS use /workspace/output (the real location)
+    # ComfyUI/output should just be a symlink pointing there
+    OUTPUT_DIR="/workspace/output"
 
     if [ -n "$OUTPUT_DIR" ] && [ -d "$OUTPUT_DIR" ]; then
         echo "  Syncing output from: $OUTPUT_DIR" >> /tmp/rclone_sync.log
@@ -325,11 +323,8 @@ while true; do
         echo "  Warning: No output directory found" >> /tmp/rclone_sync.log
     fi
 
-    # Sync INPUT directory
-    INPUT_DIR=$(resolve_dir "/workspace/ComfyUI/input")
-    if [ -z "$INPUT_DIR" ]; then
-        INPUT_DIR=$(resolve_dir "/workspace/input")
-    fi
+    # Sync INPUT directory - ALWAYS use /workspace/input (the real location)
+    INPUT_DIR="/workspace/input"
 
     if [ -n "$INPUT_DIR" ] && [ -d "$INPUT_DIR" ]; then
         echo "  Syncing input from: $INPUT_DIR" >> /tmp/rclone_sync.log
@@ -341,11 +336,8 @@ while true; do
             --no-update-modtime >> /tmp/rclone_sync.log 2>&1
     fi
 
-    # Sync WORKFLOWS directory
-    WORKFLOWS_DIR=$(resolve_dir "/workspace/ComfyUI/user/workflows")
-    if [ -z "$WORKFLOWS_DIR" ]; then
-        WORKFLOWS_DIR=$(resolve_dir "/workspace/workflows")
-    fi
+    # Sync WORKFLOWS directory - ALWAYS use /workspace/workflows (the real location)
+    WORKFLOWS_DIR="/workspace/workflows"
 
     if [ -n "$WORKFLOWS_DIR" ] && [ -d "$WORKFLOWS_DIR" ]; then
         echo "  Syncing workflows from: $WORKFLOWS_DIR" >> /tmp/rclone_sync.log
@@ -435,11 +427,9 @@ while true; do
         fi
     }
 
-    # Sync OUTPUT directory
-    OUTPUT_DIR=$(resolve_dir "/workspace/ComfyUI/output")
-    if [ -z "$OUTPUT_DIR" ]; then
-        OUTPUT_DIR=$(resolve_dir "/workspace/output")
-    fi
+    # Sync OUTPUT directory - ALWAYS use /workspace/output (the real location)
+    # ComfyUI/output should just be a symlink pointing there
+    OUTPUT_DIR="/workspace/output"
 
     if [ -n "$OUTPUT_DIR" ] && [ -d "$OUTPUT_DIR" ]; then
         echo "  Syncing output from: $OUTPUT_DIR" >> /tmp/rclone_sync.log
@@ -455,11 +445,8 @@ while true; do
         echo "  Warning: No output directory found" >> /tmp/rclone_sync.log
     fi
 
-    # Sync INPUT directory
-    INPUT_DIR=$(resolve_dir "/workspace/ComfyUI/input")
-    if [ -z "$INPUT_DIR" ]; then
-        INPUT_DIR=$(resolve_dir "/workspace/input")
-    fi
+    # Sync INPUT directory - ALWAYS use /workspace/input (the real location)
+    INPUT_DIR="/workspace/input"
 
     if [ -n "$INPUT_DIR" ] && [ -d "$INPUT_DIR" ]; then
         echo "  Syncing input from: $INPUT_DIR" >> /tmp/rclone_sync.log
@@ -471,11 +458,8 @@ while true; do
             --no-update-modtime >> /tmp/rclone_sync.log 2>&1
     fi
 
-    # Sync WORKFLOWS directory
-    WORKFLOWS_DIR=$(resolve_dir "/workspace/ComfyUI/user/workflows")
-    if [ -z "$WORKFLOWS_DIR" ]; then
-        WORKFLOWS_DIR=$(resolve_dir "/workspace/workflows")
-    fi
+    # Sync WORKFLOWS directory - ALWAYS use /workspace/workflows (the real location)
+    WORKFLOWS_DIR="/workspace/workflows"
 
     if [ -n "$WORKFLOWS_DIR" ] && [ -d "$WORKFLOWS_DIR" ]; then
         echo "  Syncing workflows from: $WORKFLOWS_DIR" >> /tmp/rclone_sync.log

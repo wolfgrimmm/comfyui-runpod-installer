@@ -204,30 +204,54 @@ class ComfyUIManager:
         os.makedirs(user_output, exist_ok=True)
         os.makedirs(user_workflows, exist_ok=True)
 
-        # Backup and remove existing directories/symlinks
-        for path, user_path in [(comfy_input, user_input), (comfy_output, user_output), (comfy_workflows, user_workflows)]:
-            if os.path.exists(path) and not os.path.islink(path):
-                # If it's a real directory with content, move it to user folder
-                if os.listdir(path):
-                    print(f"Moving existing files from {path} to {user_path}")
-                    os.system(f"mv {path}/* {user_path}/ 2>/dev/null || true")
-                os.system(f"rm -rf {path}")
-            elif os.path.islink(path):
+        # CRITICAL: Remove any existing output directory/symlink to prevent duplicates
+        if os.path.exists(comfy_output):
+            if os.path.islink(comfy_output):
                 # Remove existing symlink
-                os.unlink(path)
+                print(f"Removing existing symlink at {comfy_output}")
+                os.unlink(comfy_output)
+            else:
+                # It's a real directory - move content and remove
+                if os.path.isdir(comfy_output) and os.listdir(comfy_output):
+                    print(f"Found real directory at {comfy_output}, moving contents...")
+                    # Move any existing files to workspace
+                    os.system(f"rsync -av {comfy_output}/ {user_output}/ 2>/dev/null || true")
+                print(f"Removing directory {comfy_output}")
+                os.system(f"rm -rf {comfy_output}")
+
+        # Handle input directory
+        if os.path.exists(comfy_input):
+            if os.path.islink(comfy_input):
+                os.unlink(comfy_input)
+            elif os.path.isdir(comfy_input) and os.listdir(comfy_input):
+                os.system(f"rsync -av {comfy_input}/ {user_input}/ 2>/dev/null || true")
+                os.system(f"rm -rf {comfy_input}")
+
+        # Handle workflows directory
+        if os.path.exists(comfy_workflows):
+            if os.path.islink(comfy_workflows):
+                os.unlink(comfy_workflows)
+            elif os.path.isdir(comfy_workflows) and os.listdir(comfy_workflows):
+                os.system(f"rsync -av {comfy_workflows}/ {user_workflows}/ 2>/dev/null || true")
+                os.system(f"rm -rf {comfy_workflows}")
 
         # Ensure parent directory exists for workflows
         os.makedirs(f"{COMFYUI_DIR}/user", exist_ok=True)
 
-        # Create symlinks to user folders
+        # Create symlinks to user folders - ComfyUI will write through these to /workspace
         os.symlink(user_input, comfy_input)
         os.symlink(user_output, comfy_output)
         os.symlink(user_workflows, comfy_workflows)
 
-        print(f"✅ Symlinks created: ComfyUI folders -> /workspace/{username}/ folders")
+        print(f"✅ Symlinks created (ComfyUI will save through these to /workspace):")
         print(f"  {comfy_output} -> {user_output}")
         print(f"  {comfy_input} -> {user_input}")
         print(f"  {comfy_workflows} -> {user_workflows}")
+
+        # Verify symlinks are correct
+        if os.path.islink(comfy_output):
+            real_path = os.path.realpath(comfy_output)
+            print(f"  Verified: output symlink points to {real_path}")
     
     def start_comfyui(self, username):
         """Start ComfyUI for specified user"""
