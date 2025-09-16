@@ -170,12 +170,7 @@ class ComfyUIManager:
         comfy_input = f"{COMFYUI_DIR}/input"
         comfy_output = f"{COMFYUI_DIR}/output"
         comfy_workflows = f"{COMFYUI_DIR}/user/workflows"
-        
-        # Remove existing symlinks/directories
-        for path in [comfy_input, comfy_output, comfy_workflows]:
-            if os.path.islink(path) or os.path.exists(path):
-                os.system(f"rm -rf {path}")
-        
+
         # Create user folders if they don't exist
         user_input = f"{INPUT_BASE}/{username}"
         user_output = f"{OUTPUT_BASE}/{username}"
@@ -183,16 +178,31 @@ class ComfyUIManager:
         os.makedirs(user_input, exist_ok=True)
         os.makedirs(user_output, exist_ok=True)
         os.makedirs(user_workflows, exist_ok=True)
-        
+
+        # Backup and remove existing directories/symlinks
+        for path, user_path in [(comfy_input, user_input), (comfy_output, user_output), (comfy_workflows, user_workflows)]:
+            if os.path.exists(path) and not os.path.islink(path):
+                # If it's a real directory with content, move it to user folder
+                if os.listdir(path):
+                    print(f"Moving existing files from {path} to {user_path}")
+                    os.system(f"mv {path}/* {user_path}/ 2>/dev/null || true")
+                os.system(f"rm -rf {path}")
+            elif os.path.islink(path):
+                # Remove existing symlink
+                os.unlink(path)
+
         # Ensure parent directory exists for workflows
         os.makedirs(f"{COMFYUI_DIR}/user", exist_ok=True)
-        
+
         # Create symlinks to user folders
         os.symlink(user_input, comfy_input)
         os.symlink(user_output, comfy_output)
         os.symlink(user_workflows, comfy_workflows)
-        
-        print(f"Symlinks created: ComfyUI input/output/workflows -> {username} folders")
+
+        print(f"✅ Symlinks created: ComfyUI folders -> /workspace/{username}/ folders")
+        print(f"  {comfy_output} -> {user_output}")
+        print(f"  {comfy_input} -> {user_input}")
+        print(f"  {comfy_workflows} -> {user_workflows}")
     
     def start_comfyui(self, username):
         """Start ComfyUI for specified user"""
