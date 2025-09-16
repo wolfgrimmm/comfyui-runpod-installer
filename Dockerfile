@@ -165,7 +165,7 @@ elif [ -n "$RUNPOD_SECRET_RCLONE_TOKEN" ]; then
 fi
 
 # Option 1: OAuth Token (simplest for users)
-if [ -n "$RCLONE_TOKEN" ] && [ ! -f "/workspace/.gdrive_configured" ]; then
+if [ -n "$RCLONE_TOKEN" ]; then
     echo "🔧 Setting up Google Drive with OAuth token..."
     mkdir -p /workspace/.config/rclone
     mkdir -p /root/.config/rclone
@@ -200,7 +200,7 @@ RCLONE_EOF
 fi
 
 # Option 2: Service Account (enterprise users)
-if [ -n "$GOOGLE_SERVICE_ACCOUNT" ] && [ ! -f "/workspace/.gdrive_configured" ]; then
+if [ -n "$GOOGLE_SERVICE_ACCOUNT" ]; then
     echo "🔧 Setting up Google Drive with Service Account..."
     echo "   Service account JSON detected (${#GOOGLE_SERVICE_ACCOUNT} characters)"
     
