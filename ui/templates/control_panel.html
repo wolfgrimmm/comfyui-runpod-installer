@@ -991,6 +991,7 @@
                     
                     // Start real-time progress monitoring
                     const eventSource = new EventSource('/api/startup-stream');
+                    let eventSourceClosed = false;
 
                     eventSource.onmessage = (event) => {
                         const progress = JSON.parse(event.data);
@@ -1006,12 +1007,24 @@
                             document.getElementById('loadingSubtext').textContent = 'Starting web server...';
                         } else if (progress.stage === 'ready') {
                             eventSource.close();
+                            eventSourceClosed = true;
                             // Continue with original ready logic below
+                        } else if (progress.stage === 'failed') {
+                            eventSource.close();
+                            eventSourceClosed = true;
+                            clearInterval(checkInterval);
+                            showLoading(false);
+                            showToast(progress.message || 'ComfyUI failed to start', 'error');
+                            primaryBtn.textContent = 'Launch ComfyUI';
+                            primaryBtn.disabled = false;
                         }
                     };
 
                     eventSource.onerror = () => {
-                        eventSource.close();
+                        if (!eventSourceClosed) {
+                            eventSource.close();
+                            eventSourceClosed = true;
+                        }
                     };
 
                     // Also check status periodically as backup
@@ -1105,56 +1118,49 @@
         async function stopComfyUI() {
             if (!confirm('Stop ComfyUI? All unsaved work will be lost.')) return;
 
+            const stopBtn = document.getElementById('stopBtn');
+            if (stopBtn) {
+                stopBtn.disabled = true;
+                stopBtn.textContent = 'Stopping...';
+            }
+
             showLoading(true, 'Stopping ComfyUI...');
 
             try {
                 const response = await fetch('/api/stop', {
                     method: 'POST'
                 });
-                
+
                 const data = await response.json();
+
+                // Wait a bit to ensure process is fully stopped
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
                 showLoading(false);
-                showToast('ComfyUI stopped', 'success');
-                
-                // Show Launch button again
-                const primaryBtn = document.getElementById('primaryBtn');
-                if (primaryBtn) {
-                    primaryBtn.style.display = '';
-                    primaryBtn.textContent = 'Launch ComfyUI';
-                    primaryBtn.disabled = false;
-                }
-                
-                // Re-enable user selection
-                const usernameSelect = document.getElementById('username');
-                if (usernameSelect) {
-                    usernameSelect.disabled = false;
-                }
-                
-                // Remove action buttons
-                const openBtn = document.getElementById('openBtn');
-                const restartBtn = document.getElementById('restartBtn');
-                const stopBtn = document.getElementById('stopBtn');
-                if (openBtn) openBtn.remove();
-                if (restartBtn) restartBtn.remove();
-                if (stopBtn) stopBtn.remove();
-                
-                // Update status
-                const statusDot = document.getElementById('statusDot');
-                const statusText = document.getElementById('statusText');
-                statusDot.className = 'status-dot inactive';
-                statusText.textContent = 'System Inactive';
-                
-                // Clear uptime
-                startTime = null;
-                document.getElementById('uptime').textContent = '0m';
+                showToast('ComfyUI stopped successfully', 'success');
+
+                // Reset UI completely
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+
             } catch (error) {
                 showLoading(false);
-                showToast('Error: ' + error.message, 'error');
+                showToast('Error stopping ComfyUI: ' + error.message, 'error');
+                if (stopBtn) {
+                    stopBtn.disabled = false;
+                    stopBtn.textContent = 'Stop';
+                }
             }
         }
         
         
         async function openComfyUI() {
+            const openBtn = document.getElementById('openBtn');
+            if (openBtn) {
+                openBtn.disabled = true;
+            }
+
             // First check if ComfyUI is actually ready
             try {
                 const response = await fetch('/api/status');
@@ -1162,6 +1168,7 @@
 
                 if (!data.running) {
                     showToast('ComfyUI is not running. Please start it first.', 'error');
+                    if (openBtn) openBtn.disabled = false;
                     return;
                 }
 
@@ -1171,6 +1178,10 @@
                 }
             } catch (error) {
                 console.error('Failed to check status:', error);
+            } finally {
+                if (openBtn) {
+                    setTimeout(() => { openBtn.disabled = false; }, 2000);
+                }
             }
 
             const url = getRunPodUrl(8188);
@@ -1276,27 +1287,45 @@
             window.open('https://github.com/wolfgrimmm/comfyui-runpod-installer', '_blank');
         }
         
-        
+
         async function restartService() {
+            if (!confirm('Restart ComfyUI? This will stop and start the service.')) return;
+
+            const restartBtn = document.getElementById('restartBtn');
+            if (restartBtn) {
+                restartBtn.disabled = true;
+                restartBtn.textContent = 'Restarting...';
+            }
+
             showLoading(true, 'Restarting ComfyUI...');
 
             try {
+                // Stop first
                 await fetch('/api/stop', { method: 'POST' });
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
+                await new Promise(resolve => setTimeout(resolve, 3000));  // Wait longer for full stop
+
                 const username = document.getElementById('username').value || {% if current_user %}'{{ current_user }}'{% else %}''{% endif %};
                 const response = await fetch('/api/start', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({username: username})
                 });
-                
+
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to restart');
+                }
+
                 showLoading(false);
-                showToast('ComfyUI restarted successfully', 'success');
-                setTimeout(() => location.reload(), 1500);
+                showToast('ComfyUI restarting. Page will reload...', 'success');
+                setTimeout(() => location.reload(), 2000);
             } catch (error) {
                 showLoading(false);
-                showToast('Error: ' + error.message, 'error');
+                showToast('Error restarting: ' + error.message, 'error');
+                if (restartBtn) {
+                    restartBtn.disabled = false;
+                    restartBtn.textContent = 'Restart';
+                }
             }
         }
         

@@ -75,6 +75,8 @@ class ComfyUIManager:
         
         # Check if ComfyUI is running and load start time
         if self.is_comfyui_running():
+            # Found running ComfyUI, but we don't have a handle to it
+            print("Found existing ComfyUI process on port 8188")
             if os.path.exists(START_TIME_FILE):
                 try:
                     with open(START_TIME_FILE, 'r') as f:
@@ -86,7 +88,14 @@ class ComfyUIManager:
                 with open(START_TIME_FILE, 'w') as f:
                     f.write(str(self.start_time))
         else:
+            # No ComfyUI running, clean up state files
             self.start_time = None
+            if os.path.exists(START_TIME_FILE):
+                os.remove(START_TIME_FILE)
+            if os.path.exists(CURRENT_USER_FILE) and not self.is_comfyui_running():
+                # Clear current user if ComfyUI isn't running
+                os.remove(CURRENT_USER_FILE)
+                self.current_user = None
     
     def save_users(self):
         """Save users list"""
@@ -188,7 +197,14 @@ class ComfyUIManager:
     def start_comfyui(self, username):
         """Start ComfyUI for specified user"""
         if self.is_comfyui_running():
-            return False, "ComfyUI is already running"
+            # Check if it's actually responding
+            if self.is_comfyui_ready():
+                return False, "ComfyUI is already running"
+            else:
+                # Port is taken but not responding, try to clean it up
+                print("Found stale ComfyUI process, cleaning up...")
+                self.stop_comfyui()
+                time.sleep(3)  # Wait for cleanup
         
         # Setup user
         username = username.strip().lower()
@@ -255,12 +271,20 @@ class ComfyUIManager:
             max_wait = 600  # 10 minutes max (for extremely heavy setups)
             for i in range(max_wait):
                 time.sleep(1)
-                
+
                 # Check if process died
                 if self.comfyui_process.poll() is not None:
-                    stderr = self.comfyui_process.stderr.read().decode() if self.comfyui_process.stderr else ""
-                    return False, f"ComfyUI process died: {stderr[:200]}"
-                
+                    # Process died - mark as failed
+                    self.startup_progress = {"stage": "failed", "message": "ComfyUI process terminated unexpectedly", "percent": 0}
+                    # Try to get error output
+                    stderr = ""
+                    if self.comfyui_process.stdout:
+                        try:
+                            stderr = self.comfyui_process.stdout.read().decode('utf-8', errors='ignore')[:500]
+                        except:
+                            pass
+                    return False, f"ComfyUI process died: {stderr or 'Unknown error'}"
+
                 # Check startup progress
                 if self.startup_progress.get('stage') == 'ready' or self.is_comfyui_ready():
                     # ComfyUI is ready!
@@ -283,37 +307,62 @@ class ComfyUIManager:
                 if i % 5 == 0 and self.startup_progress.get('stage') not in ['ready', 'failed']:
                     current_msg = self.startup_progress.get('message', 'Starting...')
                     self.startup_progress['message'] = f"{current_msg} ({i}s elapsed)"
-                
+
                 # Show progress
                 if i % 5 == 0:
                     print(f"Waiting for ComfyUI to start... {i}s")
-            
-            return False, "ComfyUI took too long to start (60s timeout)"
+
+            # Timeout - mark as failed
+            self.startup_progress = {"stage": "failed", "message": "ComfyUI startup timeout", "percent": 0}
+            return False, "ComfyUI took too long to start (10 minute timeout)"
         except Exception as e:
             return False, f"Error starting ComfyUI: {str(e)}"
     
     def stop_comfyui(self):
         """Stop ComfyUI"""
+        # Reset startup progress
+        self.startup_progress = {"stage": "idle", "message": "", "percent": 0}
+
+        # Try to terminate our subprocess first
         if self.comfyui_process:
-            self.comfyui_process.terminate()
-            time.sleep(1)
-            if self.comfyui_process.poll() is None:
-                self.comfyui_process.kill()
-            self.comfyui_process = None
-        
-        # Kill any remaining process on port
+            try:
+                self.comfyui_process.terminate()
+                time.sleep(2)  # Give more time for graceful shutdown
+                if self.comfyui_process.poll() is None:
+                    self.comfyui_process.kill()
+                    time.sleep(1)
+            except Exception as e:
+                print(f"Error terminating ComfyUI process: {e}")
+            finally:
+                self.comfyui_process = None
+
+        # Kill any remaining processes more aggressively
+        # First try to kill by port
         os.system("fuser -k 8188/tcp 2>/dev/null || true")
-        
+        time.sleep(1)
+
+        # Then kill any ComfyUI processes by name
+        os.system("pkill -f 'python.*ComfyUI.*main.py' 2>/dev/null || true")
+        os.system("pkill -f 'python.*main.py.*--listen.*8188' 2>/dev/null || true")
+
+        # Kill any python process using port 8188 (more aggressive)
+        os.system("lsof -ti:8188 | xargs kill -9 2>/dev/null || true")
+
         # Log session end before clearing
         if self.start_time and self.current_user:
             self.log_session_end()
-        
+
         # Clear start time
         self.start_time = None
         self.session_start = None
         if os.path.exists(START_TIME_FILE):
             os.remove(START_TIME_FILE)
-        
+
+        # Clear current user file to indicate no active session
+        if os.path.exists(CURRENT_USER_FILE):
+            os.remove(CURRENT_USER_FILE)
+        self.current_user = None  # Also clear the instance variable
+
         return True
     
     def is_comfyui_running(self):
@@ -325,11 +374,17 @@ class ComfyUIManager:
         # Check if port 8188 is actually listening
         import socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)  # Add timeout to avoid hanging
         try:
             result = sock.connect_ex(('127.0.0.1', 8188))
             sock.close()
-            return result == 0
-        except:
+            if result == 0:
+                # Port is open, but we don't have a process handle
+                # This could be from a previous session
+                return True
+            return False
+        except Exception as e:
+            print(f"Error checking port 8188: {e}")
             return False
 
     def is_comfyui_ready(self):
@@ -629,7 +684,12 @@ def startup_stream():
     """Stream startup progress via Server-Sent Events"""
     def generate():
         last_progress = None
-        while True:
+        max_iterations = 1200  # 10 minutes max (1200 * 0.5s)
+        iterations = 0
+
+        while iterations < max_iterations:
+            iterations += 1
+
             # Get current progress
             progress = manager.startup_progress.copy()
 
@@ -640,10 +700,23 @@ def startup_stream():
                 last_progress = progress
 
             # Stop streaming once ready or failed
-            if progress.get('stage') in ['ready', 'failed']:
+            if progress.get('stage') in ['ready', 'failed', 'idle']:
+                # Send final state and close
+                break
+
+            # Also stop if ComfyUI is no longer starting
+            if not manager.comfyui_process or manager.comfyui_process.poll() is not None:
+                # Process died, send failure
+                failure_progress = {"stage": "failed", "message": "ComfyUI process terminated", "percent": 0}
+                yield f"data: {json.dumps(failure_progress)}\n\n"
                 break
 
             time.sleep(0.5)  # Check every 500ms
+
+        # If we hit max iterations, send timeout
+        if iterations >= max_iterations:
+            timeout_progress = {"stage": "failed", "message": "Startup monitoring timeout", "percent": 0}
+            yield f"data: {json.dumps(timeout_progress)}\n\n"
 
     return Response(generate(), mimetype='text/event-stream')
 
