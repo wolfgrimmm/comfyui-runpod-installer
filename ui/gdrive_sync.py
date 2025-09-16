@@ -23,12 +23,18 @@ class GDriveSync:
         self.sync_status = {}
         self.sync_threads = {}
         self.rclone_config_file = f"{workspace_dir}/.config/rclone/rclone.conf"
-        
+
         # Company Google Drive root folder
         self.company_drive_root = "ComfyUI-Output"
-        
+
         # Check if rclone is installed
         self.rclone_available = self.check_rclone()
+
+    def resolve_path(self, path):
+        """Resolve path, following symlinks if necessary"""
+        if os.path.islink(path):
+            return os.path.realpath(path)
+        return path if os.path.exists(path) else None
         
     def check_rclone(self):
         """Check if rclone is installed and configured"""
@@ -130,7 +136,7 @@ team_drive = {config_data.get('team_drive', '')}
     
     def sync_user_output(self, username, direction='to_gdrive', mode='copy'):
         """Copy or sync user's output folder with Google Drive
-        
+
         Args:
             username: User to sync
             direction: 'to_gdrive' or 'from_gdrive'
@@ -138,8 +144,28 @@ team_drive = {config_data.get('team_drive', '')}
         """
         if not self.rclone_available:
             return False, "rclone not configured"
-        
-        user_output = f"{self.output_base}/{username}"
+
+        # Check multiple possible locations for output, following symlinks
+        possible_paths = [
+            f"{self.comfyui_dir}/output/{username}",
+            f"{self.output_base}/{username}",
+            f"{self.comfyui_dir}/output",  # If no per-user folders
+        ]
+
+        user_output = None
+        for path in possible_paths:
+            resolved = self.resolve_path(path)
+            if resolved and os.path.isdir(resolved):
+                # If we're looking at the general output dir, check for user subfolder
+                if path == f"{self.comfyui_dir}/output" and os.path.isdir(f"{resolved}/{username}"):
+                    user_output = f"{resolved}/{username}"
+                else:
+                    user_output = resolved
+                break
+
+        if not user_output:
+            user_output = f"{self.output_base}/{username}"  # Fallback to expected path
+
         # All users sync to company Drive with user subfolders
         gdrive_path = f"{self.gdrive_remote}:{self.company_drive_root}/output/{username}"
         
@@ -219,7 +245,7 @@ team_drive = {config_data.get('team_drive', '')}
     
     def sync_all_users(self, users, direction='to_gdrive', mode='copy'):
         """Copy or sync all users' output folders
-        
+
         Args:
             users: List of users to sync
             direction: 'to_gdrive' or 'from_gdrive'
@@ -229,7 +255,52 @@ team_drive = {config_data.get('team_drive', '')}
         for user in users:
             success, message = self.sync_user_output(user, direction, mode)
             results[user] = {'success': success, 'message': message}
+
+        # Also sync shared folders (input, workflows)
+        self.sync_additional_folders(direction)
         return results
+
+    def sync_additional_folders(self, direction='to_gdrive'):
+        """Sync input and workflows folders (follow symlinks)"""
+        if not self.rclone_available:
+            return
+
+        try:
+            # Sync input folder
+            input_paths = [
+                f"{self.comfyui_dir}/input",
+                self.input_base
+            ]
+
+            for path in input_paths:
+                resolved = self.resolve_path(path)
+                if resolved and os.path.isdir(resolved):
+                    if direction == 'to_gdrive':
+                        subprocess.run([
+                            'rclone', 'copy', resolved,
+                            f"{self.gdrive_remote}:{self.company_drive_root}/input",
+                            '--transfers', '2', '--checkers', '2'
+                        ], capture_output=True)
+                    break
+
+            # Sync workflows folder
+            workflow_paths = [
+                f"{self.comfyui_dir}/user/workflows",
+                self.workflows_base
+            ]
+
+            for path in workflow_paths:
+                resolved = self.resolve_path(path)
+                if resolved and os.path.isdir(resolved):
+                    if direction == 'to_gdrive':
+                        subprocess.run([
+                            'rclone', 'sync', resolved,
+                            f"{self.gdrive_remote}:{self.company_drive_root}/workflows",
+                            '--transfers', '2', '--checkers', '2'
+                        ], capture_output=True)
+                    break
+        except Exception as e:
+            print(f"Error syncing additional folders: {e}")
     
     def mount_gdrive(self, mount_point=None):
         """Mount Google Drive as filesystem"""

@@ -126,6 +126,7 @@ class ComfyUIManager:
 
         def read_output():
             loaded_nodes = 0
+            total_custom_nodes = 0
             while self.comfyui_process and self.comfyui_process.poll() is None:
                 try:
                     line = self.comfyui_process.stdout.readline()
@@ -136,23 +137,47 @@ class ComfyUIManager:
                     if not line:
                         continue
 
-                    # Parse progress from ComfyUI output
+                    # Parse progress from ComfyUI output with better custom node tracking
                     if "Loading" in line and "custom nodes" in line.lower():
-                        self.startup_progress = {"stage": "loading_nodes", "message": "Loading custom nodes...", "percent": 15}
-                    elif "Importing" in line or "import times" in line.lower():
+                        # Try to extract total number of custom nodes
+                        import re
+                        match = re.search(r'(\d+)\s+custom\s+node', line, re.IGNORECASE)
+                        if match:
+                            total_custom_nodes = int(match.group(1))
+                        self.startup_progress = {"stage": "loading_nodes", "message": "Discovering custom nodes...", "percent": 10}
+                    elif "Importing" in line or "import times" in line.lower() or "Loading:" in line:
                         loaded_nodes += 1
-                        percent = min(75, 15 + loaded_nodes)  # Progress from 15% to 75%
-                        node_name = line.split(":")[-1].strip() if ":" in line else line[:50]
-                        self.startup_progress = {"stage": "importing", "message": f"Loading: {node_name}", "percent": percent}
+                        # Better progress calculation based on total nodes if known
+                        if total_custom_nodes > 0:
+                            percent = min(85, 10 + int((loaded_nodes / total_custom_nodes) * 75))
+                        else:
+                            # Estimate progress (assumes ~100-200 nodes for heavy setups)
+                            percent = min(85, 10 + int(loaded_nodes * 0.5))
+
+                        # Extract node name
+                        node_name = line
+                        if "Importing" in line:
+                            node_name = line.split("Importing")[-1].strip()
+                        elif ":" in line:
+                            node_name = line.split(":")[-1].strip()
+
+                        # Shorten long node names
+                        if len(node_name) > 50:
+                            node_name = node_name[:47] + "..."
+
+                        self.startup_progress = {"stage": "importing", "message": f"Loading node {loaded_nodes}: {node_name}", "percent": percent}
                     elif "Starting server" in line or "0.0.0.0:8188" in line:
-                        self.startup_progress = {"stage": "starting_server", "message": "Starting web server...", "percent": 85}
-                    elif "To see the GUI go to" in line or "ComfyUI is running" in line:
+                        self.startup_progress = {"stage": "starting_server", "message": "Starting web server...", "percent": 90}
+                    elif "To see the GUI go to" in line or "ComfyUI is running" in line or "Starting ComfyUI" in line:
                         self.startup_progress = {"stage": "ready", "message": "ComfyUI is ready!", "percent": 100}
                     elif "error" in line.lower() and "import" in line.lower():
                         # Don't fail on import errors, some nodes might be optional
-                        self.startup_progress = {"stage": "importing", "message": f"Skipping failed node...", "percent": self.startup_progress.get('percent', 50)}
+                        failed_node = line.split(":")[-1].strip() if ":" in line else "unknown node"
+                        self.startup_progress = {"stage": "importing", "message": f"Skipping incompatible: {failed_node[:40]}", "percent": self.startup_progress.get('percent', 50)}
                     elif "Total time taken" in line or "Startup complete" in line:
                         self.startup_progress = {"stage": "finalizing", "message": "Finalizing startup...", "percent": 95}
+                    elif "Prestartup times" in line:
+                        self.startup_progress = {"stage": "initializing", "message": "Initializing ComfyUI core...", "percent": 5}
                 except Exception as e:
                     print(f"Error reading startup log: {e}")
                     break
@@ -277,13 +302,17 @@ class ComfyUIManager:
             # Start monitoring thread
             self.monitor_startup_logs()
 
-            # Wait for ComfyUI to actually start - no fixed timeout!
-            max_wait = 600  # 10 minutes max (for extremely heavy setups)
+            # Wait for ComfyUI to actually start - adaptive timeout based on custom nodes
+            max_wait = 1800  # 30 minutes max for heavy custom node setups
+            readiness_check_interval = 3  # Check readiness every 3 seconds
+            last_activity_time = time.time()
+            last_progress_msg = ""
+
             for i in range(max_wait):
                 time.sleep(1)
 
                 # Check if process died
-                if self.comfyui_process.poll() is not None:
+                if self.comfyui_process and self.comfyui_process.poll() is not None:
                     # Process died - mark as failed
                     self.startup_progress = {"stage": "failed", "message": "ComfyUI process terminated unexpectedly", "percent": 0}
                     # Try to get error output
@@ -295,8 +324,17 @@ class ComfyUIManager:
                             pass
                     return False, f"ComfyUI process died: {stderr or 'Unknown error'}"
 
+                # Track if progress is still changing (activity indicator)
+                current_progress_msg = self.startup_progress.get('message', '')
+                if current_progress_msg != last_progress_msg:
+                    last_activity_time = time.time()
+                    last_progress_msg = current_progress_msg
+
+                # Check readiness more frequently after initial startup phase
+                should_check_ready = (i % readiness_check_interval == 0) and i > 30
+
                 # Check startup progress
-                if self.startup_progress.get('stage') == 'ready' or self.is_comfyui_ready():
+                if self.startup_progress.get('stage') == 'ready' or (should_check_ready and self.is_comfyui_ready()):
                     # ComfyUI is ready!
                     print(f"ComfyUI fully initialized after {i+1} seconds")
                     self.start_time = time.time()
@@ -313,18 +351,41 @@ class ComfyUIManager:
 
                     return True, "ComfyUI started successfully"
 
+                # If no activity for 5 minutes, assume stuck
+                if time.time() - last_activity_time > 300:
+                    # But still check if it's actually ready (might be loading silently)
+                    if self.is_comfyui_ready():
+                        print(f"ComfyUI ready after silent startup ({i+1} seconds)")
+                        self.start_time = time.time()
+                        with open(START_TIME_FILE, 'w') as f:
+                            f.write(str(self.start_time))
+                        self.session_start = self.start_time
+                        self.log_session_start(username)
+                        self.startup_progress = {"stage": "ready", "message": "ComfyUI is ready!", "percent": 100}
+                        return True, "ComfyUI started successfully"
+                    else:
+                        self.startup_progress = {"stage": "failed", "message": "ComfyUI startup stalled (no progress for 5 minutes)", "percent": 0}
+                        return False, "ComfyUI startup appears stuck"
+
                 # Update progress message with elapsed time if still starting
-                if i % 5 == 0 and self.startup_progress.get('stage') not in ['ready', 'failed']:
-                    current_msg = self.startup_progress.get('message', 'Starting...')
-                    self.startup_progress['message'] = f"{current_msg} ({i}s elapsed)"
+                if i % 10 == 0 and self.startup_progress.get('stage') not in ['ready', 'failed']:
+                    elapsed_min = i // 60
+                    elapsed_sec = i % 60
+                    if elapsed_min > 0:
+                        time_str = f"{elapsed_min}m {elapsed_sec}s"
+                    else:
+                        time_str = f"{elapsed_sec}s"
+
+                    base_msg = self.startup_progress.get('message', 'Starting...').split(' (')[0]  # Remove old time
+                    self.startup_progress['message'] = f"{base_msg} ({time_str} elapsed)"
 
                 # Show progress
-                if i % 5 == 0:
-                    print(f"Waiting for ComfyUI to start... {i}s")
+                if i % 30 == 0:
+                    print(f"Waiting for ComfyUI to start... {i}s (heavy custom nodes may take 10-20 minutes)")
 
             # Timeout - mark as failed
-            self.startup_progress = {"stage": "failed", "message": "ComfyUI startup timeout", "percent": 0}
-            return False, "ComfyUI took too long to start (10 minute timeout)"
+            self.startup_progress = {"stage": "failed", "message": "ComfyUI startup timeout (30 minutes)", "percent": 0}
+            return False, "ComfyUI took too long to start (30 minute timeout)"
         except Exception as e:
             return False, f"Error starting ComfyUI: {str(e)}"
     
@@ -406,8 +467,14 @@ class ComfyUIManager:
         import urllib.request
         import urllib.error
         try:
-            with urllib.request.urlopen('http://127.0.0.1:8188/', timeout=2) as response:
-                # If we get any response, ComfyUI is ready
+            # Check both the main page and the API endpoint
+            with urllib.request.urlopen('http://127.0.0.1:8188/', timeout=5) as response:
+                if response.status != 200:
+                    return False
+
+            # Also check if the API is responding (better indicator of readiness)
+            with urllib.request.urlopen('http://127.0.0.1:8188/system_stats', timeout=5) as response:
+                # If API responds, ComfyUI is fully ready
                 return response.status == 200
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
             # ComfyUI is running but not yet accepting HTTP requests

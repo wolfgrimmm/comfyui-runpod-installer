@@ -288,24 +288,85 @@ RCLONE_EOF
 #!/bin/bash
 while true; do
     sleep 60  # Sync every minute
-    echo "[$(date)] Syncing to Google Drive..."
-    # Sync output folder with deduplication
-    rclone sync /workspace/output "gdrive:ComfyUI-Output/output" \
-        --exclude "*.tmp" \
-        --exclude "*.partial" \
-        --transfers 4 \
-        --checkers 2 \
-        --bwlimit 50M \
-        --min-age 5s \
-        --no-update-modtime >/dev/null 2>&1
+    echo "[$(date)] Starting sync cycle..." >> /tmp/rclone_sync.log
+
+    # Function to resolve directory path (follows symlinks)
+    resolve_dir() {
+        local path="$1"
+        if [ -L "$path" ]; then
+            # It's a symlink, follow it
+            readlink -f "$path"
+        elif [ -d "$path" ]; then
+            # It's a real directory
+            echo "$path"
+        else
+            # Doesn't exist
+            echo ""
+        fi
+    }
+
+    # Sync OUTPUT directory
+    OUTPUT_DIR=$(resolve_dir "/workspace/ComfyUI/output")
+    if [ -z "$OUTPUT_DIR" ]; then
+        OUTPUT_DIR=$(resolve_dir "/workspace/output")
+    fi
+
+    if [ -n "$OUTPUT_DIR" ] && [ -d "$OUTPUT_DIR" ]; then
+        echo "  Syncing output from: $OUTPUT_DIR" >> /tmp/rclone_sync.log
+        rclone sync "$OUTPUT_DIR" "gdrive:ComfyUI-Output/output" \
+            --exclude "*.tmp" \
+            --exclude "*.partial" \
+            --transfers 4 \
+            --checkers 2 \
+            --bwlimit 50M \
+            --min-age 5s \
+            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
+    else
+        echo "  Warning: No output directory found" >> /tmp/rclone_sync.log
+    fi
+
+    # Sync INPUT directory
+    INPUT_DIR=$(resolve_dir "/workspace/ComfyUI/input")
+    if [ -z "$INPUT_DIR" ]; then
+        INPUT_DIR=$(resolve_dir "/workspace/input")
+    fi
+
+    if [ -n "$INPUT_DIR" ] && [ -d "$INPUT_DIR" ]; then
+        echo "  Syncing input from: $INPUT_DIR" >> /tmp/rclone_sync.log
+        # Use copy for inputs (don't delete from Drive)
+        rclone copy "$INPUT_DIR" "gdrive:ComfyUI-Output/input" \
+            --transfers 4 \
+            --checkers 2 \
+            --bwlimit 50M \
+            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
+    fi
+
+    # Sync WORKFLOWS directory
+    WORKFLOWS_DIR=$(resolve_dir "/workspace/ComfyUI/user/workflows")
+    if [ -z "$WORKFLOWS_DIR" ]; then
+        WORKFLOWS_DIR=$(resolve_dir "/workspace/workflows")
+    fi
+
+    if [ -n "$WORKFLOWS_DIR" ] && [ -d "$WORKFLOWS_DIR" ]; then
+        echo "  Syncing workflows from: $WORKFLOWS_DIR" >> /tmp/rclone_sync.log
+        rclone sync "$WORKFLOWS_DIR" "gdrive:ComfyUI-Output/workflows" \
+            --transfers 4 \
+            --checkers 2 \
+            --bwlimit 50M \
+            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
+    fi
+
     # Sync loras folder
     if [ -d "/workspace/models/loras" ]; then
+        echo "  Syncing loras from: /workspace/models/loras" >> /tmp/rclone_sync.log
         rclone sync /workspace/models/loras "gdrive:ComfyUI-Output/loras" \
             --transfers 4 \
             --checkers 2 \
             --bwlimit 50M \
-            --no-update-modtime >/dev/null 2>&1
+            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
     fi
+
+    echo "  Sync cycle completed" >> /tmp/rclone_sync.log
 done
 SYNC_SCRIPT
         chmod +x /tmp/rclone_sync_loop.sh
@@ -357,24 +418,85 @@ if [ -f "/workspace/.gdrive_configured" ]; then
 #!/bin/bash
 while true; do
     sleep 60  # Sync every minute
-    echo "[$(date)] Syncing to Google Drive..."
-    # Sync output folder with deduplication
-    rclone sync /workspace/output "gdrive:ComfyUI-Output/output" \
-        --exclude "*.tmp" \
-        --exclude "*.partial" \
-        --transfers 4 \
-        --checkers 2 \
-        --bwlimit 50M \
-        --min-age 5s \
-        --no-update-modtime >/dev/null 2>&1
+    echo "[$(date)] Starting sync cycle..." >> /tmp/rclone_sync.log
+
+    # Function to resolve directory path (follows symlinks)
+    resolve_dir() {
+        local path="$1"
+        if [ -L "$path" ]; then
+            # It's a symlink, follow it
+            readlink -f "$path"
+        elif [ -d "$path" ]; then
+            # It's a real directory
+            echo "$path"
+        else
+            # Doesn't exist
+            echo ""
+        fi
+    }
+
+    # Sync OUTPUT directory
+    OUTPUT_DIR=$(resolve_dir "/workspace/ComfyUI/output")
+    if [ -z "$OUTPUT_DIR" ]; then
+        OUTPUT_DIR=$(resolve_dir "/workspace/output")
+    fi
+
+    if [ -n "$OUTPUT_DIR" ] && [ -d "$OUTPUT_DIR" ]; then
+        echo "  Syncing output from: $OUTPUT_DIR" >> /tmp/rclone_sync.log
+        rclone sync "$OUTPUT_DIR" "gdrive:ComfyUI-Output/output" \
+            --exclude "*.tmp" \
+            --exclude "*.partial" \
+            --transfers 4 \
+            --checkers 2 \
+            --bwlimit 50M \
+            --min-age 5s \
+            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
+    else
+        echo "  Warning: No output directory found" >> /tmp/rclone_sync.log
+    fi
+
+    # Sync INPUT directory
+    INPUT_DIR=$(resolve_dir "/workspace/ComfyUI/input")
+    if [ -z "$INPUT_DIR" ]; then
+        INPUT_DIR=$(resolve_dir "/workspace/input")
+    fi
+
+    if [ -n "$INPUT_DIR" ] && [ -d "$INPUT_DIR" ]; then
+        echo "  Syncing input from: $INPUT_DIR" >> /tmp/rclone_sync.log
+        # Use copy for inputs (don't delete from Drive)
+        rclone copy "$INPUT_DIR" "gdrive:ComfyUI-Output/input" \
+            --transfers 4 \
+            --checkers 2 \
+            --bwlimit 50M \
+            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
+    fi
+
+    # Sync WORKFLOWS directory
+    WORKFLOWS_DIR=$(resolve_dir "/workspace/ComfyUI/user/workflows")
+    if [ -z "$WORKFLOWS_DIR" ]; then
+        WORKFLOWS_DIR=$(resolve_dir "/workspace/workflows")
+    fi
+
+    if [ -n "$WORKFLOWS_DIR" ] && [ -d "$WORKFLOWS_DIR" ]; then
+        echo "  Syncing workflows from: $WORKFLOWS_DIR" >> /tmp/rclone_sync.log
+        rclone sync "$WORKFLOWS_DIR" "gdrive:ComfyUI-Output/workflows" \
+            --transfers 4 \
+            --checkers 2 \
+            --bwlimit 50M \
+            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
+    fi
+
     # Sync loras folder
     if [ -d "/workspace/models/loras" ]; then
+        echo "  Syncing loras from: /workspace/models/loras" >> /tmp/rclone_sync.log
         rclone sync /workspace/models/loras "gdrive:ComfyUI-Output/loras" \
             --transfers 4 \
             --checkers 2 \
             --bwlimit 50M \
-            --no-update-modtime >/dev/null 2>&1
+            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
     fi
+
+    echo "  Sync cycle completed" >> /tmp/rclone_sync.log
 done
 SYNC_SCRIPT
         chmod +x /tmp/rclone_sync_loop.sh
