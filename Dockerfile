@@ -310,15 +310,18 @@ while true; do
     OUTPUT_DIR="/workspace/output"
 
     if [ -n "$OUTPUT_DIR" ] && [ -d "$OUTPUT_DIR" ]; then
-        echo "  Syncing output from: $OUTPUT_DIR" >> /tmp/rclone_sync.log
-        rclone sync "$OUTPUT_DIR" "gdrive:ComfyUI-Output/output" \
+        echo "  Copying output from: $OUTPUT_DIR" >> /tmp/rclone_sync.log
+        # Use COPY not SYNC for outputs - never delete from Drive!
+        rclone copy "$OUTPUT_DIR" "gdrive:ComfyUI-Output/output" \
             --exclude "*.tmp" \
             --exclude "*.partial" \
+            --exclude "**/temp_*" \
             --transfers 4 \
             --checkers 2 \
             --bwlimit 50M \
-            --min-age 5s \
-            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
+            --min-age 30s \
+            --no-update-modtime \
+            --ignore-existing >> /tmp/rclone_sync.log 2>&1
     else
         echo "  Warning: No output directory found" >> /tmp/rclone_sync.log
     fi
@@ -341,6 +344,7 @@ while true; do
 
     if [ -n "$WORKFLOWS_DIR" ] && [ -d "$WORKFLOWS_DIR" ]; then
         echo "  Syncing workflows from: $WORKFLOWS_DIR" >> /tmp/rclone_sync.log
+        # Workflows can use sync since we want Drive to match local
         rclone sync "$WORKFLOWS_DIR" "gdrive:ComfyUI-Output/workflows" \
             --transfers 4 \
             --checkers 2 \
@@ -432,15 +436,18 @@ while true; do
     OUTPUT_DIR="/workspace/output"
 
     if [ -n "$OUTPUT_DIR" ] && [ -d "$OUTPUT_DIR" ]; then
-        echo "  Syncing output from: $OUTPUT_DIR" >> /tmp/rclone_sync.log
-        rclone sync "$OUTPUT_DIR" "gdrive:ComfyUI-Output/output" \
+        echo "  Copying output from: $OUTPUT_DIR" >> /tmp/rclone_sync.log
+        # Use COPY not SYNC for outputs - never delete from Drive!
+        rclone copy "$OUTPUT_DIR" "gdrive:ComfyUI-Output/output" \
             --exclude "*.tmp" \
             --exclude "*.partial" \
+            --exclude "**/temp_*" \
             --transfers 4 \
             --checkers 2 \
             --bwlimit 50M \
-            --min-age 5s \
-            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
+            --min-age 30s \
+            --no-update-modtime \
+            --ignore-existing >> /tmp/rclone_sync.log 2>&1
     else
         echo "  Warning: No output directory found" >> /tmp/rclone_sync.log
     fi
@@ -463,6 +470,7 @@ while true; do
 
     if [ -n "$WORKFLOWS_DIR" ] && [ -d "$WORKFLOWS_DIR" ]; then
         echo "  Syncing workflows from: $WORKFLOWS_DIR" >> /tmp/rclone_sync.log
+        # Workflows can use sync since we want Drive to match local
         rclone sync "$WORKFLOWS_DIR" "gdrive:ComfyUI-Output/workflows" \
             --transfers 4 \
             --checkers 2 \

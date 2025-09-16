@@ -178,18 +178,19 @@ team_drive = {config_data.get('team_drive', '')}
         }
         
         try:
-            # Use copy by default (safe), sync only if explicitly requested
-            operation = 'copy' if mode == 'copy' else 'sync'
-            
+            # ALWAYS use copy for outputs to prevent deletion
+            # Only use sync for workflows where we want exact mirroring
+            operation = 'copy'  # Force copy for outputs
+
             if direction == 'to_gdrive':
                 # Upload to Google Drive with RunPod optimizations
-                cmd = ['rclone', operation, user_output, gdrive_path, 
-                       '--transfers', '2', '--checkers', '2', 
+                cmd = ['rclone', operation, user_output, gdrive_path,
+                       '--transfers', '2', '--checkers', '2',
                        '--bwlimit', '15M', '--buffer-size', '16M',
                        '--use-mmap', '--ignore-existing',
-                       '--min-age', '10s', '--exclude', '*.tmp',
-                       '--exclude', '*.partial', '--retries', '3',
-                       '--low-level-retries', '10', '--progress']
+                       '--min-age', '30s', '--exclude', '*.tmp',
+                       '--exclude', '*.partial', '--exclude', '**/temp_*',
+                       '--retries', '3', '--low-level-retries', '10', '--progress']
             else:
                 # Download from Google Drive with RunPod optimizations  
                 cmd = ['rclone', operation, gdrive_path, user_output,

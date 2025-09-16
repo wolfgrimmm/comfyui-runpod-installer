@@ -152,17 +152,19 @@ while true; do
 
     # ONLY sync from /workspace directories (the real locations)
 
-    # Sync output
+    # Copy output (never delete from Drive!)
     if [ -d "/workspace/output" ]; then
-        echo "  Syncing output from: /workspace/output" >> /tmp/rclone_sync.log
-        rclone sync "/workspace/output" "gdrive:ComfyUI-Output/output" \
+        echo "  Copying output from: /workspace/output" >> /tmp/rclone_sync.log
+        rclone copy "/workspace/output" "gdrive:ComfyUI-Output/output" \
             --exclude "*.tmp" \
             --exclude "*.partial" \
+            --exclude "**/temp_*" \
             --transfers 4 \
             --checkers 2 \
             --bwlimit 50M \
-            --min-age 5s \
-            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
+            --min-age 30s \
+            --no-update-modtime \
+            --ignore-existing >> /tmp/rclone_sync.log 2>&1
     fi
 
     # Sync input

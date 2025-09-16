@@ -117,23 +117,26 @@ while true; do
     OUTPUT_DIR="/workspace/output"
 
     if [ -d "$OUTPUT_DIR" ]; then
-        echo "  Syncing output from: $OUTPUT_DIR" >> /tmp/rclone_sync.log
+        echo "  Copying output from: $OUTPUT_DIR" >> /tmp/rclone_sync.log
 
         # Count files to sync
         FILE_COUNT=$(find "$OUTPUT_DIR" -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) 2>/dev/null | wc -l)
         [ "$FILE_COUNT" -gt 0 ] && echo "  Found $FILE_COUNT image files" >> /tmp/rclone_sync.log
 
-        rclone sync "$OUTPUT_DIR" "gdrive:ComfyUI-Output/output" \
+        # Use COPY not SYNC - never delete from Drive!
+        rclone copy "$OUTPUT_DIR" "gdrive:ComfyUI-Output/output" \
             --exclude "*.tmp" \
             --exclude "*.partial" \
+            --exclude "**/temp_*" \
             --transfers 4 \
             --checkers 2 \
             --bwlimit 50M \
-            --min-age 5s \
+            --min-age 30s \
             --no-update-modtime \
+            --ignore-existing \
             --log-level ERROR >> /tmp/rclone_sync.log 2>&1
 
-        [ "$FILE_COUNT" -gt 0 ] && echo "  Output sync completed" >> /tmp/rclone_sync.log
+        [ "$FILE_COUNT" -gt 0 ] && echo "  Output copy completed" >> /tmp/rclone_sync.log
     else
         echo "  Warning: No output directory found" >> /tmp/rclone_sync.log
     fi
