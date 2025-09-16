@@ -69,11 +69,11 @@ fi
 
 echo "📥 Downloading input images..."
 # Download per-user inputs
-if rclone lsd gdrive:ComfyUI/inputs/ 2>/dev/null | grep -q " "; then
-    for username in $(rclone lsd gdrive:ComfyUI/inputs/ 2>/dev/null | awk '{print $NF}'); do
-        echo "  📁 Downloading $username inputs..."
+if rclone lsd gdrive:ComfyUI/input/ 2>/dev/null | grep -q " "; then
+    for username in $(rclone lsd gdrive:ComfyUI/input/ 2>/dev/null | awk '{print $NF}'); do
+        echo "  📁 Downloading $username input..."
         mkdir -p "/workspace/input/$username"
-        rclone copy "gdrive:ComfyUI/inputs/$username" "/workspace/input/$username" --transfers 4 --checkers 2 --buffer-size 8M --ignore-existing --progress
+        rclone copy "gdrive:ComfyUI/input/$username" "/workspace/input/$username" --transfers 4 --checkers 2 --buffer-size 8M --ignore-existing --progress
     done
 fi
 
@@ -83,11 +83,11 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "📥 Downloading outputs..."
     # Download per-user outputs
-    if rclone lsd gdrive:ComfyUI/outputs/ 2>/dev/null | grep -q " "; then
-        for username in $(rclone lsd gdrive:ComfyUI/outputs/ 2>/dev/null | awk '{print $NF}'); do
-            echo "  📁 Downloading $username outputs..."
+    if rclone lsd gdrive:ComfyUI/output/ 2>/dev/null | grep -q " "; then
+        for username in $(rclone lsd gdrive:ComfyUI/output/ 2>/dev/null | awk '{print $NF}'); do
+            echo "  📁 Downloading $username output..."
             mkdir -p "/workspace/output/$username"
-            rclone copy "gdrive:ComfyUI/outputs/$username" "/workspace/output/$username" --transfers 2 --checkers 2 --bwlimit 20M --buffer-size 16M --use-mmap --ignore-existing --progress
+            rclone copy "gdrive:ComfyUI/output/$username" "/workspace/output/$username" --transfers 2 --checkers 2 --bwlimit 20M --buffer-size 16M --use-mmap --ignore-existing --progress
         done
     fi
 fi

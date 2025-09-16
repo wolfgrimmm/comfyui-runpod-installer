@@ -41,7 +41,7 @@ for user_dir in /workspace/output/*/; do
     if [ -d "$user_dir" ]; then
         username=$(basename "$user_dir")
         echo "  📁 Syncing $username..."
-        rclone sync "$user_dir" "gdrive:ComfyUI/outputs/$username" $RCLONE_FLAGS
+        rclone sync "$user_dir" "gdrive:ComfyUI/output/$username" $RCLONE_FLAGS
     fi
 done
 
@@ -65,7 +65,7 @@ for user_dir in /workspace/input/*/; do
     if [ -d "$user_dir" ]; then
         username=$(basename "$user_dir")
         echo "  📁 Syncing $username inputs..."
-        rclone sync "$user_dir" "gdrive:ComfyUI/inputs/$username" $RCLONE_FLAGS
+        rclone sync "$user_dir" "gdrive:ComfyUI/input/$username" $RCLONE_FLAGS
     fi
 done
 

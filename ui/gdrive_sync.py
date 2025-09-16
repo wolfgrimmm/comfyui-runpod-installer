@@ -141,7 +141,7 @@ team_drive = {config_data.get('team_drive', '')}
         
         user_output = f"{self.output_base}/{username}"
         # All users sync to company Drive with user subfolders
-        gdrive_path = f"{self.gdrive_remote}:{self.company_drive_root}/outputs/{username}"
+        gdrive_path = f"{self.gdrive_remote}:{self.company_drive_root}/output/{username}"
         
         # Set sync status
         self.sync_status[username] = {
@@ -320,7 +320,7 @@ team_drive = {config_data.get('team_drive', '')}
         try:
             user_output = f"{self.output_base}/{username}"
             # Google Drive structure with user folders
-            gdrive_output = f"{self.workspace_dir}/gdrive/outputs/{username}"
+            gdrive_output = f"{self.workspace_dir}/gdrive/output/{username}"
             
             # Create Google Drive directory if it doesn't exist
             os.makedirs(gdrive_output, exist_ok=True)
@@ -369,7 +369,7 @@ while true; do
 
             echo "[$(date)] Syncing $username outputs to Google Drive..." >> "$LOG_FILE"
             # Using sync instead of copy for full mirroring
-            rclone sync "$user_dir" "{self.gdrive_remote}:{self.company_drive_root}/outputs/$username" \\
+            rclone sync "$user_dir" "{self.gdrive_remote}:{self.company_drive_root}/output/$username" \\
                 --exclude "*.tmp" \\
                 --exclude "*.partial" \\
                 --transfers 2 \\
@@ -413,7 +413,7 @@ done
         
         try:
             if username:
-                path = f"{self.gdrive_remote}:{self.company_drive_root}/outputs/{username}"
+                path = f"{self.gdrive_remote}:{self.company_drive_root}/output/{username}"
             else:
                 path = f"{self.gdrive_remote}:{self.company_drive_root}"
             
