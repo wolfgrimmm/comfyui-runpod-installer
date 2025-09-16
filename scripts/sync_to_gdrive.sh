@@ -6,12 +6,26 @@ echo "=========================================="
 echo "📤 Syncing to Google Drive (Full Clone)"
 echo "=========================================="
 
+# Restore config from workspace if needed
+if [ -f "/workspace/.config/rclone/rclone.conf" ] && [ ! -f "/root/.config/rclone/rclone.conf" ]; then
+    echo "📋 Restoring rclone config from workspace..."
+    mkdir -p /root/.config/rclone
+    cp /workspace/.config/rclone/rclone.conf /root/.config/rclone/
+fi
+
 # Check if rclone is configured
 if ! rclone listremotes | grep -q "gdrive:"; then
     echo "❌ Google Drive not configured!"
     echo "Run: rclone config"
     echo "Then set up 'gdrive' remote"
     exit 1
+fi
+
+# Backup config to workspace for persistence
+if [ -f "/root/.config/rclone/rclone.conf" ] && [ ! -f "/workspace/.config/rclone/rclone.conf" ]; then
+    mkdir -p /workspace/.config/rclone
+    cp /root/.config/rclone/rclone.conf /workspace/.config/rclone/
+    echo "💾 Config backed up to workspace"
 fi
 
 # Optimized rclone settings for RunPod uploads

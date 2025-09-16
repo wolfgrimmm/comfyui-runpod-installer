@@ -1010,11 +1010,27 @@ def setup_service_account():
         return jsonify({'success': False, 'error': message}), 400
 
 if __name__ == '__main__':
+    # Restore rclone config from workspace if needed
+    workspace_config = "/workspace/.config/rclone/rclone.conf"
+    root_config = "/root/.config/rclone/rclone.conf"
+
+    if os.path.exists(workspace_config) and not os.path.exists(root_config):
+        print("📋 Restoring rclone config from workspace backup...")
+        os.makedirs("/root/.config/rclone", exist_ok=True)
+        import shutil
+        shutil.copy2(workspace_config, root_config)
+        print("✅ Rclone config restored")
+
     # Start auto-sync if Google Drive is configured
     if gdrive.check_gdrive_configured():
         success, message = gdrive.setup_auto_sync(interval_minutes=5)
         if success:
             print(f"✅ Google Drive auto-sync started: {message}")
+            # Also backup config to workspace for persistence
+            if os.path.exists(root_config) and not os.path.exists(workspace_config):
+                os.makedirs("/workspace/.config/rclone", exist_ok=True)
+                shutil.copy2(root_config, workspace_config)
+                print("💾 Config backed up to workspace for persistence")
         else:
             print(f"⚠️ Could not start auto-sync: {message}")
 
