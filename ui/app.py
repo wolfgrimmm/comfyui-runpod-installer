@@ -1010,4 +1010,12 @@ def setup_service_account():
         return jsonify({'success': False, 'error': message}), 400
 
 if __name__ == '__main__':
+    # Start auto-sync if Google Drive is configured
+    if gdrive.check_gdrive_configured():
+        success, message = gdrive.setup_auto_sync(interval_minutes=5)
+        if success:
+            print(f"✅ Google Drive auto-sync started: {message}")
+        else:
+            print(f"⚠️ Could not start auto-sync: {message}")
+
     app.run(host='0.0.0.0', port=7777, debug=False)

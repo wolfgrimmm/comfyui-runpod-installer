@@ -349,24 +349,27 @@ team_drive = {config_data.get('team_drive', '')}
 # Auto-sync ComfyUI outputs to Google Drive with smart sync
 LAST_SYNC_FILE="/tmp/last_gdrive_sync"
 MIN_INTERVAL={interval_minutes}
+LOG_FILE="/workspace/gdrive_sync.log"
+
+echo "[$(date)] Auto-sync started (interval: {interval_minutes} minutes)" >> "$LOG_FILE"
 
 while true; do
     for user_dir in {self.output_base}/*/; do
         if [ -d "$user_dir" ]; then
             username=$(basename "$user_dir")
-            
+
             # Check if files changed since last sync
             if [ -f "$LAST_SYNC_FILE.$username" ]; then
                 changed=$(find "$user_dir" -newer "$LAST_SYNC_FILE.$username" -type f | head -1)
                 if [ -z "$changed" ]; then
-                    echo "No changes for $username, skipping sync"
+                    echo "[$(date)] No changes for $username, skipping sync" >> "$LOG_FILE"
                     continue
                 fi
             fi
-            
-            echo "Uploading $username outputs to Google Drive..."
-            # Optimized for RunPod: reduced parallel transfers and bandwidth to prevent overload
-            rclone copy "$user_dir" "{self.gdrive_remote}:{self.company_drive_root}/outputs/$username" \\
+
+            echo "[$(date)] Syncing $username outputs to Google Drive..." >> "$LOG_FILE"
+            # Using sync instead of copy for full mirroring
+            rclone sync "$user_dir" "{self.gdrive_remote}:{self.company_drive_root}/outputs/$username" \\
                 --exclude "*.tmp" \\
                 --exclude "*.partial" \\
                 --transfers 2 \\
@@ -375,14 +378,15 @@ while true; do
                 --buffer-size 16M \\
                 --use-mmap \\
                 --min-age 10s \\
-                --ignore-existing \\
                 --retries 3 \\
                 --low-level-retries 10
-            
-            # Mark last sync time
+
+            # Mark last sync time and log success
             touch "$LAST_SYNC_FILE.$username"
+            echo "[$(date)] ✅ Sync complete for $username" >> "$LOG_FILE"
         fi
     done
+    echo "[$(date)] Sleeping for {interval_minutes} minutes..." >> "$LOG_FILE"
     sleep {interval_minutes * 60}
 done
 """
