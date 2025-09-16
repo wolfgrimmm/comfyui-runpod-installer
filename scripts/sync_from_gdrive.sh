@@ -21,9 +21,11 @@ mkdir -p /workspace/ComfyUI/models/vae
 mkdir -p /workspace/ComfyUI/models/embeddings
 mkdir -p /workspace/ComfyUI/models/controlnet
 mkdir -p /workspace/ComfyUI/models/upscale_models
-mkdir -p /workspace/ComfyUI/user/default/workflows
-mkdir -p /workspace/ComfyUI/output
-mkdir -p /workspace/ComfyUI/input
+
+# Create user-based directories (matching your system)
+mkdir -p /workspace/output
+mkdir -p /workspace/input
+mkdir -p /workspace/workflows
 
 # Optimized rclone settings for RunPod
 # --transfers: Number of parallel transfers (reduced from default 4)
@@ -55,18 +57,39 @@ rclone copy gdrive:ComfyUI/models/controlnet /workspace/ComfyUI/models/controlne
 echo "📥 Downloading upscale models..."
 rclone copy gdrive:ComfyUI/models/upscale_models /workspace/ComfyUI/models/upscale_models $RCLONE_FLAGS
 
-echo "📥 Downloading workflows (small files, can use more transfers)..."
-rclone copy gdrive:ComfyUI/workflows /workspace/ComfyUI/user/default/workflows --transfers 4 --checkers 2 --buffer-size 8M --ignore-existing --progress
+echo "📥 Downloading workflows..."
+# Download per-user workflows
+if rclone lsd gdrive:ComfyUI/workflows/ 2>/dev/null | grep -q " "; then
+    for username in $(rclone lsd gdrive:ComfyUI/workflows/ 2>/dev/null | awk '{print $NF}'); do
+        echo "  📁 Downloading $username workflows..."
+        mkdir -p "/workspace/workflows/$username"
+        rclone copy "gdrive:ComfyUI/workflows/$username" "/workspace/workflows/$username" --transfers 4 --checkers 2 --buffer-size 8M --ignore-existing --progress
+    done
+fi
 
 echo "📥 Downloading input images..."
-rclone copy gdrive:ComfyUI/input /workspace/ComfyUI/input --transfers 4 --checkers 2 --buffer-size 8M --ignore-existing --progress
+# Download per-user inputs
+if rclone lsd gdrive:ComfyUI/inputs/ 2>/dev/null | grep -q " "; then
+    for username in $(rclone lsd gdrive:ComfyUI/inputs/ 2>/dev/null | awk '{print $NF}'); do
+        echo "  📁 Downloading $username inputs..."
+        mkdir -p "/workspace/input/$username"
+        rclone copy "gdrive:ComfyUI/inputs/$username" "/workspace/input/$username" --transfers 4 --checkers 2 --buffer-size 8M --ignore-existing --progress
+    done
+fi
 
 # Optional: download previous outputs (might be large)
 read -p "Download previous outputs from Google Drive? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "📥 Downloading outputs (may be large, using conservative settings)..."
-    rclone copy gdrive:ComfyUI/output /workspace/ComfyUI/output --transfers 2 --checkers 2 --bwlimit 20M --buffer-size 16M --use-mmap --ignore-existing --progress
+    echo "📥 Downloading outputs..."
+    # Download per-user outputs
+    if rclone lsd gdrive:ComfyUI/outputs/ 2>/dev/null | grep -q " "; then
+        for username in $(rclone lsd gdrive:ComfyUI/outputs/ 2>/dev/null | awk '{print $NF}'); do
+            echo "  📁 Downloading $username outputs..."
+            mkdir -p "/workspace/output/$username"
+            rclone copy "gdrive:ComfyUI/outputs/$username" "/workspace/output/$username" --transfers 2 --checkers 2 --bwlimit 20M --buffer-size 16M --use-mmap --ignore-existing --progress
+        done
+    fi
 fi
 
 echo ""
