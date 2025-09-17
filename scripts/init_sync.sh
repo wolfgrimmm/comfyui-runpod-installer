@@ -49,10 +49,11 @@ EOF
         fi
     fi
 
-    # 2. Try GOOGLE_SERVICE_ACCOUNT environment variable
+    # 2. Try GOOGLE_SERVICE_ACCOUNT environment variable (may be set directly or from RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT)
     if [ -n "$GOOGLE_SERVICE_ACCOUNT" ]; then
         echo "[SYNC INIT] Found GOOGLE_SERVICE_ACCOUNT environment variable"
         echo "$GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
+        chmod 600 /root/.config/rclone/service_account.json
 
         cat > /root/.config/rclone/rclone.conf << 'EOF'
 [gdrive]
