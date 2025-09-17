@@ -45,10 +45,20 @@ if [ -f "/workspace/.config/rclone/rclone.conf" ] && [ ! -f "/root/.config/rclon
     fi
 
     # Fix broken config that points to non-existent service account
-    if grep -q "service_account_file" /root/.config/rclone/rclone.conf && [ ! -f "/root/.config/rclone/service_account.json" ]; then
+    # BUT ONLY if we don't have the service account file at all
+    if grep -q "service_account_file" /root/.config/rclone/rclone.conf && \
+       [ ! -f "/root/.config/rclone/service_account.json" ] && \
+       [ ! -f "/workspace/.config/rclone/service_account.json" ]; then
         echo "🔧 Fixing broken service account reference in config..."
-        sed -i '/service_account_file/d' /root/.config/rclone/rclone.conf
-        sed -i '/service_account_file/d' /workspace/.config/rclone/rclone.conf
+        echo "   WARNING: Config points to service account but file is missing"
+        # Don't delete the line, try to restore the service account instead
+        if [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
+            echo "   Restoring service account from RunPod secret..."
+            echo "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
+            echo "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" > /workspace/.config/rclone/service_account.json
+        else
+            echo "   No RunPod secret available to restore service account"
+        fi
     fi
 
     echo "✅ Rclone config restored from workspace"
