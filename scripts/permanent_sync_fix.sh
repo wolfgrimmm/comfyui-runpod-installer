@@ -6,16 +6,52 @@ echo "=========================================="
 echo "Creating a sync solution that survives everything"
 echo
 
+# Create all necessary directories first
+echo "0. Creating required directories..."
+mkdir -p /workspace/.permanent_sync
+mkdir -p /root/.config/rclone
+echo "   ✅ Directories created"
+echo
+
 # Step 1: Capture current working state
 echo "1. Capturing current working state..."
+
+# First, try to setup rclone from environment if not working
+if [ -n "$GOOGLE_SERVICE_ACCOUNT" ] && [ ! -f /root/.config/rclone/service_account.json ]; then
+    echo "   Found GOOGLE_SERVICE_ACCOUNT in environment, setting up..."
+    echo "$GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
+    chmod 600 /root/.config/rclone/service_account.json
+
+    # Create rclone config
+    cat > /root/.config/rclone/rclone.conf << 'EOF'
+[gdrive]
+type = drive
+scope = drive
+service_account_file = /root/.config/rclone/service_account.json
+team_drive =
+EOF
+    echo "   ✅ Setup from GOOGLE_SERVICE_ACCOUNT environment variable"
+elif [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ] && [ ! -f /root/.config/rclone/service_account.json ]; then
+    echo "   Found RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT, setting up..."
+    echo "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
+    chmod 600 /root/.config/rclone/service_account.json
+
+    # Create rclone config
+    cat > /root/.config/rclone/rclone.conf << 'EOF'
+[gdrive]
+type = drive
+scope = drive
+service_account_file = /root/.config/rclone/service_account.json
+team_drive =
+EOF
+    echo "   ✅ Setup from RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT"
+fi
 
 if rclone lsd gdrive: >/dev/null 2>&1; then
     echo "   ✅ Rclone is currently working"
 
     # Save EVERYTHING needed for sync to workspace
     echo "   Saving all credentials to workspace..."
-
-    mkdir -p /workspace/.permanent_sync
 
     # Save rclone config
     cp /root/.config/rclone/rclone.conf /workspace/.permanent_sync/rclone.conf 2>/dev/null
@@ -25,9 +61,11 @@ if rclone lsd gdrive: >/dev/null 2>&1; then
         cp /root/.config/rclone/service_account.json /workspace/.permanent_sync/service_account.json
     fi
 
-    # Save RunPod secret if available
+    # Save any available secrets
     if [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
         echo "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" > /workspace/.permanent_sync/runpod_secret.json
+    elif [ -n "$GOOGLE_SERVICE_ACCOUNT" ]; then
+        echo "$GOOGLE_SERVICE_ACCOUNT" > /workspace/.permanent_sync/runpod_secret.json
     fi
 
     # Save environment variables that might be needed
@@ -74,6 +112,8 @@ setup_rclone() {
 
         if [ -f /workspace/.permanent_sync/service_account.json ]; then
             cp /workspace/.permanent_sync/service_account.json /root/.config/rclone/
+        elif [ -f /workspace/.permanent_sync/runpod_secret.json ]; then
+            cp /workspace/.permanent_sync/runpod_secret.json /root/.config/rclone/service_account.json
         fi
 
         if rclone lsd gdrive: >/dev/null 2>&1; then
@@ -101,8 +141,27 @@ EOF
         fi
     fi
 
-    # Last resort - check environment
-    if [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
+    # Check environment variables
+    if [ -n "$GOOGLE_SERVICE_ACCOUNT" ]; then
+        mkdir -p /root/.config/rclone
+        echo "$GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
+
+        cat > /root/.config/rclone/rclone.conf << 'EOF'
+[gdrive]
+type = drive
+scope = drive
+service_account_file = /root/.config/rclone/service_account.json
+team_drive =
+EOF
+
+        if rclone lsd gdrive: >/dev/null 2>&1; then
+            echo "[$(date)] Setup using GOOGLE_SERVICE_ACCOUNT env"
+            # Save for next time
+            mkdir -p /workspace/.permanent_sync
+            cp /root/.config/rclone/service_account.json /workspace/.permanent_sync/runpod_secret.json
+            return 0
+        fi
+    elif [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
         mkdir -p /root/.config/rclone
         echo "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
 
@@ -115,8 +174,9 @@ team_drive =
 EOF
 
         if rclone lsd gdrive: >/dev/null 2>&1; then
-            echo "[$(date)] Setup using environment secret"
+            echo "[$(date)] Setup using RUNPOD_SECRET env"
             # Save for next time
+            mkdir -p /workspace/.permanent_sync
             cp /root/.config/rclone/service_account.json /workspace/.permanent_sync/runpod_secret.json
             return 0
         fi

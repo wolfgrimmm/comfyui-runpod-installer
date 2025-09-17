@@ -20,6 +20,7 @@ COPY scripts /app/scripts
 COPY config /app/config
 COPY ui /app/ui
 RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
+RUN chmod +x /app/scripts/init_sync.sh 2>/dev/null || true
 
 # Create init script that sets up venv if needed
 RUN cat > /app/init.sh << 'EOF'
@@ -182,7 +183,35 @@ elif [ -n "$RUNPOD_SECRET_RCLONE_TOKEN" ]; then
     echo "   Found RunPod secret: RCLONE_TOKEN"
 fi
 
-# Option 1: OAuth Token (simplest for users)
+# Use the new init_sync.sh script for all Google Drive setup
+if [ -f "/app/scripts/init_sync.sh" ]; then
+    echo "🚀 Using new sync initialization system..."
+    /app/scripts/init_sync.sh
+
+    # Check if sync was successfully initialized
+    if [ -f "/workspace/.permanent_sync/status" ]; then
+        SYNC_STATUS=$(cat /workspace/.permanent_sync/status)
+        if [ "$SYNC_STATUS" = "INITIALIZED" ]; then
+            echo "✅ Google Drive sync initialized successfully!"
+            # Mark as configured for backwards compatibility
+            touch /workspace/.gdrive_configured
+            echo "configured" > /workspace/.gdrive_status
+        elif [ "$SYNC_STATUS" = "NO_CREDENTIALS" ]; then
+            echo "⚠️ No Google Drive credentials found"
+            echo "   To enable sync, add GOOGLE_SERVICE_ACCOUNT secret in RunPod"
+        else
+            echo "❌ Google Drive sync initialization failed"
+        fi
+    fi
+
+    # Skip the old configuration code
+    SKIP_OLD_GDRIVE_SETUP=1
+fi
+
+# Only run old setup if new system not available or failed
+if [ -z "$SKIP_OLD_GDRIVE_SETUP" ]; then
+
+    # Option 1: OAuth Token (simplest for users)
 if [ -n "$RCLONE_TOKEN" ]; then
     echo "🔧 Setting up Google Drive with OAuth token..."
     mkdir -p /workspace/.config/rclone
@@ -218,7 +247,7 @@ RCLONE_EOF
     fi
 fi
 
-# Option 2: Service Account (enterprise users)
+    # Option 2: Service Account (enterprise users)
 if [ -n "$GOOGLE_SERVICE_ACCOUNT" ]; then
     echo "🔧 Setting up Google Drive with Service Account..."
     echo "   Service account JSON detected (${#GOOGLE_SERVICE_ACCOUNT} characters)"
@@ -402,8 +431,8 @@ SYNC_SCRIPT
         # Still save that we attempted configuration for UI
         echo "failed" > /workspace/.gdrive_status
     fi
-else
-    if [ -z "$GOOGLE_SERVICE_ACCOUNT" ] && [ -z "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
+    else
+        if [ -z "$GOOGLE_SERVICE_ACCOUNT" ] && [ -z "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
         echo "ℹ️ Google Drive sync not configured"
         echo "   No Google service account credentials found"
         echo ""
@@ -412,13 +441,16 @@ else
         echo "   2. The secret will be available as RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT"
         echo "   3. Restart the pod after adding the secret"
         echo ""
-        echo "   Checking for RunPod secrets:"
-        env | grep RUNPOD_SECRET_ | head -5
+            echo "   Checking for RunPod secrets:"
+            env | grep RUNPOD_SECRET_ | head -5
+        fi
     fi
-fi
+fi  # End of SKIP_OLD_GDRIVE_SETUP
 
-if [ -f "/workspace/.gdrive_configured" ]; then
-    echo "✅ Google Drive already configured"
+# The new init_sync.sh handles all sync startup
+# Keeping this section only for backwards compatibility if init_sync.sh doesn't exist
+if [ -f "/workspace/.gdrive_configured" ] && [ ! -f "/app/scripts/init_sync.sh" ]; then
+    echo "✅ Google Drive already configured (using legacy sync)"
 
     # ALWAYS restart sync on pod start (it doesn't persist across restarts)
     echo "🔄 Starting auto-sync..."
