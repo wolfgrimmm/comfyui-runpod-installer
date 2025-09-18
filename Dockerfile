@@ -145,13 +145,41 @@ if [ ! -f "/workspace/ComfyUI/main.py" ]; then
             echo "⚠️ Failed to install ComfyUI Manager"
         fi
         
-        # Setup model symlink
+        # Setup symlinks for models, workflows, input, and output
         cd /workspace
+
+        # Models symlink
         if [ -e /workspace/ComfyUI/models ]; then
             rm -rf /workspace/ComfyUI/models
         fi
         ln -sf /workspace/models /workspace/ComfyUI/models
         echo "✅ Model symlink created"
+
+        # Workflows symlink - IMPORTANT: ComfyUI saves to user/default/workflows
+        mkdir -p /workspace/ComfyUI/user/default
+        if [ -d "/workspace/ComfyUI/user/default/workflows" ] && [ ! -L "/workspace/ComfyUI/user/default/workflows" ]; then
+            # Migrate existing workflows
+            cp -r /workspace/ComfyUI/user/default/workflows/* /workspace/workflows/ 2>/dev/null || true
+            rm -rf /workspace/ComfyUI/user/default/workflows
+        fi
+        ln -sf /workspace/workflows /workspace/ComfyUI/user/default/workflows
+        echo "✅ Workflows symlink created"
+
+        # Output symlink
+        if [ -d "/workspace/ComfyUI/output" ] && [ ! -L "/workspace/ComfyUI/output" ]; then
+            cp -r /workspace/ComfyUI/output/* /workspace/output/ 2>/dev/null || true
+            rm -rf /workspace/ComfyUI/output
+        fi
+        ln -sf /workspace/output /workspace/ComfyUI/output
+        echo "✅ Output symlink created"
+
+        # Input symlink
+        if [ -d "/workspace/ComfyUI/input" ] && [ ! -L "/workspace/ComfyUI/input" ]; then
+            cp -r /workspace/ComfyUI/input/* /workspace/input/ 2>/dev/null || true
+            rm -rf /workspace/ComfyUI/input
+        fi
+        ln -sf /workspace/input /workspace/ComfyUI/input
+        echo "✅ Input symlink created"
     else
         echo "❌ Failed to install ComfyUI"
         exit 1
@@ -669,11 +697,33 @@ if [ ! -f "/workspace/ComfyUI/main.py" ]; then
     fi
 fi
 
-# Setup model symlink
+# Setup all symlinks
 if [ -e /workspace/ComfyUI/models ]; then
     rm -rf /workspace/ComfyUI/models
 fi
 ln -sf /workspace/models /workspace/ComfyUI/models
+
+# Workflows symlink - IMPORTANT: ComfyUI saves to user/default/workflows
+mkdir -p /workspace/ComfyUI/user/default
+if [ ! -L "/workspace/ComfyUI/user/default/workflows" ]; then
+    [ -d "/workspace/ComfyUI/user/default/workflows" ] && cp -r /workspace/ComfyUI/user/default/workflows/* /workspace/workflows/ 2>/dev/null || true
+    rm -rf /workspace/ComfyUI/user/default/workflows 2>/dev/null
+    ln -sf /workspace/workflows /workspace/ComfyUI/user/default/workflows
+fi
+
+# Output symlink
+if [ ! -L "/workspace/ComfyUI/output" ]; then
+    [ -d "/workspace/ComfyUI/output" ] && cp -r /workspace/ComfyUI/output/* /workspace/output/ 2>/dev/null || true
+    rm -rf /workspace/ComfyUI/output 2>/dev/null
+    ln -sf /workspace/output /workspace/ComfyUI/output
+fi
+
+# Input symlink
+if [ ! -L "/workspace/ComfyUI/input" ]; then
+    [ -d "/workspace/ComfyUI/input" ] && cp -r /workspace/ComfyUI/input/* /workspace/input/ 2>/dev/null || true
+    rm -rf /workspace/ComfyUI/input 2>/dev/null
+    ln -sf /workspace/input /workspace/ComfyUI/input
+fi
 
 # Install Manager if needed
 if [ ! -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
