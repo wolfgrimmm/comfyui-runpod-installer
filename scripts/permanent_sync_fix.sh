@@ -127,6 +127,7 @@ setup_rclone() {
         mkdir -p /root/.config/rclone
         cp /workspace/.permanent_sync/runpod_secret.json /root/.config/rclone/service_account.json
 
+        # Create basic config
         cat > /root/.config/rclone/rclone.conf << 'EOF'
 [gdrive]
 type = drive
@@ -134,6 +135,16 @@ scope = drive
 service_account_file = /root/.config/rclone/service_account.json
 team_drive =
 EOF
+
+        # Auto-detect shared drive
+        DRIVES_JSON=$(rclone backend drives gdrive: 2>/dev/null || echo "[]")
+        if [ "$DRIVES_JSON" != "[]" ] && [ -n "$DRIVES_JSON" ]; then
+            TEAM_DRIVE_ID=$(echo "$DRIVES_JSON" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
+            if [ -n "$TEAM_DRIVE_ID" ]; then
+                echo "[$(date)] Found shared drive: $TEAM_DRIVE_ID"
+                sed -i "s/team_drive =$/team_drive = $TEAM_DRIVE_ID/" /root/.config/rclone/rclone.conf
+            fi
+        fi
 
         if rclone lsd gdrive: >/dev/null 2>&1; then
             echo "[$(date)] Setup using saved secret"
@@ -146,6 +157,7 @@ EOF
         mkdir -p /root/.config/rclone
         echo "$GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
 
+        # Create basic config
         cat > /root/.config/rclone/rclone.conf << 'EOF'
 [gdrive]
 type = drive
@@ -153,6 +165,16 @@ scope = drive
 service_account_file = /root/.config/rclone/service_account.json
 team_drive =
 EOF
+
+        # Auto-detect shared drive
+        DRIVES_JSON=$(rclone backend drives gdrive: 2>/dev/null || echo "[]")
+        if [ "$DRIVES_JSON" != "[]" ] && [ -n "$DRIVES_JSON" ]; then
+            TEAM_DRIVE_ID=$(echo "$DRIVES_JSON" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
+            if [ -n "$TEAM_DRIVE_ID" ]; then
+                echo "[$(date)] Found shared drive: $TEAM_DRIVE_ID"
+                sed -i "s/team_drive =$/team_drive = $TEAM_DRIVE_ID/" /root/.config/rclone/rclone.conf
+            fi
+        fi
 
         if rclone lsd gdrive: >/dev/null 2>&1; then
             echo "[$(date)] Setup using GOOGLE_SERVICE_ACCOUNT env"
@@ -165,6 +187,7 @@ EOF
         mkdir -p /root/.config/rclone
         echo "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
 
+        # Create basic config
         cat > /root/.config/rclone/rclone.conf << 'EOF'
 [gdrive]
 type = drive
@@ -172,6 +195,16 @@ scope = drive
 service_account_file = /root/.config/rclone/service_account.json
 team_drive =
 EOF
+
+        # Auto-detect shared drive
+        DRIVES_JSON=$(rclone backend drives gdrive: 2>/dev/null || echo "[]")
+        if [ "$DRIVES_JSON" != "[]" ] && [ -n "$DRIVES_JSON" ]; then
+            TEAM_DRIVE_ID=$(echo "$DRIVES_JSON" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
+            if [ -n "$TEAM_DRIVE_ID" ]; then
+                echo "[$(date)] Found shared drive: $TEAM_DRIVE_ID"
+                sed -i "s/team_drive =$/team_drive = $TEAM_DRIVE_ID/" /root/.config/rclone/rclone.conf
+            fi
+        fi
 
         if rclone lsd gdrive: >/dev/null 2>&1; then
             echo "[$(date)] Setup using RUNPOD_SECRET env"

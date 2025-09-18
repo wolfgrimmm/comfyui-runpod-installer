@@ -31,6 +31,22 @@ service_account_file = /root/.config/rclone/service_account.json
 team_drive =
 EOF
 
+    # Auto-detect and add shared drive
+    echo "Detecting shared drives..."
+    DRIVES_JSON=$(rclone backend drives gdrive: 2>/dev/null || echo "[]")
+    if [ "$DRIVES_JSON" != "[]" ] && [ -n "$DRIVES_JSON" ]; then
+        TEAM_DRIVE_ID=$(echo "$DRIVES_JSON" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
+        if [ -n "$TEAM_DRIVE_ID" ]; then
+            echo "✅ Found shared drive: $TEAM_DRIVE_ID"
+            sed -i "s/team_drive =$/team_drive = $TEAM_DRIVE_ID/" /root/.config/rclone/rclone.conf
+        else
+            echo "⚠️ No shared drive ID found in response"
+        fi
+    else
+        echo "⚠️ No shared drives detected - service account may not have access"
+        echo "   Make sure to add the service account to your shared drive with Content Manager permission"
+    fi
+
     # Save config to workspace for next run
     cp /root/.config/rclone/rclone.conf /workspace/.permanent_sync/rclone.conf
 
