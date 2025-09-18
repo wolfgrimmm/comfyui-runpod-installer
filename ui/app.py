@@ -12,6 +12,7 @@ import time
 import psutil
 import threading
 import queue
+import shutil
 from pathlib import Path
 from datetime import datetime, timedelta
 from gdrive_sync import GDriveSync
