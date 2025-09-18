@@ -573,6 +573,29 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 # Activate virtual environment
 source /workspace/venv/bin/activate
 
+# Ensure Google Drive sync is running (run after init.sh)
+echo "🔄 Ensuring Google Drive sync is active..."
+if [ -f "/app/scripts/ensure_sync.sh" ]; then
+    # Use the robust ensure_sync script that handles all cases
+    /app/scripts/ensure_sync.sh
+elif [ -f "/app/scripts/init_sync.sh" ]; then
+    # Fallback to init_sync
+    /app/scripts/init_sync.sh > /tmp/sync_init.log 2>&1
+
+    # Double-check sync is running
+    sleep 2
+    if pgrep -f "sync_loop\|permanent_sync" > /dev/null; then
+        echo "✅ Google Drive sync is running"
+    else
+        echo "⚠️ Sync not running, attempting quick fix..."
+        if [ -f "/app/scripts/quick_fix.sh" ]; then
+            /app/scripts/quick_fix.sh > /tmp/quick_fix.log 2>&1
+        fi
+    fi
+else
+    echo "⚠️ Sync initialization scripts not found"
+fi
+
 # Start Control Panel UI
 echo "🌐 Starting Control Panel on port 7777..."
 cd /app/ui && python app.py > /workspace/ui.log 2>&1 &
