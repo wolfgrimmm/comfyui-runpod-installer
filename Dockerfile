@@ -1,5 +1,7 @@
 # Optimized for RunPod Pods - Uses RunPod's PyTorch base
-FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
+# Note: Check https://hub.docker.com/r/runpod/pytorch/tags for latest CUDA 12.9 image
+FROM runpod/pytorch:2.4.1-py3.11-cuda12.4.1-devel-ubuntu22.04
+# If CUDA 12.9 image available, use: FROM runpod/pytorch:2.4.1-py3.11-cuda12.9.0-devel-ubuntu22.04
 
 WORKDIR /
 
@@ -7,10 +9,28 @@ WORKDIR /
 RUN apt-get update && apt-get install -y \
     git wget curl psmisc lsof unzip \
     python3.11-dev python3.11-venv python3-pip \
-    build-essential \
+    build-essential software-properties-common \
     && curl https://rclone.org/install.sh | bash \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install CUDA 12.9 Toolkit (without driver, using RunPod's driver)
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb && \
+    dpkg -i cuda-keyring_1.1-1_all.deb && \
+    rm cuda-keyring_1.1-1_all.deb && \
+    apt-get update && \
+    apt-get install -y cuda-toolkit-12-9 libcudnn9-cuda-12 libcudnn9-dev-cuda-12 --no-install-recommends && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    # Create symlink for CUDA
+    rm -f /usr/local/cuda && \
+    ln -s /usr/local/cuda-12.9 /usr/local/cuda
+
+# Set CUDA environment variables
+ENV PATH="/usr/local/cuda-12.9/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/cuda-12.9/lib64:${LD_LIBRARY_PATH}"
+ENV CUDA_HOME="/usr/local/cuda-12.9"
+ENV CUDA_VERSION="12.9"
 
 # Create app directory
 RUN mkdir -p /app
@@ -81,6 +101,26 @@ if [ ! -d "/workspace/venv" ]; then
     echo "📦 Creating virtual environment in /workspace/venv..."
     python3.11 -m venv /workspace/venv
     source /workspace/venv/bin/activate
+    NEED_INSTALL=1
+elif [ ! -f "/workspace/venv/.cuda129_upgraded" ]; then
+    echo "📦 Existing venv found, checking CUDA compatibility..."
+    source /workspace/venv/bin/activate
+    # Check if PyTorch has correct CUDA version
+    CUDA_VER=$(python -c "import torch; print(torch.version.cuda)" 2>/dev/null || echo "none")
+    if [[ "$CUDA_VER" != "12.4" ]]; then
+        echo "⚠️ Venv has old CUDA version ($CUDA_VER), upgrading to CUDA 12.9 compatible packages..."
+        NEED_INSTALL=1
+    else
+        echo "✅ Venv already has CUDA 12.9 compatible packages"
+        NEED_INSTALL=0
+    fi
+else
+    echo "✅ Using existing CUDA 12.9 compatible venv"
+    source /workspace/venv/bin/activate
+    NEED_INSTALL=0
+fi
+
+if [ "$NEED_INSTALL" = "1" ]; then
     
     echo "📦 Installing Python packages..."
     pip install --upgrade pip wheel setuptools
@@ -88,24 +128,25 @@ if [ ! -d "/workspace/venv" ]; then
     # Core packages for UI
     pip install flask==3.0.0 psutil requests
     
-    # ComfyUI requirements
+    # ComfyUI requirements - PyTorch with CUDA 12.4 (better compatibility with 12.9)
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
     pip install einops torchsde "kornia>=0.7.1" spandrel "safetensors>=0.4.2"
     pip install aiohttp pyyaml Pillow tqdm scipy
     pip install transformers diffusers accelerate
     pip install opencv-python
-    pip install onnxruntime-gpu || pip install onnxruntime
+    # ONNX Runtime 1.19+ supports CUDA 12.x
+    pip install onnxruntime-gpu==1.19.2 || pip install onnxruntime==1.19.2
     
     # Git integration
     pip install GitPython PyGithub==1.59.1
     
     # Jupyter
     pip install jupyterlab ipywidgets notebook
-    
-    echo "✅ Virtual environment setup complete"
-else
-    echo "✅ Using existing virtual environment"
-    source /workspace/venv/bin/activate
+
+    # Mark venv as CUDA 12.9 compatible
+    touch /workspace/venv/.cuda129_upgraded
+
+    echo "✅ Virtual environment setup complete with CUDA 12.9 support"
 fi
 
 # Install ComfyUI if not present
@@ -582,6 +623,19 @@ SYNC_SCRIPT
 fi
 
 echo "✅ Environment prepared"
+
+# Verify CUDA installation
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 CUDA Verification:"
+if command -v nvcc &> /dev/null; then
+    nvcc --version | grep "release" || echo "nvcc version check failed"
+else
+    echo "⚠️ nvcc not found in PATH"
+fi
+
+# Check PyTorch CUDA availability
+python3 -c "import torch; print(f'PyTorch CUDA Available: {torch.cuda.is_available()}'); print(f'PyTorch CUDA Version: {torch.version.cuda}')" 2>/dev/null || echo "PyTorch CUDA check skipped"
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 EOF
 
@@ -690,10 +744,14 @@ if [ ! -f "/workspace/ComfyUI/main.py" ]; then
         exit 1
     fi
     
-    # Install ComfyUI requirements
+    # Install ComfyUI requirements (preserve our CUDA 12.9 compatible PyTorch)
     cd /workspace/ComfyUI
     if [ -f "requirements.txt" ]; then
-        pip install -r requirements.txt
+        # Install requirements but skip torch to keep our CUDA 12.4 version
+        grep -v "^torch" requirements.txt > /tmp/comfy_req.txt || cp requirements.txt /tmp/comfy_req.txt
+        pip install -r /tmp/comfy_req.txt
+        # Ensure we have the right PyTorch for CUDA 12.9
+        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124 --upgrade
     fi
 fi
 

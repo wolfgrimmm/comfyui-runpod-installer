@@ -8,10 +8,11 @@ set -e
 echo "🚀 Building RunPod-Optimized Docker Image"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Using RunPod base image with:"
-echo "• PyTorch 2.4.0 pre-installed"
-echo "• CUDA 12.4 pre-installed"
+echo "• PyTorch 2.4.1 pre-installed"
+echo "• CUDA 12.9 (upgrading from 12.4)"
 echo "• Python 3.11 pre-installed"
 echo "• Common ML libraries included"
+echo "• cuDNN 9 for optimal performance"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Enable BuildKit for better caching

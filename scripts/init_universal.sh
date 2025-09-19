@@ -35,24 +35,35 @@ detect_python_env() {
 # Function to setup venv if needed
 setup_venv_if_needed() {
     echo "📦 Setting up Python environment..."
-    
-    # Try to use existing environment first
-    if detect_python_env; then
+
+    # Check if venv exists and has correct CUDA version
+    if [ -f "/workspace/venv/bin/activate" ]; then
+        source /workspace/venv/bin/activate
+
+        # Check if it has CUDA 12.9 compatible packages
+        if [ -f "/workspace/venv/.cuda129_upgraded" ]; then
+            echo "✅ Found existing venv with CUDA 12.9 support"
+            return 0
+        else
+            echo "⚠️ Existing venv needs CUDA 12.9 upgrade"
+            # Continue to upgrade packages below
+        fi
+    elif detect_python_env; then
         return 0
+    else
+        # Create venv in /workspace for persistence
+        echo "Creating new venv at /workspace/venv..."
+        echo "This will take 5-10 minutes on first run but will be reused later."
+
+        python3 -m venv /workspace/venv
+        source /workspace/venv/bin/activate
     fi
-    
-    # Create venv in /workspace for persistence
-    echo "Creating new venv at /workspace/venv..."
-    echo "This will take 5-10 minutes on first run but will be reused later."
-    
-    python3 -m venv /workspace/venv
-    source /workspace/venv/bin/activate
     
     # Upgrade pip
     pip install --upgrade pip wheel setuptools
     
-    # Install PyTorch with CUDA 12.4
-    echo "Installing PyTorch with CUDA 12.4..."
+    # Install PyTorch with CUDA 12.4 (better compatibility with CUDA 12.9 runtime)
+    echo "Installing PyTorch with CUDA 12.4 (optimized for CUDA 12.9)..."
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
     
     # Install ComfyUI requirements
@@ -69,7 +80,7 @@ setup_venv_if_needed() {
     # Install additional packages
     echo "Installing additional packages..."
     pip install \
-        onnxruntime-gpu \
+        onnxruntime-gpu==1.19.2 \
         opencv-python \
         accelerate \
         diffusers \
@@ -93,9 +104,10 @@ setup_venv_if_needed() {
         spandrel \
         tqdm
     
-    # Mark venv as complete
+    # Mark venv as complete and CUDA 12.9 compatible
     touch /workspace/venv/.setup_complete
-    echo "✅ Virtual environment setup complete"
+    touch /workspace/venv/.cuda129_upgraded
+    echo "✅ Virtual environment setup complete with CUDA 12.9 support"
 }
 
 # Function to install ComfyUI
@@ -329,4 +341,20 @@ python --version
 echo "📦 PyTorch: $(python -c 'import torch; print(torch.__version__)' 2>/dev/null || echo 'Not installed')"
 echo "🎯 ComfyUI: /workspace/ComfyUI"
 echo "📁 Models: /workspace/models"
+
+# CUDA verification
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 CUDA Status:"
+if command -v nvcc &> /dev/null; then
+    nvcc --version | grep "release" || echo "nvcc not available"
+fi
+python -c "
+import torch
+if torch.cuda.is_available():
+    print(f'✅ CUDA Available: {torch.version.cuda}')
+    print(f'   GPU: {torch.cuda.get_device_name(0)}')
+    print(f'   Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB')
+else:
+    print('⚠️ CUDA not available to PyTorch')
+" 2>/dev/null || echo "CUDA check skipped"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
