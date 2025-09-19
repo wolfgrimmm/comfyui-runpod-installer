@@ -1,7 +1,6 @@
 # Optimized for RunPod Pods - Uses RunPod's PyTorch base
-# Note: Check https://hub.docker.com/r/runpod/pytorch/tags for latest CUDA 12.9 image
-FROM runpod/pytorch:2.4.1-py3.11-cuda12.4.1-devel-ubuntu22.04
-# If CUDA 12.9 image available, use: FROM runpod/pytorch:2.4.1-py3.11-cuda12.9.0-devel-ubuntu22.04
+# Using latest available RunPod image with CUDA 12.4 (we'll upgrade to 12.9)
+FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 WORKDIR /
 
