@@ -102,7 +102,18 @@ setup_venv_if_needed() {
         torchsde \
         kornia \
         spandrel \
-        tqdm
+        tqdm \
+        ninja \
+        packaging \
+        triton
+
+    # Install Flash Attention 3 (for RTX 5090/Blackwell)
+    echo "Installing Flash Attention 3..."
+    pip install flash-attn --no-build-isolation 2>/dev/null || echo "Flash Attention not available for this GPU"
+
+    # Install xformers for memory-efficient attention
+    echo "Installing xformers..."
+    pip install xformers==0.0.28 --index-url https://download.pytorch.org/whl/cu124 2>/dev/null || echo "xformers installation failed"
     
     # Mark venv as complete and CUDA 12.9 compatible
     touch /workspace/venv/.setup_complete

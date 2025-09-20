@@ -32,6 +32,12 @@ echo "🔄 Reinstalling ONNX Runtime for CUDA 12.x..."
 pip uninstall onnxruntime onnxruntime-gpu -y
 pip install onnxruntime-gpu==1.19.2
 
+# Install Flash Attention 3 and xformers
+echo "🔄 Installing Flash Attention 3 and xformers..."
+pip install ninja packaging triton
+pip install flash-attn --no-build-isolation 2>/dev/null || echo "Flash Attention not available"
+pip install xformers==0.0.28 --index-url https://download.pytorch.org/whl/cu124 2>/dev/null || echo "xformers not available"
+
 # Verify CUDA availability
 echo ""
 echo "🔍 Verifying CUDA compatibility..."

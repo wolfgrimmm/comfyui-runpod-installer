@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     git wget curl psmisc lsof unzip \
     python3.11-dev python3.11-venv python3-pip \
     build-essential software-properties-common \
+    gcc g++ make cmake \
     && curl https://rclone.org/install.sh | bash \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -135,6 +136,17 @@ if [ "$NEED_INSTALL" = "1" ]; then
     pip install opencv-python
     # ONNX Runtime 1.19+ supports CUDA 12.x
     pip install onnxruntime-gpu==1.19.2 || pip install onnxruntime==1.19.2
+
+    # Flash Attention 3 for Blackwell GPUs (RTX 5090)
+    # Note: flash-attn requires CUDA 12.x and recent GPU
+    pip install ninja packaging
+    pip install flash-attn --no-build-isolation || echo "Flash Attention 3 not available for this GPU"
+
+    # xformers for memory-efficient attention (includes Flash Attention 2)
+    pip install xformers==0.0.28 --index-url https://download.pytorch.org/whl/cu124 || echo "xformers installation failed"
+
+    # Triton for Flash Attention kernels
+    pip install triton
     
     # Git integration
     pip install GitPython PyGithub==1.59.1
@@ -805,6 +817,9 @@ RUN chmod +x /app/start_comfyui.sh
 # Environment
 ENV PYTHONUNBUFFERED=1
 ENV HF_HOME=/workspace
+ENV TORCH_CUDA_ARCH_LIST="7.5;8.0;8.6;8.9;9.0"
+# MAX_JOBS for parallel compilation - RTX 5090 pods have 83GB RAM
+ENV MAX_JOBS=16
 
 # Ports
 EXPOSE 7777 8188 8888
