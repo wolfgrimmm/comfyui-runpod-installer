@@ -135,7 +135,14 @@ if [ "$NEED_INSTALL" = "1" ]; then
     pip install opencv-python
     # ONNX Runtime 1.19+ supports CUDA 12.x
     pip install onnxruntime-gpu==1.19.2 || pip install onnxruntime==1.19.2
-    
+
+    # Sage Attention for RTX 5090 optimization (pre-built wheels, no compilation)
+    echo "Installing Sage Attention for RTX 5090..."
+    pip install sageattention || echo "Sage Attention not available"
+
+    # Install triton for GPU kernel optimization
+    pip install triton  # Required for sageattention and other GPU optimizations
+
     # Git integration
     pip install GitPython PyGithub==1.59.1
     
