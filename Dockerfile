@@ -120,40 +120,45 @@ else
 fi
 
 if [ "$NEED_INSTALL" = "1" ]; then
-    
+
     echo "📦 Installing Python packages..."
     pip install --upgrade pip wheel setuptools
-    
+
+    # Install uv for faster package management
+    echo "🚀 Installing uv package manager for faster builds..."
+    pip install uv
+
     # Core packages for UI
-    pip install flask==3.0.0 psutil requests
-    
+    uv pip install flask==3.0.0 psutil requests
+
     # ComfyUI requirements - PyTorch with CUDA 12.4 (better compatibility with 12.9)
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
-    pip install einops torchsde "kornia>=0.7.1" spandrel "safetensors>=0.4.2"
-    pip install aiohttp pyyaml Pillow tqdm scipy
-    pip install transformers diffusers accelerate
-    pip install opencv-python
+    uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+    uv pip install einops torchsde "kornia>=0.7.1" spandrel "safetensors>=0.4.2"
+    uv pip install aiohttp pyyaml Pillow tqdm scipy
+    uv pip install transformers diffusers accelerate
+    uv pip install opencv-python
+
     # ONNX Runtime 1.19+ supports CUDA 12.x
-    pip install onnxruntime-gpu==1.19.2 || pip install onnxruntime==1.19.2
+    uv pip install onnxruntime-gpu==1.19.2 || pip install onnxruntime-gpu==1.19.2
 
     # Sage Attention for RTX 5090 optimization (pre-built wheels, no compilation)
     echo "Installing Sage Attention for RTX 5090..."
-    pip install sageattention || echo "Sage Attention not available"
+    uv pip install sageattention || echo "Sage Attention not available"
 
     # Install triton for GPU kernel optimization
-    pip install triton  # Required for sageattention and other GPU optimizations
+    uv pip install triton  # Required for sageattention and other GPU optimizations
 
     # Install xformers for video model compatibility (Wan2.2 requires it)
     echo "Installing xformers for video generation..."
-    pip install xformers --index-url https://download.pytorch.org/whl/cu124 || \
+    uv pip install xformers --index-url https://download.pytorch.org/whl/cu124 || \
     pip install xformers || \
     echo "Warning: xformers failed to install - video models may not work properly"
 
     # Git integration
-    pip install GitPython PyGithub==1.59.1
-    
+    uv pip install GitPython PyGithub==1.59.1
+
     # Jupyter
-    pip install jupyterlab ipywidgets notebook
+    uv pip install jupyterlab ipywidgets notebook
 
     # Mark venv as CUDA 12.9 compatible
     touch /workspace/venv/.cuda129_upgraded
