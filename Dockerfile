@@ -143,6 +143,12 @@ if [ "$NEED_INSTALL" = "1" ]; then
     # Install triton for GPU kernel optimization
     pip install triton  # Required for sageattention and other GPU optimizations
 
+    # Install xformers for video model compatibility (Wan2.2 requires it)
+    echo "Installing xformers for video generation..."
+    pip install xformers --index-url https://download.pytorch.org/whl/cu124 || \
+    pip install xformers || \
+    echo "Warning: xformers failed to install - video models may not work properly"
+
     # Git integration
     pip install GitPython PyGithub==1.59.1
     
