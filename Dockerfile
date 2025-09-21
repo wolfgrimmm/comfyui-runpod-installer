@@ -168,8 +168,19 @@ if [[ "$GPU_NAME" == *"H100"* ]] || [[ "$GPU_NAME" == *"H200"* ]]; then
     # Check if already installed
     if ! python -c "import flash_attn" 2>/dev/null; then
         pip install ninja packaging
-        # Try pre-built wheel first, compile as fallback
-        pip install flash-attn --no-build-isolation || echo "Flash Attention 3 not available"
+        echo "   Compiling Flash Attention 3 from source (this will take 30-60 minutes)..."
+        echo "   This is a one-time compilation - future restarts will be fast"
+        cd /tmp
+        git clone https://github.com/Dao-AILab/flash-attention.git
+        cd flash-attention
+        git checkout hopper  # FA3 branch specifically for H100/H200
+        # Set architecture for Hopper GPUs
+        export TORCH_CUDA_ARCH_LIST="9.0"
+        export MAX_JOBS=32  # H100 has plenty of RAM for parallel compilation
+        python setup.py install
+        cd /
+        rm -rf /tmp/flash-attention
+        echo "   ✅ Flash Attention 3 installed successfully"
     else
         echo "   Flash Attention 3 already installed"
     fi
