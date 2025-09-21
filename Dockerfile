@@ -141,18 +141,11 @@ if [ "$NEED_INSTALL" = "1" ]; then
     # ONNX Runtime 1.19+ supports CUDA 12.x
     uv pip install onnxruntime-gpu==1.19.2 || pip install onnxruntime-gpu==1.19.2
 
-    # Sage Attention for RTX 5090 optimization (pre-built wheels, no compilation)
-    echo "Installing Sage Attention for RTX 5090..."
-    uv pip install sageattention || echo "Sage Attention not available"
-
     # Install triton for GPU kernel optimization
-    uv pip install triton  # Required for sageattention and other GPU optimizations
+    uv pip install triton  # Required for attention mechanisms and GPU optimizations
 
-    # Install xformers for video model compatibility (Wan2.2 requires it)
-    echo "Installing xformers for video generation..."
-    uv pip install xformers --index-url https://download.pytorch.org/whl/cu124 || \
-    pip install xformers || \
-    echo "Warning: xformers failed to install - video models may not work properly"
+    # Note: Attention mechanisms (Flash Attention 3, Sage Attention, xformers)
+    # are installed at runtime based on detected GPU for optimal performance
 
     # Git integration
     uv pip install GitPython PyGithub==1.59.1
@@ -165,6 +158,37 @@ if [ "$NEED_INSTALL" = "1" ]; then
 
     echo "✅ Virtual environment setup complete with CUDA 12.9 support"
 fi
+
+# GPU-adaptive attention mechanism installation
+echo "🔍 Detecting GPU for optimal attention mechanism..."
+GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)
+
+if [[ "$GPU_NAME" == *"H100"* ]] || [[ "$GPU_NAME" == *"H200"* ]]; then
+    echo "⚡ Hopper GPU detected ($GPU_NAME) - Installing Flash Attention 3..."
+    # Check if already installed
+    if ! python -c "import flash_attn" 2>/dev/null; then
+        pip install ninja packaging
+        # Try pre-built wheel first, compile as fallback
+        pip install flash-attn --no-build-isolation || echo "Flash Attention 3 not available"
+    else
+        echo "   Flash Attention 3 already installed"
+    fi
+elif [[ "$GPU_NAME" == *"5090"* ]] || [[ "$GPU_NAME" == *"5080"* ]] || [[ "$GPU_NAME" == *"Blackwell"* ]]; then
+    echo "🚀 RTX 5090/Blackwell detected ($GPU_NAME) - Installing Sage Attention..."
+    pip install sageattention || echo "Sage Attention not available"
+elif [[ "$GPU_NAME" == *"4090"* ]] || [[ "$GPU_NAME" == *"4080"* ]] || [[ "$GPU_NAME" == *"A6000"* ]] || [[ "$GPU_NAME" == *"L40"* ]]; then
+    echo "📦 Ada/Ampere GPU detected ($GPU_NAME) - Using optimized xformers"
+else
+    echo "📦 GPU: $GPU_NAME - Using standard attention"
+fi
+
+# Always install xformers as fallback for video models
+echo "Installing xformers for video model compatibility..."
+pip install xformers --index-url https://download.pytorch.org/whl/cu124 || \
+pip install xformers || \
+echo "Warning: xformers failed to install - some video models may not work"
+
+echo "✅ GPU-specific optimizations configured"
 
 # Install ComfyUI if not present
 if [ ! -f "/workspace/ComfyUI/main.py" ]; then
