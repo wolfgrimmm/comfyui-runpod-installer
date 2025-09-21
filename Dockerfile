@@ -162,9 +162,36 @@ fi
 # GPU-adaptive attention mechanism installation
 echo "🔍 Detecting GPU for optimal attention mechanism..."
 GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)
+echo "   Raw GPU name: $GPU_NAME"
 
-if [[ "$GPU_NAME" == *"H100"* ]] || [[ "$GPU_NAME" == *"H200"* ]]; then
-    echo "⚡ Hopper GPU detected ($GPU_NAME) - Installing Flash Attention 3..."
+# Detect GPU family regardless of variant (NVL, SXM, PCIe, etc.)
+if echo "$GPU_NAME" | grep -qE "H100|NVIDIA H100"; then
+    GPU_TYPE="H100"
+elif echo "$GPU_NAME" | grep -qE "H200|NVIDIA H200"; then
+    GPU_TYPE="H200"
+elif echo "$GPU_NAME" | grep -qE "B200|NVIDIA B200"; then
+    GPU_TYPE="B200"
+elif echo "$GPU_NAME" | grep -qE "RTX 5090|GeForce RTX 5090"; then
+    GPU_TYPE="RTX5090"
+elif echo "$GPU_NAME" | grep -qE "RTX 6000|RTX 6000 Ada"; then
+    GPU_TYPE="RTX6000Ada"
+elif echo "$GPU_NAME" | grep -qE "L40S|L40"; then
+    GPU_TYPE="L40"
+elif echo "$GPU_NAME" | grep -qE "RTX 4090|RTX 4080"; then
+    GPU_TYPE="RTX40"
+elif echo "$GPU_NAME" | grep -qE "A100|NVIDIA A100"; then
+    GPU_TYPE="A100"
+elif echo "$GPU_NAME" | grep -qE "A40"; then
+    GPU_TYPE="A40"
+else
+    GPU_TYPE="OTHER"
+fi
+
+echo "   Detected GPU type: $GPU_TYPE"
+
+# Install appropriate attention mechanism based on GPU family
+if [[ "$GPU_TYPE" == "H100" ]] || [[ "$GPU_TYPE" == "H200" ]]; then
+    echo "⚡ Hopper GPU detected - Installing Flash Attention 3..."
     # Check if already installed
     if ! python -c "import flash_attn" 2>/dev/null; then
         pip install ninja packaging
@@ -184,11 +211,14 @@ if [[ "$GPU_NAME" == *"H100"* ]] || [[ "$GPU_NAME" == *"H200"* ]]; then
     else
         echo "   Flash Attention 3 already installed"
     fi
-elif [[ "$GPU_NAME" == *"5090"* ]] || [[ "$GPU_NAME" == *"5080"* ]] || [[ "$GPU_NAME" == *"Blackwell"* ]]; then
-    echo "🚀 RTX 5090/Blackwell detected ($GPU_NAME) - Installing Sage Attention..."
+elif [[ "$GPU_TYPE" == "B200" ]] || [[ "$GPU_TYPE" == "RTX5090" ]]; then
+    echo "🚀 Blackwell GPU detected - Installing Sage Attention..."
     pip install sageattention || echo "Sage Attention not available"
-elif [[ "$GPU_NAME" == *"4090"* ]] || [[ "$GPU_NAME" == *"4080"* ]] || [[ "$GPU_NAME" == *"A6000"* ]] || [[ "$GPU_NAME" == *"L40"* ]]; then
-    echo "📦 Ada/Ampere GPU detected ($GPU_NAME) - Using optimized xformers"
+elif [[ "$GPU_TYPE" == "RTX6000Ada" ]] || [[ "$GPU_TYPE" == "L40" ]] || [[ "$GPU_TYPE" == "RTX40" ]] || [[ "$GPU_TYPE" == "A40" ]]; then
+    echo "📦 Ada/Ampere GPU detected - Using optimized xformers"
+elif [[ "$GPU_TYPE" == "A100" ]]; then
+    echo "⚡ A100 detected - Installing Flash Attention 2 (optimized for Ampere)..."
+    pip install flash-attn || echo "Flash Attention 2 not available"
 else
     echo "📦 GPU: $GPU_NAME - Using standard attention"
 fi
