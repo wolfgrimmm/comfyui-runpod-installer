@@ -18,6 +18,14 @@ from datetime import datetime, timedelta
 from gdrive_sync import GDriveSync
 from gdrive_oauth import GDriveOAuth
 
+# Try to import model downloader
+try:
+    from model_downloader import ModelDownloader
+    MODEL_DOWNLOADER_AVAILABLE = True
+except ImportError:
+    MODEL_DOWNLOADER_AVAILABLE = False
+    print("Model downloader not available - install huggingface_hub for model management")
+
 app = Flask(__name__)
 
 # Configuration
@@ -44,6 +52,7 @@ class ComfyUIManager:
         self.startup_logs = queue.Queue()  # Store startup logs
         self.startup_progress = {"stage": "idle", "message": "", "percent": 0}
         self.log_thread = None
+        self.model_downloader = ModelDownloader() if MODEL_DOWNLOADER_AVAILABLE else None
         self.init_system()
         self.load_user_stats()
     
@@ -1110,6 +1119,104 @@ def setup_service_account():
         return jsonify({'success': True, 'message': message})
     else:
         return jsonify({'success': False, 'error': message}), 400
+
+# ============= Model Manager Routes =============
+
+@app.route('/models')
+def model_manager():
+    """Model manager page"""
+    if not MODEL_DOWNLOADER_AVAILABLE:
+        return "Model manager not available. Please install huggingface_hub.", 503
+    return render_template('model_manager.html')
+
+@app.route('/api/models/installed')
+def get_installed_models():
+    """Get list of installed models"""
+    if not manager.model_downloader:
+        return jsonify({'error': 'Model manager not available'}), 503
+
+    models = manager.model_downloader.get_installed_models()
+    return jsonify(models)
+
+@app.route('/api/models/search', methods=['POST'])
+def search_models():
+    """Search for models on HuggingFace Hub"""
+    if not manager.model_downloader:
+        return jsonify({'error': 'Model manager not available'}), 503
+
+    data = request.json
+    query = data.get('query', '')
+
+    if not query:
+        return jsonify([])
+
+    results = manager.model_downloader.search_models(query)
+    return jsonify(results)
+
+@app.route('/api/models/download', methods=['POST'])
+def download_model():
+    """Start downloading a model"""
+    if not manager.model_downloader:
+        return jsonify({'error': 'Model manager not available'}), 503
+
+    data = request.json
+    repo_id = data.get('repo_id')
+    filename = data.get('filename')
+    model_type = data.get('model_type')
+    is_snapshot = data.get('is_snapshot', False)
+
+    if not repo_id:
+        return jsonify({'error': 'repo_id is required'}), 400
+
+    try:
+        download_id = manager.model_downloader.download_model(
+            repo_id=repo_id,
+            filename=filename,
+            model_type=model_type,
+            is_snapshot=is_snapshot
+        )
+        return jsonify({'download_id': download_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/models/downloads')
+def get_downloads():
+    """Get status of all downloads"""
+    if not manager.model_downloader:
+        return jsonify({'error': 'Model manager not available'}), 503
+
+    downloads = manager.model_downloader.get_all_downloads()
+    return jsonify(downloads)
+
+@app.route('/api/models/delete', methods=['POST'])
+def delete_model():
+    """Delete a model"""
+    if not manager.model_downloader:
+        return jsonify({'error': 'Model manager not available'}), 503
+
+    data = request.json
+    model_path = data.get('path')
+
+    if not model_path:
+        return jsonify({'error': 'path is required'}), 400
+
+    # Security check - ensure path is within models directory
+    if not model_path.startswith('/workspace/ComfyUI/models/'):
+        return jsonify({'error': 'Invalid model path'}), 403
+
+    success = manager.model_downloader.delete_model(model_path)
+    return jsonify({'success': success})
+
+@app.route('/api/models/disk-usage')
+def get_disk_usage():
+    """Get disk usage information"""
+    if not manager.model_downloader:
+        return jsonify({'error': 'Model manager not available'}), 503
+
+    usage = manager.model_downloader.get_disk_usage()
+    return jsonify(usage)
+
+# ============= End Model Manager Routes =============
 
 if __name__ == '__main__':
     # Restore rclone config from workspace if needed

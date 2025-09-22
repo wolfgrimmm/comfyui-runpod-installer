@@ -41,3 +41,7 @@ rclone.conf
 .config/rclone/
 service_account.json
 .github_token
+
+# Model downloader and installer folders
+SwarmUI_Model_Downloader_v80/
+Comfy_UI_V52/

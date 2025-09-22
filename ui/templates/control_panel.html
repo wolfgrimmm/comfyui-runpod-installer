@@ -859,6 +859,9 @@
                     Stop
                 </button>
             {% endif %}
+            <button class="btn btn-primary" id="modelBtn" onclick="openModelManager()">
+                🎨 Model Manager
+            </button>
         </div>
         
         
@@ -1263,6 +1266,10 @@
         // Store current user globally for Google Drive sync
         window.currentUser = {% if current_user %}'{{ current_user }}'{% else %}null{% endif %};
 
+        function openModelManager() {
+            window.open('/models', '_blank');
+        }
+
         // Make functions globally accessible for onclick handlers
         window.startComfyUI = startComfyUI;
         window.stopComfyUI = stopComfyUI;
@@ -1270,6 +1277,7 @@
         window.openJupyterLab = openJupyterLab;
         window.openDocs = openDocs;
         window.restartService = restartService;
+        window.openModelManager = openModelManager;
     </script>
 </body>
 </html>
