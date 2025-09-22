@@ -868,14 +868,16 @@
     </div>
 
     <script>
-        let currentTab = 'bundles';
-        let downloadCheckInterval = null;
-        let bundleCheckInterval = null;
-        let allBundles = {};
-        let currentCategory = 'all';
-        let currentSearchQuery = '';
+        // Make all functions globally accessible immediately
+        (function() {
+            let currentTab = 'bundles';
+            let downloadCheckInterval = null;
+            let bundleCheckInterval = null;
+            let allBundles = {};
+            let currentCategory = 'all';
+            let currentSearchQuery = '';
 
-        function switchTab(tabName, event) {
+            window.switchTab = function(tabName, event) {
             currentTab = tabName;
 
             // Update tab buttons
@@ -913,7 +915,7 @@
             }
         }
 
-        async function loadBundles() {
+        window.loadBundles = async function() {
             try {
                 const response = await fetch('/api/models/bundles');
                 allBundles = await response.json();
@@ -929,7 +931,7 @@
             }
         }
 
-        async function loadCategories() {
+        window.loadCategories = async function() {
             try {
                 const response = await fetch('/api/models/bundles/categories');
                 const data = await response.json();
@@ -950,7 +952,7 @@
             }
         }
 
-        function displayBundles(bundles) {
+        window.displayBundles = function(bundles) {
             const container = document.getElementById('bundle-list');
 
                 if (Object.keys(bundles).length === 0) {
@@ -1045,7 +1047,7 @@
                 await updateBundleStatuses();
         }
 
-        async function filterByCategory() {
+        window.filterByCategory = async function() {
             const category = document.getElementById('category-filter').value;
             currentCategory = category;
 
@@ -1066,7 +1068,7 @@
             }
         }
 
-        async function searchBundles() {
+        window.searchBundles = async function() {
             const query = document.getElementById('bundle-search').value.trim();
             currentSearchQuery = query;
 
@@ -1093,7 +1095,7 @@
             }
         }
 
-        function sortBundles() {
+        window.sortBundles = function() {
             const sortBy = document.getElementById('sort-bundles').value;
             const container = document.getElementById('bundle-list');
 
@@ -1144,7 +1146,7 @@
             displayBundles(sortedBundles);
         }
 
-        async function downloadAllInCategory(categoryName) {
+        window.downloadAllInCategory = async function(categoryName) {
             // Get all bundles in this category
             const normalizedCategory = categoryName.replace(/_/g, ' ');
             const bundlesToDownload = [];
@@ -1174,7 +1176,7 @@
             }
         }
 
-        function toggleBundleDetails(bundleId) {
+        window.toggleBundleDetails = function(bundleId) {
             const details = document.getElementById(`details-${bundleId}`);
             const arrow = document.getElementById(`arrow-${bundleId}`);
 
@@ -1187,7 +1189,7 @@
             }
         }
 
-        async function downloadBundle(bundleId) {
+        window.downloadBundle = async function(bundleId) {
             try {
                 const response = await fetch('/api/models/bundles/download', {
                     method: 'POST',
@@ -1218,7 +1220,7 @@
             }
         }
 
-        async function updateBundleStatuses() {
+        window.updateBundleStatuses = async function() {
             try {
                 const response = await fetch('/api/models/bundles/status');
                 const bundleDownloads = await response.json();
@@ -1272,19 +1274,19 @@
             }
         }
 
-        function startBundleMonitoring() {
+        window.startBundleMonitoring = function() {
             updateBundleStatuses();
             bundleCheckInterval = setInterval(updateBundleStatuses, 3000);
         }
 
-        function stopBundleMonitoring() {
+        window.stopBundleMonitoring = function() {
             if (bundleCheckInterval) {
                 clearInterval(bundleCheckInterval);
                 bundleCheckInterval = null;
             }
         }
 
-        async function loadInstalledModels() {
+        window.loadInstalledModels = async function() {
             try {
                 const response = await fetch('/api/models/installed');
                 const data = await response.json();
@@ -1327,7 +1329,7 @@
             }
         }
 
-        async function searchModels() {
+        window.searchModels = async function() {
             const query = document.getElementById('search-input').value;
             if (!query) return;
 
@@ -1376,7 +1378,7 @@
             }
         }
 
-        async function downloadModel(repoId, filename = null) {
+        window.downloadModel = async function(repoId, filename = null) {
             try {
                 const response = await fetch('/api/models/download', {
                     method: 'POST',
@@ -1400,7 +1402,7 @@
             }
         }
 
-        async function deleteModel(path, name) {
+        window.deleteModel = async function(path, name) {
             if (!confirm(`Are you sure you want to delete ${name}?`)) return;
 
             try {
@@ -1424,7 +1426,7 @@
             }
         }
 
-        async function updateDiskUsage() {
+        window.updateDiskUsage = async function() {
             try {
                 const response = await fetch('/api/models/disk-usage');
                 const data = await response.json();
@@ -1440,7 +1442,7 @@
             }
         }
 
-        async function updateDownloadQueue() {
+        window.updateDownloadQueue = async function() {
             try {
                 const response = await fetch('/api/models/downloads');
                 const downloads = await response.json();
@@ -1482,24 +1484,24 @@
             }
         }
 
-        function startDownloadMonitoring() {
+        window.startDownloadMonitoring = function() {
             updateDownloadQueue();
             downloadCheckInterval = setInterval(updateDownloadQueue, 2000);
         }
 
-        function stopDownloadMonitoring() {
+        window.stopDownloadMonitoring = function() {
             if (downloadCheckInterval) {
                 clearInterval(downloadCheckInterval);
                 downloadCheckInterval = null;
             }
         }
 
-        function formatCategoryName(category) {
+        window.formatCategoryName = function(category) {
             return category.replace(/_/g, ' ')
                           .replace(/\b\w/g, l => l.toUpperCase());
         }
 
-        function showMessage(message, type) {
+        window.showMessage = function(message, type) {
             const className = type === 'error' ? 'error-message' : 'success-message';
             const messageDiv = document.createElement('div');
             messageDiv.className = className;
@@ -1515,7 +1517,7 @@
         let currentSource = 'huggingface';
         let currentModelData = {};
 
-        function selectSource(source) {
+        window.selectSource = function(source) {
             currentSource = source;
 
             // Update button states
@@ -1535,7 +1537,7 @@
             }
         }
 
-        async function checkCivitAIAuth() {
+        window.checkCivitAIAuth = async function() {
             try {
                 const response = await fetch('/api/civitai/verify-key');
                 const data = await response.json();
@@ -1556,7 +1558,7 @@
             }
         }
 
-        async function searchCivitAI() {
+        window.searchCivitAI = async function() {
             const query = document.getElementById('civitai-query').value;
             const type = document.getElementById('civitai-type').value;
             const sort = document.getElementById('civitai-sort').value;
@@ -1585,7 +1587,7 @@
             }
         }
 
-        async function getCivitAITrending() {
+        window.getCivitAITrending = async function() {
             const resultsContainer = document.getElementById('search-results');
             resultsContainer.innerHTML = '<div class="loading">Loading trending models...</div>';
 
@@ -1598,7 +1600,7 @@
             }
         }
 
-        function displayCivitAIResults(data) {
+        window.displayCivitAIResults = function(data) {
             const resultsContainer = document.getElementById('search-results');
 
             if (!data.items || data.items.length === 0) {
@@ -1651,7 +1653,7 @@
             resultsContainer.innerHTML = html;
         }
 
-        async function showModelDetails(modelId) {
+        window.showModelDetails = async function(modelId) {
             const model = currentModelData[modelId];
             if (!model) return;
 
@@ -1691,7 +1693,7 @@
             modal.style.display = 'block';
         }
 
-        async function downloadCivitAIModel(versionId, modelType) {
+        window.downloadCivitAIModel = async function(versionId, modelType) {
             try {
                 const response = await fetch('/api/civitai/download', {
                     method: 'POST',
@@ -1714,15 +1716,15 @@
             }
         }
 
-        function showAPIKeyModal() {
+        window.showAPIKeyModal = function() {
             document.getElementById('apiKeyModal').style.display = 'block';
         }
 
-        function closeAPIKeyModal() {
+        window.closeAPIKeyModal = function() {
             document.getElementById('apiKeyModal').style.display = 'none';
         }
 
-        async function saveAPIKey() {
+        window.saveAPIKey = async function() {
             const apiKey = document.getElementById('api-key-input').value;
             if (!apiKey) {
                 showToast('Please enter an API key', 'error');
@@ -1749,21 +1751,21 @@
             }
         }
 
-        function closeModal() {
+        window.closeModal = function() {
             document.getElementById('modelModal').style.display = 'none';
         }
 
-        function copyText(text) {
+        window.copyText = function(text) {
             navigator.clipboard.writeText(text);
             showToast('Copied to clipboard!', 'success');
         }
 
-        function copyTriggerWords() {
+        window.copyTriggerWords = function() {
             const text = document.getElementById('modal-trigger-words').textContent;
             copyText(text);
         }
 
-        function formatNumber(num) {
+        window.formatNumber = function(num) {
             if (num >= 1000000) {
                 return (num / 1000000).toFixed(1) + 'M';
             } else if (num >= 1000) {
@@ -1772,7 +1774,7 @@
             return num.toString();
         }
 
-        function showToast(message, type = 'info') {
+        window.showToast = function(message, type = 'info') {
             // Simple toast notification (you can enhance this)
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
@@ -1792,22 +1794,23 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            loadBundles();  // Start with bundles tab
-            updateDiskUsage();
-            setInterval(updateDiskUsage, 30000); // Update every 30 seconds
-            startBundleMonitoring();  // Monitor bundle downloads
-        });
-
-        // Handle Enter key in search
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('search-input').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    searchModels();
-                }
+            // Initialize
+            document.addEventListener('DOMContentLoaded', () => {
+                loadBundles();  // Start with bundles tab
+                updateDiskUsage();
+                setInterval(updateDiskUsage, 30000); // Update every 30 seconds
+                startBundleMonitoring();  // Monitor bundle downloads
             });
-        });
+
+            // Handle Enter key in search
+            document.addEventListener('DOMContentLoaded', () => {
+                document.getElementById('search-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        searchModels();
+                    }
+                });
+            });
+        })();  // End of self-executing function
     </script>
 </body>
 </html>
