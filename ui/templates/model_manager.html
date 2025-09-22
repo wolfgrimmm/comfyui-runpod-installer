@@ -696,7 +696,7 @@
                 <!-- Category Dropdown -->
                 <div style="flex: 1; min-width: 200px;">
                     <label style="color: var(--text-secondary); font-size: 14px; margin-bottom: 5px; display: block;">Filter by Category:</label>
-                    <select id="category-filter" class="search-input" style="width: 100%; cursor: pointer;" onchange="window.filterByCategory()">
+                    <select id="category-filter" class="search-input" style="width: 100%; cursor: pointer;" onchange="filterByCategory()">
                         <option value="all">All Categories</option>
                     </select>
                 </div>
@@ -750,14 +750,14 @@
                     <input type="text" class="search-input" id="search-input"
                            placeholder="Search HuggingFace Hub (e.g., FLUX, SDXL, ControlNet)...">
                 </div>
-                <button class="btn btn-primary" onclick="window.searchModels()">Search</button>
+                <button class="btn btn-primary" onclick="searchModels()">Search</button>
             </div>
 
             <!-- CivitAI Search -->
             <div id="civitai-search" class="source-content" style="display: none;">
                 <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
                     <input type="text" class="search-input" id="civitai-query" style="flex: 2; min-width: 300px;"
-                           placeholder="Search CivitAI models..." onkeypress="if(event.key==='Enter') window.searchCivitAI()">
+                           placeholder="Search CivitAI models..." onkeypress="if(event.key==='Enter') searchCivitAI()">
 
                     <select id="civitai-type" class="search-input" style="flex: 1; min-width: 150px;">
                         <option value="">All Types</option>
@@ -785,7 +785,7 @@
                 <!-- API Key Status -->
                 <div id="civitai-auth-status" style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">
                     <span id="auth-status-text">Checking API key...</span>
-                    <button class="btn btn-sm" onclick="window.showAPIKeyModal()">Set API Key</button>
+                    <button class="btn btn-sm" onclick="showAPIKeyModal()">Set API Key</button>
                 </div>
             </div>
 
@@ -804,13 +804,13 @@
     <!-- CivitAI Model Details Modal -->
     <div id="modelModal" class="modal">
         <div class="modal-content">
-            <span class="modal-close" onclick="window.closeModal()">&times;</span>
+            <span class="modal-close" onclick="closeModal()">&times;</span>
             <h2 id="modal-title">Model Details</h2>
 
             <div class="modal-section">
                 <h3>Trigger Words</h3>
                 <div id="modal-trigger-words" class="trigger-text">Loading...</div>
-                <button class="copy-trigger" onclick="window.copyTriggerWords()">Copy</button>
+                <button class="copy-trigger" onclick="copyTriggerWords()">Copy</button>
             </div>
 
             <div class="modal-section">
@@ -842,7 +842,7 @@
     <!-- API Key Modal -->
     <div id="apiKeyModal" class="modal">
         <div class="modal-content">
-            <span class="modal-close" onclick="window.closeAPIKeyModal()">&times;</span>
+            <span class="modal-close" onclick="closeAPIKeyModal()">&times;</span>
             <h2>CivitAI API Key Configuration</h2>
 
             <div class="modal-section">
@@ -851,7 +851,7 @@
                     To access restricted models and get higher rate limits, enter your CivitAI API key.
                 </p>
                 <input type="text" id="api-key-input" class="search-input" placeholder="Enter your CivitAI API key...">
-                <button class="btn btn-primary" onclick="window.saveAPIKey()" style="margin-top: 10px;">Save API Key</button>
+                <button class="btn btn-primary" onclick="saveAPIKey()" style="margin-top: 10px;">Save API Key</button>
             </div>
 
             <div class="modal-section">
@@ -868,16 +868,16 @@
     </div>
 
     <script>
-        // Make all functions globally accessible immediately
-        (function() {
-            let currentTab = 'bundles';
-            let downloadCheckInterval = null;
-            let bundleCheckInterval = null;
-            let allBundles = {};
-            let currentCategory = 'all';
-            let currentSearchQuery = '';
+        // Global variables
+        let currentTab = 'bundles';
+        let downloadCheckInterval = null;
+        let bundleCheckInterval = null;
+        let allBundles = {}
+        let currentCategory = 'all';
+        let currentSearchQuery = '';
 
-            window.switchTab = function(tabName, event) {
+        // Define all functions globally (no IIFE wrapper)
+        function switchTab(tabName, event) {
             currentTab = tabName;
 
             // Update tab buttons
@@ -901,37 +901,37 @@
 
             // Load tab-specific data
             if (tabName === 'bundles') {
-                window.loadBundles();
-                window.startBundleMonitoring();
+                loadBundles();
+                startBundleMonitoring();
             } else if (tabName === 'installed') {
-                window.loadInstalledModels();
-                window.stopBundleMonitoring();
+                loadInstalledModels();
+                stopBundleMonitoring();
             } else if (tabName === 'downloads') {
-                window.startDownloadMonitoring();
-                window.stopBundleMonitoring();
+                startDownloadMonitoring();
+                stopBundleMonitoring();
             } else {
-                window.stopDownloadMonitoring();
-                window.stopBundleMonitoring();
+                stopDownloadMonitoring();
+                stopBundleMonitoring();
             }
-        };
+        }
 
-        window.loadBundles = async function() {
+        async function loadBundles() {
             try {
                 const response = await fetch('/api/models/bundles');
                 allBundles = await response.json();
 
                 // Load categories for dropdown
-                await window.loadCategories();
+                await loadCategories();
 
                 // Display bundles
-                window.displayBundles(allBundles);
+                displayBundles(allBundles);
             } catch (error) {
                 document.getElementById('bundle-list').innerHTML =
                     `<div class="error-message">Error loading bundles: ${error.message}</div>`;
             }
-        };
+        }
 
-        window.loadCategories = async function() {
+        async function loadCategories() {
             try {
                 const response = await fetch('/api/models/bundles/categories');
                 const data = await response.json();
@@ -950,9 +950,9 @@
             } catch (error) {
                 console.error('Error loading categories:', error);
             }
-        };
+        }
 
-        window.displayBundles = function(bundles) {
+        function displayBundles(bundles) {
             const container = document.getElementById('bundle-list');
 
                 if (Object.keys(bundles).length === 0) {
@@ -961,7 +961,7 @@
                 }
 
                 // Group bundles by category
-                const categories = {};
+                const categories = {}
                 for (const [bundleId, bundle] of Object.entries(bundles)) {
                     const category = bundle.category || 'Other';
                     if (!categories[category]) {
@@ -1044,15 +1044,15 @@
                 container.innerHTML = html;
 
                 // Update bundle statuses
-                await window.updateBundleStatuses();
-        };
+                await updateBundleStatuses();
+        }
 
-        window.filterByCategory = async function() {
+        async function filterByCategory() {
             const category = document.getElementById('category-filter').value;
             currentCategory = category;
 
             if (category === 'all') {
-                window.displayBundles(allBundles);
+                displayBundles(allBundles);
             } else {
                 try {
                     const response = await fetch('/api/models/bundles/filter', {
@@ -1061,23 +1061,23 @@
                         body: JSON.stringify({ category: category })
                     });
                     const filteredBundles = await response.json();
-                    window.displayBundles(filteredBundles);
+                    displayBundles(filteredBundles);
                 } catch (error) {
                     console.error('Error filtering bundles:', error);
                 }
             }
-        };
+        }
 
-        window.searchBundles = async function() {
+        async function searchBundles() {
             const query = document.getElementById('bundle-search').value.trim();
             currentSearchQuery = query;
 
             if (!query) {
                 // Reset to current category filter
                 if (currentCategory === 'all') {
-                    window.displayBundles(allBundles);
+                    displayBundles(allBundles);
                 } else {
-                    window.filterByCategory();
+                    filterByCategory();
                 }
                 return;
             }
@@ -1089,13 +1089,13 @@
                     body: JSON.stringify({ query: query })
                 });
                 const searchResults = await response.json();
-                window.displayBundles(searchResults);
+                displayBundles(searchResults);
             } catch (error) {
                 console.error('Error searching bundles:', error);
             }
-        };
+        }
 
-        window.sortBundles = function() {
+        function sortBundles() {
             const sortBy = document.getElementById('sort-bundles').value;
             const container = document.getElementById('bundle-list');
 
@@ -1136,17 +1136,17 @@
             }
 
             // Convert back to object
-            const sortedBundles = {};
+            const sortedBundles = {}
             bundleArray.forEach(bundle => {
                 const {id, ...rest} = bundle;
                 sortedBundles[id] = rest;
             });
 
             // Re-display with sorted order
-            window.displayBundles(sortedBundles);
-        };
+            displayBundles(sortedBundles);
+        }
 
-        window.downloadAllInCategory = async function(categoryName) {
+        async function downloadAllInCategory(categoryName) {
             // Get all bundles in this category
             const normalizedCategory = categoryName.replace(/_/g, ' ');
             const bundlesToDownload = [];
@@ -1158,25 +1158,25 @@
             }
 
             if (bundlesToDownload.length === 0) {
-                window.showMessage('No bundles found in this category', 'error');
+                showMessage('No bundles found in this category', 'error');
                 return;
             }
 
-            window.showMessage(`Starting download of ${bundlesToDownload.length} bundles in ${normalizedCategory}...`, 'info');
+            showMessage(`Starting download of ${bundlesToDownload.length} bundles in ${normalizedCategory}...`, 'info');
 
             // Download each bundle
             for (const bundleId of bundlesToDownload) {
                 try {
-                    await window.downloadBundle(bundleId);
+                    await downloadBundle(bundleId);
                     // Small delay between downloads
                     await new Promise(resolve => setTimeout(resolve, 500));
                 } catch (error) {
                     console.error(`Failed to download bundle ${bundleId}:`, error);
                 }
             }
-        };
+        }
 
-        window.toggleBundleDetails = function(bundleId) {
+        function toggleBundleDetails(bundleId) {
             const details = document.getElementById(`details-${bundleId}`);
             const arrow = document.getElementById(`arrow-${bundleId}`);
 
@@ -1187,9 +1187,9 @@
                 details.classList.add('expanded');
                 arrow.classList.add('expanded');
             }
-        };
+        }
 
-        window.downloadBundle = async function(bundleId) {
+        async function downloadBundle(bundleId) {
             try {
                 const response = await fetch('/api/models/bundles/download', {
                     method: 'POST',
@@ -1200,7 +1200,7 @@
                 const result = await response.json();
 
                 if (result.bundle_download_id) {
-                    window.showMessage('Bundle download started!', 'success');
+                    showMessage('Bundle download started!', 'success');
                     // Show progress bar for this bundle
                     const progressBar = document.getElementById(`progress-${bundleId}`);
                     if (progressBar) {
@@ -1213,14 +1213,14 @@
                         button.textContent = 'Downloading...';
                     }
                 } else {
-                    window.showMessage('Failed to start bundle download', 'error');
+                    showMessage('Failed to start bundle download', 'error');
                 }
             } catch (error) {
-                window.showMessage(`Download failed: ${error.message}`, 'error');
+                showMessage(`Download failed: ${error.message}`, 'error');
             }
-        };
+        }
 
-        window.updateBundleStatuses = async function() {
+        async function updateBundleStatuses() {
             try {
                 const response = await fetch('/api/models/bundles/status');
                 const bundleDownloads = await response.json();
@@ -1263,30 +1263,30 @@
                         }
                         const failedModels = bundleStatus.failed_models;
                         if (failedModels && failedModels.length > 0) {
-                            window.showMessage(`Bundle download incomplete - ${failedModels.length} models failed`, 'error');
+                            showMessage(`Bundle download incomplete - ${failedModels.length} models failed`, 'error');
                         } else {
-                            window.showMessage(`Bundle download failed: ${bundleStatus.error || 'Unknown error'}`, 'error');
+                            showMessage(`Bundle download failed: ${bundleStatus.error || 'Unknown error'}`, 'error');
                         }
                     }
                 }
             } catch (error) {
                 console.error('Error updating bundle statuses:', error);
             }
-        };
+        }
 
-        window.startBundleMonitoring = function() {
-            window.updateBundleStatuses();
-            bundleCheckInterval = setInterval(window.updateBundleStatuses, 3000);
-        };
+        function startBundleMonitoring() {
+            updateBundleStatuses();
+            bundleCheckInterval = setInterval(updateBundleStatuses, 3000);
+        }
 
-        window.stopBundleMonitoring = function() {
+        function stopBundleMonitoring() {
             if (bundleCheckInterval) {
                 clearInterval(bundleCheckInterval);
                 bundleCheckInterval = null;
             }
-        };
+        }
 
-        window.loadInstalledModels = async function() {
+        async function loadInstalledModels() {
             try {
                 const response = await fetch('/api/models/installed');
                 const data = await response.json();
@@ -1327,9 +1327,9 @@
                 document.getElementById('installed-models').innerHTML =
                     `<div class="error-message">Error loading models: ${error.message}</div>`;
             }
-        };
+        }
 
-        window.searchModels = async function() {
+        async function searchModels() {
             const query = document.getElementById('search-input').value;
             if (!query) return;
 
@@ -1376,9 +1376,9 @@
                 resultsContainer.innerHTML =
                     `<div class="error-message">Search failed: ${error.message}</div>`;
             }
-        };
+        }
 
-        window.downloadModel = async function(repoId, filename = null) {
+        async function downloadModel(repoId, filename = null) {
             try {
                 const response = await fetch('/api/models/download', {
                     method: 'POST',
@@ -1392,17 +1392,17 @@
                 const result = await response.json();
 
                 if (result.download_id) {
-                    window.showMessage('Download started!', 'success');
-                    window.switchTab('downloads', null);
+                    showMessage('Download started!', 'success');
+                    switchTab('downloads', null);
                 } else {
-                    window.showMessage('Failed to start download', 'error');
+                    showMessage('Failed to start download', 'error');
                 }
             } catch (error) {
-                window.showMessage(`Download failed: ${error.message}`, 'error');
+                showMessage(`Download failed: ${error.message}`, 'error');
             }
-        };
+        }
 
-        window.deleteModel = async function(path, name) {
+        async function deleteModel(path, name) {
             if (!confirm(`Are you sure you want to delete ${name}?`)) return;
 
             try {
@@ -1415,18 +1415,18 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    window.showMessage('Model deleted successfully', 'success');
-                    window.loadInstalledModels();
-                    window.updateDiskUsage();
+                    showMessage('Model deleted successfully', 'success');
+                    loadInstalledModels();
+                    updateDiskUsage();
                 } else {
-                    window.showMessage('Failed to delete model', 'error');
+                    showMessage('Failed to delete model', 'error');
                 }
             } catch (error) {
-                window.showMessage(`Delete failed: ${error.message}`, 'error');
+                showMessage(`Delete failed: ${error.message}`, 'error');
             }
-        };
+        }
 
-        window.updateDiskUsage = async function() {
+        async function updateDiskUsage() {
             try {
                 const response = await fetch('/api/models/disk-usage');
                 const data = await response.json();
@@ -1440,9 +1440,9 @@
             } catch (error) {
                 console.error('Error updating disk usage:', error);
             }
-        };
+        }
 
-        window.updateDownloadQueue = async function() {
+        async function updateDownloadQueue() {
             try {
                 const response = await fetch('/api/models/downloads');
                 const downloads = await response.json();
@@ -1482,26 +1482,26 @@
             } catch (error) {
                 console.error('Error updating downloads:', error);
             }
-        };
+        }
 
-        window.startDownloadMonitoring = function() {
-            window.updateDownloadQueue();
-            downloadCheckInterval = setInterval(window.updateDownloadQueue, 2000);
-        };
+        function startDownloadMonitoring() {
+            updateDownloadQueue();
+            downloadCheckInterval = setInterval(updateDownloadQueue, 2000);
+        }
 
-        window.stopDownloadMonitoring = function() {
+        function stopDownloadMonitoring() {
             if (downloadCheckInterval) {
                 clearInterval(downloadCheckInterval);
                 downloadCheckInterval = null;
             }
-        };
+        }
 
-        window.formatCategoryName = function(category) {
+        function formatCategoryName(category) {
             return category.replace(/_/g, ' ')
                           .replace(/\b\w/g, l => l.toUpperCase());
-        };
+        }
 
-        window.showMessage = function(message, type) {
+        function showMessage(message, type) {
             const className = type === 'error' ? 'error-message' : 'success-message';
             const messageDiv = document.createElement('div');
             messageDiv.className = className;
@@ -1511,13 +1511,13 @@
             container.insertBefore(messageDiv, container.firstChild);
 
             setTimeout(() => messageDiv.remove(), 5000);
-        };
+        }
 
         // CivitAI Integration Functions
         let currentSource = 'huggingface';
-        let currentModelData = {};
+        let currentModelData = {}
 
-        window.selectSource = function(source) {
+        function selectSource(source) {
             currentSource = source;
 
             // Update button states
@@ -1533,11 +1533,11 @@
 
             // Check CivitAI auth status when switching to CivitAI
             if (source === 'civitai') {
-                window.checkCivitAIAuth();
+                checkCivitAIAuth();
             }
-        };
+        }
 
-        window.checkCivitAIAuth = async function() {
+        async function checkCivitAIAuth() {
             try {
                 const response = await fetch('/api/civitai/verify-key');
                 const data = await response.json();
@@ -1556,9 +1556,9 @@
             } catch (error) {
                 console.error('Error checking auth:', error);
             }
-        };
+        }
 
-        window.searchCivitAI = async function() {
+        async function searchCivitAI() {
             const query = document.getElementById('civitai-query').value;
             const type = document.getElementById('civitai-type').value;
             const sort = document.getElementById('civitai-sort').value;
@@ -1581,26 +1581,26 @@
                 });
 
                 const data = await response.json();
-                window.displayCivitAIResults(data);
+                displayCivitAIResults(data);
             } catch (error) {
                 resultsContainer.innerHTML = `<div class="error">Error searching CivitAI: ${error.message}</div>`;
             }
-        };
+        }
 
-        window.getCivitAITrending = async function() {
+        async function getCivitAITrending() {
             const resultsContainer = document.getElementById('search-results');
             resultsContainer.innerHTML = '<div class="loading">Loading trending models...</div>';
 
             try {
                 const response = await fetch('/api/civitai/trending?period=Week&limit=20');
                 const data = await response.json();
-                window.displayCivitAIResults(data);
+                displayCivitAIResults(data);
             } catch (error) {
                 resultsContainer.innerHTML = `<div class="error">Error loading trending: ${error.message}</div>`;
             }
-        };
+        }
 
-        window.displayCivitAIResults = function(data) {
+        function displayCivitAIResults(data) {
             const resultsContainer = document.getElementById('search-results');
 
             if (!data.items || data.items.length === 0) {
@@ -1611,7 +1611,7 @@
             let html = '<div class="model-grid">';
 
             data.items.forEach(model => {
-                const latestVersion = model.modelVersions?.[0] || {};
+                const latestVersion = model.modelVersions?.[0] || {}
                 const preview = latestVersion.images?.[0]?.url || '';
                 const triggerWords = latestVersion.trainedWords?.join(', ') || 'None';
                 const baseModel = latestVersion.baseModel || 'Unknown';
@@ -1632,7 +1632,7 @@
                             <div class="trigger-words">
                                 <div class="trigger-label">Trigger Words:</div>
                                 <span class="trigger-text">${triggerWords}</span>
-                                <button class="copy-trigger" onclick="window.copyText('${triggerWords.replace(/'/g, "\\'")}')">Copy</button>
+                                <button class="copy-trigger" onclick="copyText('${triggerWords.replace(/'/g, "\\'")}')">Copy</button>
                             </div>` : ''}
                             <div class="model-stats">
                                 <span>⬇️ ${formatNumber(latestVersion.stats?.downloadCount || 0)}</span>
@@ -1640,8 +1640,8 @@
                                 <span>❤️ ${formatNumber(model.stats?.favoriteCount || 0)}</span>
                             </div>
                             <div style="margin-top: 10px;">
-                                <button class="btn btn-primary btn-sm" onclick="window.showModelDetails(${model.id})">Details</button>
-                                <button class="btn btn-success btn-sm" onclick="window.downloadCivitAIModel(${latestVersion.id}, '${model.type}')">Download</button>
+                                <button class="btn btn-primary btn-sm" onclick="showModelDetails(${model.id})">Details</button>
+                                <button class="btn btn-success btn-sm" onclick="downloadCivitAIModel(${latestVersion.id}, '${model.type}')">Download</button>
                                 <a href="https://civitai.com/models/${model.id}" target="_blank" class="btn btn-secondary btn-sm">View on CivitAI</a>
                             </div>
                         </div>
@@ -1651,14 +1651,14 @@
 
             html += '</div>';
             resultsContainer.innerHTML = html;
-        };
+        }
 
-        window.showModelDetails = async function(modelId) {
+        async function showModelDetails(modelId) {
             const model = currentModelData[modelId];
             if (!model) return;
 
             const modal = document.getElementById('modelModal');
-            const latestVersion = model.modelVersions?.[0] || {};
+            const latestVersion = model.modelVersions?.[0] || {}
 
             // Fill modal with data
             document.getElementById('modal-title').textContent = model.name;
@@ -1681,19 +1681,19 @@
 
             // Set download button
             document.getElementById('modal-download-btn').onclick = () => {
-                window.downloadCivitAIModel(latestVersion.id, model.type);
-                window.closeModal();
-            };
+                downloadCivitAIModel(latestVersion.id, model.type);
+                closeModal();
+            }
 
             // Set CivitAI link
             document.getElementById('modal-civitai-link').onclick = () => {
                 window.open(`https://civitai.com/models/${model.id}`, '_blank');
-            };
+            }
 
             modal.style.display = 'block';
-        };
+        }
 
-        window.downloadCivitAIModel = async function(versionId, modelType) {
+        async function downloadCivitAIModel(versionId, modelType) {
             try {
                 const response = await fetch('/api/civitai/download', {
                     method: 'POST',
@@ -1706,28 +1706,28 @@
 
                 const data = await response.json();
                 if (data.download_id) {
-                    window.showToast('Download started! Check the Downloads tab for progress.');
-                    window.switchTab('downloads', null);
+                    showToast('Download started! Check the Downloads tab for progress.');
+                    switchTab('downloads', null);
                 } else {
-                    window.showToast('Error starting download: ' + (data.error || 'Unknown error'), 'error');
+                    showToast('Error starting download: ' + (data.error || 'Unknown error'), 'error');
                 }
             } catch (error) {
-                window.showToast('Error: ' + error.message, 'error');
+                showToast('Error: ' + error.message, 'error');
             }
-        };
+        }
 
-        window.showAPIKeyModal = function() {
+        function showAPIKeyModal() {
             document.getElementById('apiKeyModal').style.display = 'block';
-        };
+        }
 
-        window.closeAPIKeyModal = function() {
+        function closeAPIKeyModal() {
             document.getElementById('apiKeyModal').style.display = 'none';
-        };
+        }
 
-        window.saveAPIKey = async function() {
+        async function saveAPIKey() {
             const apiKey = document.getElementById('api-key-input').value;
             if (!apiKey) {
-                window.showToast('Please enter an API key', 'error');
+                showToast('Please enter an API key', 'error');
                 return;
             }
 
@@ -1740,41 +1740,41 @@
 
                 const data = await response.json();
                 if (data.success) {
-                    window.showToast('API key saved successfully!', 'success');
-                    window.closeAPIKeyModal();
-                    window.checkCivitAIAuth();
+                    showToast('API key saved successfully!', 'success');
+                    closeAPIKeyModal();
+                    checkCivitAIAuth();
                 } else {
-                    window.showToast('Invalid API key', 'error');
+                    showToast('Invalid API key', 'error');
                 }
             } catch (error) {
-                window.showToast('Error saving API key: ' + error.message, 'error');
+                showToast('Error saving API key: ' + error.message, 'error');
             }
-        };
+        }
 
-        window.closeModal = function() {
+        function closeModal() {
             document.getElementById('modelModal').style.display = 'none';
-        };
+        }
 
-        window.copyText = function(text) {
+        function copyText(text) {
             navigator.clipboard.writeText(text);
-            window.showToast('Copied to clipboard!', 'success');
-        };
+            showToast('Copied to clipboard!', 'success');
+        }
 
-        window.copyTriggerWords = function() {
+        function copyTriggerWords() {
             const text = document.getElementById('modal-trigger-words').textContent;
-            window.copyText(text);
-        };
+            copyText(text);
+        }
 
-        window.formatNumber = function(num) {
+        function formatNumber(num) {
             if (num >= 1000000) {
                 return (num / 1000000).toFixed(1) + 'M';
             } else if (num >= 1000) {
                 return (num / 1000).toFixed(1) + 'K';
             }
             return num.toString();
-        };
+        }
 
-        window.showToast = function(message, type = 'info') {
+        function showToast(message, type = 'info') {
             // Simple toast notification (you can enhance this)
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
@@ -1784,7 +1784,7 @@
                 bottom: 20px;
                 right: 20px;
                 padding: 15px 20px;
-                background: ${type === 'error' ? 'var(--danger)' : 'var(--primary)'};
+                background: ${type === 'error' ? 'var(--danger)' : 'var(--primary)'}
                 color: white;
                 border-radius: 8px;
                 z-index: 10000;
@@ -1792,25 +1792,22 @@
             `;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
-        };
+        }
 
-            // Initialize
-            document.addEventListener('DOMContentLoaded', () => {
-                window.loadBundles();  // Start with bundles tab
-                window.updateDiskUsage();
-                setInterval(window.updateDiskUsage, 30000); // Update every 30 seconds
-                window.startBundleMonitoring();  // Monitor bundle downloads
-            });
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadBundles();  // Start with bundles tab
+            updateDiskUsage();
+            setInterval(updateDiskUsage, 30000); // Update every 30 seconds
+            startBundleMonitoring();  // Monitor bundle downloads
 
             // Handle Enter key in search
-            document.addEventListener('DOMContentLoaded', () => {
-                document.getElementById('search-input').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        window.searchModels();
-                    }
-                });
+            document.getElementById('search-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    searchModels();
+                }
             });
-        })();  // End of self-executing function
+        });
     </script>
 </body>
 </html>
