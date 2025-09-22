@@ -52,7 +52,18 @@ class ComfyUIManager:
         self.startup_logs = queue.Queue()  # Store startup logs
         self.startup_progress = {"stage": "idle", "message": "", "percent": 0}
         self.log_thread = None
-        self.model_downloader = ModelDownloader() if MODEL_DOWNLOADER_AVAILABLE else None
+
+        # Try to initialize model downloader, but don't crash if it fails
+        self.model_downloader = None
+        if MODEL_DOWNLOADER_AVAILABLE:
+            try:
+                self.model_downloader = ModelDownloader()
+                print("✅ Model downloader initialized successfully")
+            except Exception as e:
+                print(f"⚠️ Model downloader initialization failed: {e}")
+                print("   Model Manager will not be available")
+                self.model_downloader = None
+
         self.init_system()
         self.load_user_stats()
     

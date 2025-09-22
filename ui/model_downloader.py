@@ -60,8 +60,12 @@ class ModelDownloader:
         self.download_lock = threading.Lock()
         self.bundle_downloads = {}  # Track bundle downloads
 
-        # Initialize CivitAI client
-        self.civitai_client = CivitAIClient(models_base_path=models_base_path)
+        # Initialize CivitAI client (optional - don't crash if it fails)
+        try:
+            self.civitai_client = CivitAIClient(models_base_path=models_base_path)
+        except Exception as e:
+            print(f"⚠️ CivitAI client initialization failed: {e}")
+            self.civitai_client = None
 
         # Define model bundles
         self.model_bundles = self._get_model_bundles()
@@ -97,9 +101,14 @@ class ModelDownloader:
             'custom_nodes': '/workspace/ComfyUI/custom_nodes',
         }
 
-        # Create directories if they don't exist
+        # Try to create directories, but don't crash if it fails
         for path in self.model_paths.values():
-            Path(path).mkdir(parents=True, exist_ok=True)
+            try:
+                Path(path).mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                # Don't crash the entire initialization if directory creation fails
+                print(f"⚠️ Could not create directory {path}: {e}")
+                # Continue - directory will be created when actually needed
 
     def _get_model_bundles(self):
         """Define pre-configured model bundles for easy download."""

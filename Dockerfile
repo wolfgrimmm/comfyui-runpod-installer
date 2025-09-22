@@ -850,10 +850,6 @@ fi
 echo "🌐 Starting Control Panel on port 7777..."
 cd /app/ui && python app.py > /workspace/ui.log 2>&1 &
 
-# Start Model Manager (Gradio app)
-echo "📦 Starting Model Manager on port 7860..."
-cd /app/ui && python model_downloader_app.py --models-path /workspace/models --port 7860 > /workspace/model_manager.log 2>&1 &
-
 # Start JupyterLab
 echo "📊 Starting JupyterLab on port 8888..."
 jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root \
@@ -870,12 +866,6 @@ if lsof -i:7777 > /dev/null 2>&1; then
 else
     echo "⚠️ Control Panel failed to start. Check /workspace/ui.log"
     tail -20 /workspace/ui.log 2>/dev/null || true
-fi
-
-if lsof -i:7860 > /dev/null 2>&1; then
-    echo "✅ Model Manager running on http://localhost:7860"
-else
-    echo "⚠️ Model Manager failed to start. Check /workspace/model_manager.log"
 fi
 
 if lsof -i:8888 > /dev/null 2>&1; then
