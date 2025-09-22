@@ -1,4 +1,0 @@
-Clothing_Migrations repo : https://github.com/TTPlanetPig/Comfyui_Object_Migration
-Increase number of block swaps if you get out of VRAM error
-Tutorial for Clothing_Migrations
-
