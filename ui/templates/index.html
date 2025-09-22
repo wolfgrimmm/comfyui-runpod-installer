@@ -280,6 +280,10 @@
                 Stop ComfyUI
             </button>
         {% endif %}
+
+        <button class="btn btn-primary" onclick="openModelManager()" style="margin-top: 10px;">
+            📦 Open Model Manager
+        </button>
         
         <div class="loading">
             <div class="spinner"></div>
@@ -419,7 +423,7 @@
         
         function openComfyUI() {
             const url = getRunPodUrl(8188);
-            
+
             // Open in same window with a loading message
             showMessage('Opening ComfyUI...', 'success');
             
@@ -431,6 +435,12 @@
         
         function openJupyterLab() {
             const url = getRunPodUrl(8888);
+            window.open(url, '_blank');
+        }
+
+        function openModelManager() {
+            const url = getRunPodUrl(7860);
+            showMessage('Opening Model Manager...', 'success');
             window.open(url, '_blank');
         }
         
