@@ -868,12 +868,23 @@
     </div>
 
     <script>
+        // Error handler to catch any JavaScript errors
+        window.addEventListener('error', function(e) {
+            console.error('JavaScript Error:', e.message, 'at', e.filename, ':', e.lineno);
+        });
+
         let currentTab = 'bundles';
         let downloadCheckInterval = null;
         let bundleCheckInterval = null;
         let allBundles = {};
         let currentCategory = 'all';
         let currentSearchQuery = '';
+
+        // Utility functions for safe string handling
+        function safeString(str) {
+            if (!str) return '';
+            return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
+        }
 
         function switchTab(tabName, event) {
             currentTab = tabName;
