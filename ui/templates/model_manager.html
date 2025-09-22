@@ -924,7 +924,7 @@
                 await loadCategories();
 
                 // Display bundles
-                displayBundles(allBundles);
+                await displayBundles(allBundles);
             } catch (error) {
                 document.getElementById('bundle-list').innerHTML =
                     `<div class="error-message">Error loading bundles: ${error.message}</div>`;
@@ -952,7 +952,7 @@
             }
         }
 
-        function displayBundles(bundles) {
+        async function displayBundles(bundles) {
             const container = document.getElementById('bundle-list');
 
                 if (Object.keys(bundles).length === 0) {
@@ -1052,7 +1052,7 @@
             currentCategory = category;
 
             if (category === 'all') {
-                displayBundles(allBundles);
+                await displayBundles(allBundles);
             } else {
                 try {
                     const response = await fetch('/api/models/bundles/filter', {
@@ -1061,7 +1061,7 @@
                         body: JSON.stringify({ category: category })
                     });
                     const filteredBundles = await response.json();
-                    displayBundles(filteredBundles);
+                    await displayBundles(filteredBundles);
                 } catch (error) {
                     console.error('Error filtering bundles:', error);
                 }
@@ -1075,7 +1075,7 @@
             if (!query) {
                 // Reset to current category filter
                 if (currentCategory === 'all') {
-                    displayBundles(allBundles);
+                    await displayBundles(allBundles);
                 } else {
                     filterByCategory();
                 }
@@ -1089,13 +1089,13 @@
                     body: JSON.stringify({ query: query })
                 });
                 const searchResults = await response.json();
-                displayBundles(searchResults);
+                await displayBundles(searchResults);
             } catch (error) {
                 console.error('Error searching bundles:', error);
             }
         }
 
-        function sortBundles() {
+        async function sortBundles() {
             const sortBy = document.getElementById('sort-bundles').value;
             const container = document.getElementById('bundle-list');
 
@@ -1143,7 +1143,7 @@
             });
 
             // Re-display with sorted order
-            displayBundles(sortedBundles);
+            await displayBundles(sortedBundles);
         }
 
         async function downloadAllInCategory(categoryName) {
