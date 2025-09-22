@@ -1252,6 +1252,39 @@ def get_bundle_downloads():
     bundle_downloads = manager.model_downloader.get_all_bundle_downloads()
     return jsonify(bundle_downloads)
 
+@app.route('/api/models/bundles/search', methods=['POST'])
+def search_bundles():
+    """Search bundles by query"""
+    if not manager.model_downloader:
+        return jsonify({'error': 'Model manager not available'}), 503
+
+    data = request.json
+    query = data.get('query', '')
+
+    bundles = manager.model_downloader.search_bundles(query)
+    return jsonify(bundles)
+
+@app.route('/api/models/bundles/categories')
+def get_bundle_categories():
+    """Get list of bundle categories"""
+    if not manager.model_downloader:
+        return jsonify({'error': 'Model manager not available'}), 503
+
+    categories = manager.model_downloader.get_bundle_categories()
+    return jsonify({'categories': categories})
+
+@app.route('/api/models/bundles/filter', methods=['POST'])
+def filter_bundles():
+    """Filter bundles by category"""
+    if not manager.model_downloader:
+        return jsonify({'error': 'Model manager not available'}), 503
+
+    data = request.json
+    category = data.get('category', 'all')
+
+    bundles = manager.model_downloader.get_bundles_by_category(category)
+    return jsonify(bundles)
+
 # ============= End Model Manager Routes =============
 
 if __name__ == '__main__':

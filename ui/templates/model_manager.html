@@ -304,6 +304,22 @@
             border-radius: 6px;
         }
 
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary), #7c3aed);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        }
+
         .empty-state {
             text-align: center;
             padding: 40px;
@@ -525,6 +541,37 @@
             <p style="color: var(--text-secondary); margin-bottom: 20px;">
                 Download pre-configured collections of models with a single click
             </p>
+
+            <!-- Bundle Controls -->
+            <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                <!-- Category Dropdown -->
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="color: var(--text-secondary); font-size: 14px; margin-bottom: 5px; display: block;">Filter by Category:</label>
+                    <select id="category-filter" class="search-input" style="width: 100%; cursor: pointer;" onchange="filterByCategory()">
+                        <option value="all">All Categories</option>
+                    </select>
+                </div>
+
+                <!-- Search Input -->
+                <div style="flex: 2; min-width: 300px;">
+                    <label style="color: var(--text-secondary); font-size: 14px; margin-bottom: 5px; display: block;">Search Bundles:</label>
+                    <input type="text" id="bundle-search" class="search-input"
+                           placeholder="Search by name, description, or model name..."
+                           onkeyup="searchBundles()">
+                </div>
+
+                <!-- Sort Dropdown -->
+                <div style="flex: 1; min-width: 150px;">
+                    <label style="color: var(--text-secondary); font-size: 14px; margin-bottom: 5px; display: block;">Sort by:</label>
+                    <select id="sort-bundles" class="search-input" style="width: 100%; cursor: pointer;" onchange="sortBundles()">
+                        <option value="name">Name</option>
+                        <option value="size-asc">Size (Small to Large)</option>
+                        <option value="size-desc">Size (Large to Small)</option>
+                        <option value="category">Category</option>
+                    </select>
+                </div>
+            </div>
+
             <div id="bundle-list" class="loading">Loading bundles...</div>
         </div>
 
@@ -558,6 +605,9 @@
         let currentTab = 'bundles';
         let downloadCheckInterval = null;
         let bundleCheckInterval = null;
+        let allBundles = {};
+        let currentCategory = 'all';
+        let currentSearchQuery = '';
 
         function switchTab(tabName) {
             currentTab = tabName;
@@ -593,8 +643,42 @@
         async function loadBundles() {
             try {
                 const response = await fetch('/api/models/bundles');
-                const bundles = await response.json();
-                const container = document.getElementById('bundle-list');
+                allBundles = await response.json();
+
+                // Load categories for dropdown
+                await loadCategories();
+
+                // Display bundles
+                displayBundles(allBundles);
+            } catch (error) {
+                document.getElementById('bundle-list').innerHTML =
+                    `<div class="error-message">Error loading bundles: ${error.message}</div>`;
+            }
+        }
+
+        async function loadCategories() {
+            try {
+                const response = await fetch('/api/models/bundles/categories');
+                const data = await response.json();
+                const select = document.getElementById('category-filter');
+
+                // Clear existing options except "All"
+                select.innerHTML = '<option value="all">All Categories</option>';
+
+                // Add category options
+                data.categories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category;
+                    option.textContent = category;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading categories:', error);
+            }
+        }
+
+        function displayBundles(bundles) {
+            const container = document.getElementById('bundle-list');
 
                 if (Object.keys(bundles).length === 0) {
                     container.innerHTML = '<div class="empty-state">No bundles available</div>';
@@ -613,15 +697,27 @@
 
                 // Render bundles by category
                 let html = '';
-                const categoryOrder = ['FLUX Bundles', 'Wan Video Bundles', 'Image Generation', 'Video Generation', 'Workflow Bundles', 'Other'];
+                const categoryOrder = ['Text Encoders', 'FLUX Bundles', 'Wan Video Bundles', 'Image Generation', 'Video Generation', 'Workflow Bundles', 'Utility Models', 'Other Models', 'Other'];
 
                 for (const category of categoryOrder) {
                     if (categories[category]) {
-                        html += `<div class="category-header">${category}</div>`;
+                        const categoryBundles = categories[category];
+                        const showDownloadAll = categoryBundles.length > 1 && (category === 'Text Encoders' || category === 'FLUX Bundles');
+
+                        html += `
+                            <div class="category-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>${category}</span>
+                                ${showDownloadAll ? `
+                                    <button class="btn btn-secondary" style="font-size: 14px; padding: 8px 16px;"
+                                            onclick="downloadAllInCategory('${category.replace(/[^a-zA-Z0-9]/g, '_')}')">
+                                        Download All ${category}
+                                    </button>
+                                ` : ''}
+                            </div>`;
 
                         for (const bundle of categories[category]) {
-                            // Calculate total size in GB only
-                            const totalSizeGB = bundle.total_size ? bundle.total_size.split(' ')[0] + ' GB' : 'Size unknown';
+                            // Use the original total size with correct units
+                            const totalSize = bundle.total_size || 'Size unknown';
 
                             html += `
                                 <div class="bundle-card" id="bundle-${bundle.id}">
@@ -634,7 +730,7 @@
                                             <div class="bundle-description" style="margin-left: 25px; margin-top: 5px;">${bundle.description}</div>
                                         </div>
                                         <div style="text-align: right;">
-                                            <div class="bundle-size" style="font-size: 16px; font-weight: 600; color: var(--primary);">Total: ${totalSizeGB}</div>
+                                            <div class="bundle-size" style="font-size: 16px; font-weight: 600; color: var(--primary);">Total: ${totalSize}</div>
                                             <div style="color: var(--text-secondary); font-size: 14px; margin-top: 5px;">${bundle.models.length} models</div>
                                         </div>
                                     </div>
@@ -644,7 +740,7 @@
                                         <div class="bundle-model-list">
                                             ${bundle.models.map(model => {
                                                 const modelName = model.save_as || model.filename || model.repo_id?.split('/').pop() || 'Model';
-                                                const modelSize = model.size ? model.size.split(' ')[0] + ' GB' : 'Size unknown';
+                                                const modelSize = model.size || 'Size unknown';
                                                 return `
                                                     <div class="bundle-model-item">
                                                         <span class="bundle-model-name">• ${modelName}</span>
@@ -674,9 +770,134 @@
 
                 // Update bundle statuses
                 await updateBundleStatuses();
+        }
+
+        async function filterByCategory() {
+            const category = document.getElementById('category-filter').value;
+            currentCategory = category;
+
+            if (category === 'all') {
+                displayBundles(allBundles);
+            } else {
+                try {
+                    const response = await fetch('/api/models/bundles/filter', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ category: category })
+                    });
+                    const filteredBundles = await response.json();
+                    displayBundles(filteredBundles);
+                } catch (error) {
+                    console.error('Error filtering bundles:', error);
+                }
+            }
+        }
+
+        async function searchBundles() {
+            const query = document.getElementById('bundle-search').value.trim();
+            currentSearchQuery = query;
+
+            if (!query) {
+                // Reset to current category filter
+                if (currentCategory === 'all') {
+                    displayBundles(allBundles);
+                } else {
+                    filterByCategory();
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/models/bundles/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+                const searchResults = await response.json();
+                displayBundles(searchResults);
             } catch (error) {
-                document.getElementById('bundle-list').innerHTML =
-                    `<div class="error-message">Error loading bundles: ${error.message}</div>`;
+                console.error('Error searching bundles:', error);
+            }
+        }
+
+        function sortBundles() {
+            const sortBy = document.getElementById('sort-bundles').value;
+            const container = document.getElementById('bundle-list');
+
+            // Get current displayed bundles
+            let bundlesToSort = currentSearchQuery ?
+                allBundles : // Will be filtered by search
+                (currentCategory === 'all' ? allBundles : allBundles); // Will be filtered by category
+
+            // Convert to array for sorting
+            let bundleArray = Object.entries(bundlesToSort).map(([id, bundle]) => ({id, ...bundle}));
+
+            // Sort based on selection
+            switch(sortBy) {
+                case 'name':
+                    bundleArray.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'size-asc':
+                    bundleArray.sort((a, b) => {
+                        const sizeA = parseFloat(a.total_size) || 0;
+                        const sizeB = parseFloat(b.total_size) || 0;
+                        return sizeA - sizeB;
+                    });
+                    break;
+                case 'size-desc':
+                    bundleArray.sort((a, b) => {
+                        const sizeA = parseFloat(a.total_size) || 0;
+                        const sizeB = parseFloat(b.total_size) || 0;
+                        return sizeB - sizeA;
+                    });
+                    break;
+                case 'category':
+                    bundleArray.sort((a, b) => {
+                        const catA = a.category || 'Other';
+                        const catB = b.category || 'Other';
+                        return catA.localeCompare(catB);
+                    });
+                    break;
+            }
+
+            // Convert back to object
+            const sortedBundles = {};
+            bundleArray.forEach(bundle => {
+                const {id, ...rest} = bundle;
+                sortedBundles[id] = rest;
+            });
+
+            // Re-display with sorted order
+            displayBundles(sortedBundles);
+        }
+
+        async function downloadAllInCategory(categoryName) {
+            // Get all bundles in this category
+            const normalizedCategory = categoryName.replace(/_/g, ' ');
+            const bundlesToDownload = [];
+
+            for (const [bundleId, bundle] of Object.entries(allBundles)) {
+                if (bundle.category === normalizedCategory) {
+                    bundlesToDownload.push(bundleId);
+                }
+            }
+
+            if (bundlesToDownload.length === 0) {
+                showMessage('No bundles found in this category', 'error');
+                return;
+            }
+
+            showMessage(`Starting download of ${bundlesToDownload.length} bundles in ${normalizedCategory}...`, 'info');
+
+            // Download each bundle
+            for (const bundleId of bundlesToDownload) {
+                try {
+                    await downloadBundle(bundleId);
+                    // Small delay between downloads
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (error) {
+                    console.error(`Failed to download bundle ${bundleId}:`, error);
+                }
             }
         }
 

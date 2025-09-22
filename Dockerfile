@@ -144,28 +144,56 @@ if [ "$NEED_INSTALL" = "1" ]; then
     # ONNX Runtime 1.19+ supports CUDA 12.x
     uv pip install onnxruntime-gpu==1.19.2 || pip install onnxruntime-gpu==1.19.2
 
-    # Install triton for GPU kernel optimization
-    uv pip install triton  # Required for attention mechanisms and GPU optimizations
+    # Install triton for GPU kernel optimization - CRITICAL for attention mechanisms
+    echo "📦 Installing Triton for GPU optimizations..."
+    uv pip install triton --upgrade
+
+    # Install ninja and packaging for compiling from source
+    uv pip install ninja packaging wheel
 
     # Performance optimization libraries
-    uv pip install huggingface_hub hf_transfer accelerate piexif requests
+    uv pip install huggingface_hub hf_transfer accelerate piexif requests deepspeed
 
-    # Install pre-compiled attention mechanisms (fast, no compilation needed!)
-    echo "🚀 Installing pre-compiled attention mechanisms..."
+    # Install ALL attention mechanisms during build for immediate availability
+    echo "🚀 Installing optimized attention mechanisms..."
 
-    # Sage Attention 2.2.0 - Pre-built for all GPUs
-    pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-cp310-cp310-linux_x86_64.whl || \
-        echo "Warning: Sage Attention installation failed, will skip"
+    # Clear any existing Triton cache first
+    rm -rf ~/.triton /tmp/triton_* 2>/dev/null || true
 
-    # xformers 0.33 - Pre-built with all GPU arch support
+    # 1. xformers - Universal fallback (abi3 wheel works with Python 3.9+)
+    echo "📦 Installing xformers 0.33..."
     pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/xformers-0.0.33+c159edc0.d20250906-cp39-abi3-linux_x86_64.whl || \
         pip install xformers --index-url https://download.pytorch.org/whl/cu129
 
-    # Flash Attention 2.8.3 - Pre-built fallback (will be replaced with FA3 for H100/H200)
-    pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/flash_attn-2.8.2-cp310-cp310-linux_x86_64.whl || \
-        echo "Warning: Flash Attention 2.8 installation failed, will compile if needed"
+    # 2. Flash Attention 2 - For Ampere/Ada GPUs
+    echo "📦 Installing Flash Attention 2.8.3..."
+    pip install flash-attn --no-build-isolation || \
+        pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/flash_attn-2.8.2-cp310-cp310-linux_x86_64.whl || \
+        echo "Warning: Flash Attention 2 installation failed, will use xformers"
 
-    # Note: Flash Attention 3 will be compiled at runtime for H100/H200 GPUs only
+    # 3. Sage Attention - For Blackwell/newer GPUs (try multiple Python versions)
+    echo "📦 Installing Sage Attention 2.2.0..."
+    pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-cp311-cp311-linux_x86_64.whl || \
+        pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-cp310-cp310-linux_x86_64.whl || \
+        echo "Warning: Sage Attention installation failed"
+
+    # 4. Flash Attention 3 - Pre-compile for ALL GPUs to avoid runtime delays
+    echo "🔨 Pre-compiling Flash Attention 3..."
+    cd /tmp && \
+    git clone --depth 1 https://github.com/Dao-AILab/flash-attention.git fa3-build && \
+    cd fa3-build && \
+    (git checkout hopper 2>/dev/null || git checkout main) && \
+    TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0" MAX_JOBS=8 pip install . --no-build-isolation && \
+    cd / && rm -rf /tmp/fa3-build || \
+    echo "Note: Flash Attention 3 pre-compilation skipped"
+
+    # Install insightface with correct Python version
+    pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/insightface-0.7.3-cp311-cp311-linux_x86_64.whl || \
+        pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/insightface-0.7.3-cp310-cp310-linux_x86_64.whl || \
+        pip install insightface
+
+    # Clear build caches to reduce image size
+    rm -rf ~/.cache/pip ~/.triton /tmp/*
 
     # Git integration
     uv pip install GitPython PyGithub==1.59.1
@@ -185,104 +213,64 @@ GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head 
 echo "   GPU detected: $GPU_NAME"
 
 # Detect GPU family regardless of variant (NVL, SXM, PCIe, etc.)
-if echo "$GPU_NAME" | grep -qE "H100|NVIDIA H100"; then
-    GPU_TYPE="H100"
-elif echo "$GPU_NAME" | grep -qE "H200|NVIDIA H200"; then
-    GPU_TYPE="H200"
-elif echo "$GPU_NAME" | grep -qE "B200|NVIDIA B200"; then
-    GPU_TYPE="B200"
-elif echo "$GPU_NAME" | grep -qE "RTX 5090|GeForce RTX 5090"; then
-    GPU_TYPE="RTX5090"
-elif echo "$GPU_NAME" | grep -qE "RTX 6000|RTX 6000 Ada"; then
-    GPU_TYPE="RTX6000Ada"
-elif echo "$GPU_NAME" | grep -qE "L40S|L40"; then
-    GPU_TYPE="L40"
-elif echo "$GPU_NAME" | grep -qE "RTX 4090|RTX 4080"; then
-    GPU_TYPE="RTX40"
-elif echo "$GPU_NAME" | grep -qE "A100|NVIDIA A100"; then
-    GPU_TYPE="A100"
-elif echo "$GPU_NAME" | grep -qE "A40"; then
-    GPU_TYPE="A40"
+if echo "$GPU_NAME" | grep -qE "H100|H200|H800|NVIDIA H100|NVIDIA H200"; then
+    GPU_TYPE="hopper"
+    echo "   ⚡ Hopper architecture detected"
+elif echo "$GPU_NAME" | grep -qE "RTX 5090|RTX 5080|B200|B100|NVIDIA B200"; then
+    GPU_TYPE="blackwell"
+    echo "   🚀 Blackwell architecture detected"
+elif echo "$GPU_NAME" | grep -qE "A100|A40|A30|A10|NVIDIA A100"; then
+    GPU_TYPE="ampere"
+    echo "   ⚡ Ampere architecture detected"
+elif echo "$GPU_NAME" | grep -qE "RTX 4090|RTX 4080|RTX 4070|L40|L40S|RTX 6000 Ada"; then
+    GPU_TYPE="ada"
+    echo "   📦 Ada Lovelace architecture detected"
+elif echo "$GPU_NAME" | grep -qE "RTX 3090|RTX 3080|RTX 3070|RTX 3060"; then
+    GPU_TYPE="ampere"
+    echo "   📦 Ampere (RTX 30xx) architecture detected"
 else
-    GPU_TYPE="OTHER"
+    GPU_TYPE="generic"
+    echo "   📦 Generic GPU detected"
 fi
 
-echo "   GPU family: $GPU_TYPE"
+# All attention mechanisms are now pre-installed during build
+# ComfyUI will auto-detect and use the best one available
+echo "✅ All attention mechanisms pre-installed:"
 
-# Configure attention mechanism based on GPU (all are pre-installed except FA3)
-if [[ "$GPU_TYPE" == "H100" ]] || [[ "$GPU_TYPE" == "H200" ]]; then
-    echo "⚡ Hopper GPU detected - Checking Flash Attention 3 status..."
-
-    # Check if FA3 is already installed and cached
-    if [ -f "/workspace/venv/.fa3_installed" ]; then
-        echo "✅ Flash Attention 3 already installed (cached from previous build)"
+# Check what's actually installed and log it
+if python -c "import flash_attn; v=flash_attn.__version__; print(f'   ✅ Flash Attention {v}'); exit(0 if v.startswith('3') else 1)" 2>/dev/null; then
+    echo "      🚀 Flash Attention 3 available (Hopper optimized)"
+    if [[ "$GPU_TYPE" == "hopper" ]]; then
         echo "export COMFYUI_ATTENTION_MECHANISM=flash3" >> /workspace/venv/.env_settings
-    else
-        # Check if we can import flash_attn v3
-        if python -c "import flash_attn; v=flash_attn.__version__; exit(0 if v.startswith('3') else 1)" 2>/dev/null; then
-            echo "✅ Flash Attention 3 detected"
-            touch /workspace/venv/.fa3_installed
-            echo "export COMFYUI_ATTENTION_MECHANISM=flash3" >> /workspace/venv/.env_settings
-        else
-            echo "📦 Flash Attention 3 not found - Will compile on first run for maximum performance"
-            echo "   Note: First startup will take 30-60 minutes for one-time FA3 compilation"
-            echo "export COMFYUI_ATTENTION_MECHANISM=flash3_needed" >> /workspace/venv/.env_settings
-
-            # Store compilation script for runtime execution
-            cat > /workspace/venv/compile_fa3.sh << 'FA3_SCRIPT'
-#!/bin/bash
-echo "🔨 Compiling Flash Attention 3 for Hopper architecture..."
-echo "   This one-time process will take 30-60 minutes"
-echo "   Future restarts will be instant!"
-
-# Uninstall FA2 if present
-pip uninstall flash-attn -y 2>/dev/null || true
-
-# Install build dependencies
-pip install ninja packaging
-
-# Compile FA3
-cd /tmp
-git clone https://github.com/Dao-AILab/flash-attention.git
-cd flash-attention
-git checkout hopper  # FA3 branch for H100/H200
-
-# Set Hopper architecture
-export TORCH_CUDA_ARCH_LIST="9.0"
-export MAX_JOBS=32
-
-# Compile and install
-python setup.py install
-
-# Cleanup
-cd /
-rm -rf /tmp/flash-attention
-
-# Mark as installed
-touch /workspace/venv/.fa3_installed
-sed -i 's/flash3_needed/flash3/' /workspace/venv/.env_settings
-
-echo "✅ Flash Attention 3 compilation complete!"
-FA3_SCRIPT
-            chmod +x /workspace/venv/compile_fa3.sh
-        fi
     fi
-
-elif [[ "$GPU_TYPE" == "B200" ]] || [[ "$GPU_TYPE" == "RTX5090" ]]; then
-    echo "🚀 Blackwell GPU detected - Sage Attention 2.2.0 will be used"
-    echo "export COMFYUI_ATTENTION_MECHANISM=sage" >> /workspace/venv/.env_settings
-
-elif [[ "$GPU_TYPE" == "A100" ]]; then
-    echo "⚡ A100 detected - Flash Attention 2.8.3 will be used"
-    echo "export COMFYUI_ATTENTION_MECHANISM=flash2" >> /workspace/venv/.env_settings
-
-else
-    echo "📦 Using xformers 0.33 for optimal performance"
-    echo "export COMFYUI_ATTENTION_MECHANISM=xformers" >> /workspace/venv/.env_settings
+elif python -c "import flash_attn; print(f'   ✅ Flash Attention {flash_attn.__version__}')" 2>/dev/null; then
+    echo "      ⚡ Flash Attention 2 available"
+    if [[ "$GPU_TYPE" == "ampere" ]] || [[ "$GPU_TYPE" == "ada" ]]; then
+        echo "export COMFYUI_ATTENTION_MECHANISM=flash2" >> /workspace/venv/.env_settings
+    fi
 fi
 
-# Log the configuration
-echo "✅ Attention mechanism configured: $(grep COMFYUI_ATTENTION /workspace/venv/.env_settings 2>/dev/null || echo 'default')"
+if python -c "import sageattention" 2>/dev/null; then
+    echo "   ✅ Sage Attention 2.2.0 available"
+    if [[ "$GPU_TYPE" == "blackwell" ]]; then
+        echo "export COMFYUI_ATTENTION_MECHANISM=sage" >> /workspace/venv/.env_settings
+    fi
+fi
+
+if python -c "import xformers" 2>/dev/null; then
+    echo "   ✅ xformers 0.33 available (universal fallback)"
+    if [[ "$GPU_TYPE" == "generic" ]]; then
+        echo "export COMFYUI_ATTENTION_MECHANISM=xformers" >> /workspace/venv/.env_settings
+    fi
+fi
+
+# If no specific mechanism was set, let ComfyUI auto-detect
+if ! grep -q "COMFYUI_ATTENTION_MECHANISM" /workspace/venv/.env_settings 2>/dev/null; then
+    echo "export COMFYUI_ATTENTION_MECHANISM=auto" >> /workspace/venv/.env_settings
+    echo "   ℹ️ ComfyUI will auto-select the best attention mechanism"
+fi
+
+echo "✅ Attention mechanism configuration complete"
 
 # Install ComfyUI if not present
 if [ ! -f "/workspace/ComfyUI/main.py" ]; then
@@ -868,17 +856,25 @@ if [ -f "/workspace/venv/.env_settings" ]; then
     source /workspace/venv/.env_settings
 fi
 
-# Handle FA3 compilation if needed for H100/H200
-if [ "$COMFYUI_ATTENTION_MECHANISM" = "flash3_needed" ]; then
-    echo "⚡ H100/H200 detected - Flash Attention 3 required for optimal performance"
-
-    if [ -f "/workspace/venv/compile_fa3.sh" ]; then
-        echo "🔨 Starting one-time Flash Attention 3 compilation..."
-        echo "   This will take 30-60 minutes but only needs to be done once"
-        /workspace/venv/compile_fa3.sh
-
-        # Reload settings after compilation
-        source /workspace/venv/.env_settings
+# All attention mechanisms are pre-installed during Docker build
+# No runtime compilation needed!
+if [ -z "$COMFYUI_ATTENTION_MECHANISM" ]; then
+    # Auto-detect best available mechanism if not set
+    if python -c "import flash_attn; exit(0 if flash_attn.__version__.startswith('3') else 1)" 2>/dev/null; then
+        export COMFYUI_ATTENTION_MECHANISM="flash3"
+        echo "🚀 Auto-detected Flash Attention 3"
+    elif python -c "import flash_attn" 2>/dev/null; then
+        export COMFYUI_ATTENTION_MECHANISM="flash2"
+        echo "⚡ Auto-detected Flash Attention 2"
+    elif python -c "import sageattention" 2>/dev/null; then
+        export COMFYUI_ATTENTION_MECHANISM="sage"
+        echo "🎯 Auto-detected Sage Attention"
+    elif python -c "import xformers" 2>/dev/null; then
+        export COMFYUI_ATTENTION_MECHANISM="xformers"
+        echo "📦 Auto-detected xformers"
+    else
+        export COMFYUI_ATTENTION_MECHANISM="default"
+        echo "ℹ️ Using default PyTorch attention"
     fi
 fi
 
@@ -953,21 +949,33 @@ fi
 cd /workspace/ComfyUI
 
 # Display which attention mechanism is being used
+echo "🎆 Attention Mechanism: $COMFYUI_ATTENTION_MECHANISM"
+
+# Clear Triton cache if it exists to prevent conflicts
+if [ -d "$HOME/.triton" ] || [ -d "/root/.triton" ]; then
+    echo "🧹 Clearing Triton cache..."
+    rm -rf ~/.triton /root/.triton /tmp/triton_* 2>/dev/null || true
+fi
+
 case "$COMFYUI_ATTENTION_MECHANISM" in
     flash3)
         echo "🚀 Starting ComfyUI with Flash Attention 3 (Hopper optimized)"
         exec python main.py --listen 0.0.0.0 --port 8188
         ;;
     flash2)
-        echo "⚡ Starting ComfyUI with Flash Attention 2.8.3"
+        echo "⚡ Starting ComfyUI with Flash Attention 2"
         exec python main.py --listen 0.0.0.0 --port 8188
         ;;
     sage)
         echo "🎯 Starting ComfyUI with Sage Attention 2.2.0"
         exec python main.py --listen 0.0.0.0 --port 8188 --use-sage-attention
         ;;
-    xformers|*)
-        echo "📦 Starting ComfyUI with xformers 0.33"
+    xformers)
+        echo "📦 Starting ComfyUI with xformers"
+        exec python main.py --listen 0.0.0.0 --port 8188
+        ;;
+    auto|default|*)
+        echo "🌐 Starting ComfyUI with auto-selected attention"
         exec python main.py --listen 0.0.0.0 --port 8188
         ;;
 esac

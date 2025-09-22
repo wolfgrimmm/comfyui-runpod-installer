@@ -417,6 +417,388 @@ class ModelDownloader:
                      "model_type": "insightface", "size": "360 MB"},
                 ],
                 "total_size": "686 MB"
+            },
+
+            # Additional SwarmUI Bundles
+            "wan22_fp16_bundle": {
+                "name": "Wan 2.2 FP16 Complete Bundle",
+                "description": "Wan 2.2 models in FP16 format for highest quality video generation",
+                "category": "Wan Video Bundles",
+                "models": [
+                    {"repo_id": "OpenGVLab/InternVideo2", "filename": "wan2.2_i2v_high_noise_14b_fp16.safetensors",
+                     "model_type": "diffusion_models", "size": "27 GB"},
+                    {"repo_id": "OpenGVLab/InternVideo2", "filename": "wan2.2_i2v_low_noise_14b_fp16.safetensors",
+                     "model_type": "diffusion_models", "size": "27 GB"},
+                    {"repo_id": "OpenGVLab/InternVideo2", "filename": "wan2.2_t2v_high_noise_14b_fp16.safetensors",
+                     "model_type": "diffusion_models", "size": "27 GB"},
+                    {"repo_id": "OpenGVLab/InternVideo2", "filename": "wan2.2_t2v_low_noise_14b_fp16.safetensors",
+                     "model_type": "diffusion_models", "size": "27 GB"},
+                    {"repo_id": "OpenGVLab/InternVideo2", "filename": "wan2.2_vae_fp16.safetensors",
+                     "model_type": "vae", "size": "670 MB"},
+                ],
+                "total_size": "108.7 GB"
+            },
+            "wan21_phantom_bundle": {
+                "name": "Wan 2.1 Phantom Complete Bundle",
+                "description": "Wan 2.1 Phantom models with all LoRAs for enhanced video generation",
+                "category": "Wan Video Bundles",
+                "models": [
+                    {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Wan21_Phantom_14B_GGUF_Q8.gguf",
+                     "model_type": "diffusion_models", "size": "14.3 GB"},
+                    {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Wan21_Phantom_14B_GGUF_Q6_K.gguf",
+                     "model_type": "diffusion_models", "size": "10.7 GB"},
+                    {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Phantom_Wan_14B_FusionX_LoRA.safetensors",
+                     "model_type": "loras", "size": "188 MB"},
+                    {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Phantom_Wan_14B_T2V_LoRA.safetensors",
+                     "model_type": "loras", "size": "188 MB"},
+                ],
+                "total_size": "25.4 GB"
+            },
+            "flux_tools_bundle": {
+                "name": "FLUX Tools Complete Bundle",
+                "description": "FLUX Tools including Canny, Depth, Redux, and Fill models",
+                "category": "FLUX Bundles",
+                "models": [
+                    {"repo_id": "black-forest-labs/FLUX.1-Canny-dev", "filename": "flux1-canny-dev.safetensors",
+                     "model_type": "controlnet", "size": "3.58 GB"},
+                    {"repo_id": "black-forest-labs/FLUX.1-Depth-dev", "filename": "flux1-depth-dev.safetensors",
+                     "model_type": "controlnet", "size": "3.58 GB"},
+                    {"repo_id": "black-forest-labs/FLUX.1-Redux-dev", "filename": "flux1-redux-dev.safetensors",
+                     "model_type": "checkpoints", "size": "23.8 GB"},
+                    {"repo_id": "black-forest-labs/FLUX.1-Fill-dev", "filename": "flux1-fill-dev.safetensors",
+                     "model_type": "checkpoints", "size": "23.8 GB"},
+                    {"repo_id": "jasperai/FLUX.1-dev-Controlnet-Upscaler", "filename": "diffusion_pytorch_model.safetensors",
+                     "model_type": "controlnet", "size": "3.58 GB"},
+                ],
+                "total_size": "58.3 GB"
+            },
+            "flux_schnell_bundle": {
+                "name": "FLUX Schnell Fast Generation Bundle",
+                "description": "FLUX Schnell models for 4-step fast generation in multiple formats",
+                "category": "FLUX Bundles",
+                "models": [
+                    {"repo_id": "black-forest-labs/FLUX.1-schnell", "filename": "flux1-schnell.safetensors",
+                     "model_type": "checkpoints", "size": "23.8 GB"},
+                    {"repo_id": "city96/FLUX.1-schnell-gguf", "filename": "flux1-schnell-Q8_0.gguf",
+                     "model_type": "diffusion_models", "size": "12.2 GB"},
+                    {"repo_id": "city96/FLUX.1-schnell-gguf", "filename": "flux1-schnell-Q6_K.gguf",
+                     "model_type": "diffusion_models", "size": "9.2 GB"},
+                    {"repo_id": "city96/FLUX.1-schnell-gguf", "filename": "flux1-schnell-Q4_K_S.gguf",
+                     "model_type": "diffusion_models", "size": "6.3 GB"},
+                ],
+                "total_size": "51.5 GB"
+            },
+            "flux_loras_bundle": {
+                "name": "FLUX LoRAs Collection",
+                "description": "Popular FLUX LoRAs including Realism, Anime, and Style enhancers",
+                "category": "FLUX Bundles",
+                "models": [
+                    {"repo_id": "XLabs-AI/flux-RealismLora", "filename": "lora.safetensors",
+                     "save_as": "flux_realism_lora.safetensors", "model_type": "loras", "size": "185 MB"},
+                    {"repo_id": "alvdansen/flux_film_foto", "filename": "flux_film_foto.safetensors",
+                     "model_type": "loras", "size": "185 MB"},
+                    {"repo_id": "glif/flux-koda", "filename": "flux-koda.safetensors",
+                     "model_type": "loras", "size": "185 MB"},
+                    {"repo_id": "TheLastBen/flux_slider", "filename": "flux_slider.safetensors",
+                     "model_type": "loras", "size": "185 MB"},
+                    {"repo_id": "Shakker-Labs/FLUX.1-dev-LoRA-add-details", "filename": "add-details-flux-lora.safetensors",
+                     "save_as": "flux_add_details_lora.safetensors", "model_type": "loras", "size": "185 MB"},
+                ],
+                "total_size": "925 MB"
+            },
+            "mochi_bundle": {
+                "name": "Mochi Text to Video Bundle",
+                "description": "Mochi 1 Preview models for text to video generation",
+                "category": "Video Generation",
+                "models": [
+                    {"repo_id": "genmo/mochi-1-preview", "filename": "mochi-1-preview-dit.safetensors",
+                     "model_type": "diffusion_models", "size": "10.5 GB"},
+                    {"repo_id": "genmo/mochi-1-preview", "filename": "mochi-1-preview-vae.safetensors",
+                     "model_type": "vae", "size": "316 MB"},
+                    {"repo_id": "genmo/mochi-1-preview", "filename": "t5-v1_1-xxl.safetensors",
+                     "model_type": "clip", "size": "11.9 GB"},
+                ],
+                "total_size": "22.7 GB"
+            },
+            "hunyuan_video_bundle": {
+                "name": "Hunyuan Video Generation Bundle",
+                "description": "Hunyuan Video models for high-quality video generation",
+                "category": "Video Generation",
+                "models": [
+                    {"repo_id": "tencent/HunyuanVideo", "filename": "hunyuan_video_dit.safetensors",
+                     "model_type": "diffusion_models", "size": "13.4 GB"},
+                    {"repo_id": "tencent/HunyuanVideo", "filename": "hunyuan_video_vae.safetensors",
+                     "model_type": "vae", "size": "504 MB"},
+                    {"repo_id": "tencent/HunyuanVideo", "filename": "hunyuan_video_text_encoder.safetensors",
+                     "model_type": "clip", "size": "1.3 GB"},
+                ],
+                "total_size": "15.2 GB"
+            },
+            "sd35_medium_bundle": {
+                "name": "Stable Diffusion 3.5 Medium Bundle",
+                "description": "SD3.5 Medium models in multiple formats for balanced performance",
+                "category": "Image Generation",
+                "models": [
+                    {"repo_id": "stabilityai/stable-diffusion-3.5-medium", "filename": "sd3.5_medium.safetensors",
+                     "model_type": "checkpoints", "size": "5.7 GB"},
+                    {"repo_id": "city96/stable-diffusion-3.5-medium-gguf", "filename": "sd3.5_medium-Q8_0.gguf",
+                     "model_type": "diffusion_models", "size": "2.9 GB"},
+                    {"repo_id": "city96/stable-diffusion-3.5-medium-gguf", "filename": "sd3.5_medium-Q6_K.gguf",
+                     "model_type": "diffusion_models", "size": "2.2 GB"},
+                ],
+                "total_size": "10.8 GB"
+            },
+            "sdxl_turbo_bundle": {
+                "name": "SDXL Turbo Fast Generation Bundle",
+                "description": "SDXL Turbo models for 1-step image generation",
+                "category": "Image Generation",
+                "models": [
+                    {"repo_id": "stabilityai/sdxl-turbo", "filename": "sd_xl_turbo_1.0.safetensors",
+                     "model_type": "checkpoints", "size": "6.9 GB"},
+                    {"repo_id": "stabilityai/sdxl-turbo", "filename": "sd_xl_turbo_1.0_fp16.safetensors",
+                     "model_type": "checkpoints", "size": "3.5 GB"},
+                    {"repo_id": "madebyollin/sdxl-vae-fp16-fix", "filename": "sdxl_vae.safetensors",
+                     "model_type": "vae", "size": "335 MB"},
+                ],
+                "total_size": "10.7 GB"
+            },
+            "stable_cascade_bundle": {
+                "name": "Stable Cascade Bundle",
+                "description": "Stable Cascade models for high-resolution image generation",
+                "category": "Image Generation",
+                "models": [
+                    {"repo_id": "stabilityai/stable-cascade", "filename": "cascade_stage_b.safetensors",
+                     "model_type": "checkpoints", "size": "6.5 GB"},
+                    {"repo_id": "stabilityai/stable-cascade", "filename": "cascade_stage_c.safetensors",
+                     "model_type": "checkpoints", "size": "3.9 GB"},
+                    {"repo_id": "stabilityai/stable-cascade", "filename": "cascade_vae.safetensors",
+                     "model_type": "vae", "size": "19 MB"},
+                ],
+                "total_size": "10.4 GB"
+            },
+            "rife_interpolation_bundle": {
+                "name": "RIFE Frame Interpolation Bundle",
+                "description": "RIFE models for smooth frame interpolation and video enhancement",
+                "category": "Utility Models",
+                "models": [
+                    {"repo_id": "AlexWortega/RIFE", "filename": "rife47.pth",
+                     "model_type": "custom_nodes", "size": "49 MB"},
+                    {"repo_id": "AlexWortega/RIFE", "filename": "rife46.pth",
+                     "model_type": "custom_nodes", "size": "49 MB"},
+                    {"repo_id": "AlexWortega/RIFE", "filename": "rife48.pth",
+                     "model_type": "custom_nodes", "size": "49 MB"},
+                ],
+                "total_size": "147 MB"
+            },
+            "ip_adapter_complete_bundle": {
+                "name": "IP Adapter Complete Collection",
+                "description": "All IP Adapter models including FaceID, Plus, and SDXL versions",
+                "category": "Utility Models",
+                "models": [
+                    {"repo_id": "h94/IP-Adapter", "filename": "models/ip-adapter_sd15.safetensors",
+                     "model_type": "ipadapter", "size": "44 MB"},
+                    {"repo_id": "h94/IP-Adapter", "filename": "models/ip-adapter_sd15_plus.safetensors",
+                     "model_type": "ipadapter", "size": "98 MB"},
+                    {"repo_id": "h94/IP-Adapter", "filename": "sdxl_models/ip-adapter_sdxl.safetensors",
+                     "model_type": "ipadapter", "size": "702 MB"},
+                    {"repo_id": "h94/IP-Adapter", "filename": "sdxl_models/ip-adapter_sdxl_plus.safetensors",
+                     "model_type": "ipadapter", "size": "1.7 GB"},
+                    {"repo_id": "h94/IP-Adapter-FaceID", "filename": "ip-adapter-faceid_sd15.bin",
+                     "model_type": "ipadapter", "size": "157 MB"},
+                    {"repo_id": "h94/IP-Adapter-FaceID", "filename": "ip-adapter-faceid-plusv2_sd15.bin",
+                     "model_type": "ipadapter", "size": "323 MB"},
+                    {"repo_id": "h94/IP-Adapter-FaceID", "filename": "ip-adapter-faceid_sdxl.bin",
+                     "model_type": "ipadapter", "size": "1.2 GB"},
+                ],
+                "total_size": "4.2 GB"
+            },
+            "animatediff_complete_bundle": {
+                "name": "AnimateDiff Complete Bundle",
+                "description": "All AnimateDiff motion modules and LoRAs for animation",
+                "category": "Video Generation",
+                "models": [
+                    {"repo_id": "guoyww/animatediff", "filename": "v3_sd15_mm.ckpt",
+                     "model_type": "animatediff_models", "size": "1.7 GB"},
+                    {"repo_id": "guoyww/animatediff", "filename": "v2_sd15_mm.ckpt",
+                     "model_type": "animatediff_models", "size": "1.7 GB"},
+                    {"repo_id": "guoyww/animatediff", "filename": "mm_sdxl_v10_beta.ckpt",
+                     "model_type": "animatediff_models", "size": "1.1 GB"},
+                    {"repo_id": "guoyww/animatediff", "filename": "v3_sd15_adapter.ckpt",
+                     "model_type": "animatediff_models", "size": "102 MB"},
+                    {"repo_id": "guoyww/animatediff", "filename": "v3_sd15_sparsectrl.ckpt",
+                     "model_type": "animatediff_models", "size": "1.9 GB"},
+                ],
+                "total_size": "6.5 GB"
+            },
+            "omnigen2_bundle": {
+                "name": "OmniGen 2 Bundle",
+                "description": "OmniGen v2 models for versatile image generation",
+                "category": "Image Generation",
+                "models": [
+                    {"repo_id": "Shitao/OmniGen-v2", "filename": "omnigen_v2.safetensors",
+                     "model_type": "checkpoints", "size": "15.8 GB"},
+                    {"repo_id": "Shitao/OmniGen-v2", "filename": "omnigen_v2_vae.safetensors",
+                     "model_type": "vae", "size": "335 MB"},
+                ],
+                "total_size": "16.1 GB"
+            },
+            "face_models_bundle": {
+                "name": "Face Enhancement Models Bundle",
+                "description": "Complete collection of face restoration and enhancement models",
+                "category": "Utility Models",
+                "models": [
+                    {"repo_id": "facexlib/CodeFormer", "filename": "codeformer.pth",
+                     "model_type": "facerestore_models", "size": "376 MB"},
+                    {"repo_id": "TencentARC/GFPGAN", "filename": "GFPGANv1.4.pth",
+                     "model_type": "facerestore_models", "size": "348 MB"},
+                    {"repo_id": "TencentARC/GFPGAN", "filename": "GFPGANv1.3.pth",
+                     "model_type": "facerestore_models", "size": "348 MB"},
+                    {"repo_id": "sczhou/RestoreFormer", "filename": "RestoreFormer.pth",
+                     "model_type": "facerestore_models", "size": "290 MB"},
+                ],
+                "total_size": "1.36 GB"
+            },
+            "cosmos_bundle": {
+                "name": "Cosmos Video Generation Bundle",
+                "description": "Cosmos-1.0 models for text and image to video generation",
+                "category": "Video Generation",
+                "models": [
+                    {"repo_id": "nvidia/Cosmos-1.0-Diffusion", "filename": "cosmos_1_0_diffusion_7b_fp16.safetensors",
+                     "model_type": "diffusion_models", "size": "14 GB"},
+                    {"repo_id": "nvidia/Cosmos-1.0-Diffusion", "filename": "cosmos_1_0_vae.safetensors",
+                     "model_type": "vae", "size": "335 MB"},
+                    {"repo_id": "nvidia/Cosmos-1.0-Diffusion", "filename": "cosmos_1_0_text_encoder.safetensors",
+                     "model_type": "clip", "size": "1.2 GB"},
+                ],
+                "total_size": "15.5 GB"
+            },
+            "ltx_extended_bundle": {
+                "name": "LTX Video Extended Bundle",
+                "description": "Complete LTX Video collection with all quantizations",
+                "category": "Video Generation",
+                "models": [
+                    {"repo_id": "Lightricks/LTX-Video", "filename": "ltx-video-13b-v0.9.safetensors",
+                     "model_type": "diffusion_models", "size": "25.5 GB"},
+                    {"repo_id": "wsbagnsv1/ltxv-13b-0.9.7-dev-GGUF", "filename": "ltxv-13b-0.9.7-vae-BF16.safetensors",
+                     "model_type": "vae", "size": "335 MB"},
+                    {"repo_id": "wsbagnsv1/ltxv-13b-0.9.7-dev-GGUF", "filename": "ltxv-13b-0.9.7-dev-Q8_0.gguf",
+                     "model_type": "diffusion_models", "size": "13.5 GB"},
+                    {"repo_id": "wsbagnsv1/ltxv-13b-0.9.7-dev-GGUF", "filename": "ltxv-13b-0.9.7-dev-Q6_K.gguf",
+                     "model_type": "diffusion_models", "size": "10.4 GB"},
+                    {"repo_id": "wsbagnsv1/ltxv-13b-0.9.7-dev-GGUF", "filename": "ltxv-13b-0.9.7-dev-Q4_K_M.gguf",
+                     "model_type": "diffusion_models", "size": "7.6 GB"},
+                ],
+                "total_size": "57.3 GB"
+            },
+            "teacache_bundle": {
+                "name": "TeaCache Optimization Bundle",
+                "description": "TeaCache models for optimized caching and faster inference",
+                "category": "Utility Models",
+                "models": [
+                    {"repo_id": "techmonsterwang/TeaCache", "filename": "teacache_flux_v1.safetensors",
+                     "model_type": "custom_nodes", "size": "125 MB"},
+                    {"repo_id": "techmonsterwang/TeaCache", "filename": "teacache_sdxl_v1.safetensors",
+                     "model_type": "custom_nodes", "size": "85 MB"},
+                ],
+                "total_size": "210 MB"
+            },
+
+            # Text Encoder Model Bundles
+            "clip_models_essential": {
+                "name": "Essential CLIP Models (L and G variants)",
+                "description": "CLIP models used by SDXL, SD2.x, and many other models - SwarmUI defaults",
+                "category": "Text Encoders",
+                "models": [
+                    {"repo_id": "comfyanonymous/flux_text_encoders", "filename": "clip_l.safetensors",
+                     "save_as": "clip_l.safetensors", "model_type": "clip", "size": "246 MB"},
+                    {"repo_id": "stabilityai/stable-diffusion-2-1", "filename": "text_encoder/model.safetensors",
+                     "save_as": "CLIP_SAE_ViT_L_14.safetensors", "model_type": "clip", "size": "492 MB"},
+                    {"repo_id": "openai/clip-vit-large-patch14", "filename": "pytorch_model.bin",
+                     "save_as": "clip_g.safetensors", "model_type": "clip", "size": "1.71 GB"},
+                ],
+                "total_size": "2.45 GB"
+            },
+            "t5_text_encoders": {
+                "name": "T5-XXL Text Encoders for FLUX",
+                "description": "T5 XXL text encoders required for FLUX models in different precisions",
+                "category": "Text Encoders",
+                "models": [
+                    {"repo_id": "comfyanonymous/flux_text_encoders", "filename": "t5xxl_fp16.safetensors",
+                     "save_as": "t5xxl_fp16.safetensors", "model_type": "clip", "size": "9.5 GB"},
+                    {"repo_id": "comfyanonymous/flux_text_encoders", "filename": "t5xxl_fp8_e4m3fn.safetensors",
+                     "save_as": "t5xxl_fp8_e4m3fn.safetensors", "model_type": "clip", "size": "4.89 GB"},
+                    {"repo_id": "city96/t5-v1_1-xxl-encoder-gguf", "filename": "t5-v1_1-xxl-Q8_0.gguf",
+                     "save_as": "t5xxl_Q8_0.gguf", "model_type": "clip", "size": "4.92 GB"},
+                ],
+                "total_size": "19.31 GB"
+            },
+            "hidream_clip_bundle": {
+                "name": "HiDream Long CLIP Models",
+                "description": "Extended context CLIP models optimized for HiDream-I1",
+                "category": "Text Encoders",
+                "models": [
+                    {"repo_id": "MonsterMMORPG/HiDream-I1-Dev", "filename": "long_clip_l.safetensors",
+                     "save_as": "long_clip_l_hidream.safetensors", "model_type": "clip", "size": "210 MB"},
+                    {"repo_id": "MonsterMMORPG/HiDream-I1-Dev", "filename": "long_clip_g.safetensors",
+                     "save_as": "long_clip_g_hidream.safetensors", "model_type": "clip", "size": "694 MB"},
+                ],
+                "total_size": "904 MB"
+            },
+            "sd3_text_encoders": {
+                "name": "SD3/SD3.5 Text Encoders",
+                "description": "CLIP and T5 encoders for Stable Diffusion 3 and 3.5 models",
+                "category": "Text Encoders",
+                "models": [
+                    {"repo_id": "Comfy-Org/stable-diffusion-3.5-fp8", "filename": "text_encoders/clip_g.safetensors",
+                     "save_as": "clip_g_sd3.safetensors", "model_type": "clip", "size": "1.39 GB"},
+                    {"repo_id": "Comfy-Org/stable-diffusion-3.5-fp8", "filename": "text_encoders/clip_l.safetensors",
+                     "save_as": "clip_l_sd3.safetensors", "model_type": "clip", "size": "246 MB"},
+                    {"repo_id": "Comfy-Org/stable-diffusion-3.5-fp8", "filename": "text_encoders/t5xxl_fp8_e4m3fn.safetensors",
+                     "save_as": "t5xxl_fp8_sd3.safetensors", "model_type": "clip", "size": "4.89 GB"},
+                ],
+                "total_size": "6.53 GB"
+            },
+            "qwen_text_encoders": {
+                "name": "Qwen Image Text Encoders",
+                "description": "Qwen 2.5 VL text encoders for Qwen Image generation models",
+                "category": "Text Encoders",
+                "models": [
+                    {"repo_id": "Comfy-Org/Qwen_2.5-VL-7B_FP8_Scaled", "filename": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+                     "model_type": "clip", "size": "7.2 GB"},
+                    {"repo_id": "Comfy-Org/qwen-image-loras", "filename": "qwen_image_lightning_8steps_v1.1.safetensors",
+                     "model_type": "loras", "size": "185 MB"},
+                ],
+                "total_size": "7.39 GB"
+            },
+            "wan_text_encoders": {
+                "name": "Wan Video Text Encoders",
+                "description": "UMT5 XXL text encoders for Wan 2.1 and 2.2 video generation",
+                "category": "Text Encoders",
+                "models": [
+                    {"repo_id": "Comfy-Org/Wan_2.1_ComfyUI_repackaged", "filename": "split_files/text_encoders/umt5_xxl_fp16.safetensors",
+                     "save_as": "umt5_xxl_fp16_wan.safetensors", "model_type": "clip", "size": "23.7 GB"},
+                    {"repo_id": "Comfy-Org/Wan_2.1_ComfyUI_repackaged", "filename": "split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+                     "save_as": "umt5_xxl_fp8_wan.safetensors", "model_type": "clip", "size": "11.9 GB"},
+                ],
+                "total_size": "35.6 GB"
+            },
+            "all_clip_models": {
+                "name": "Complete CLIP Collection",
+                "description": "All essential CLIP models for maximum compatibility",
+                "category": "Text Encoders",
+                "models": [
+                    {"repo_id": "comfyanonymous/flux_text_encoders", "filename": "clip_l.safetensors",
+                     "save_as": "clip_l.safetensors", "model_type": "clip", "size": "246 MB"},
+                    {"repo_id": "openai/clip-vit-large-patch14", "filename": "pytorch_model.bin",
+                     "save_as": "clip_g.safetensors", "model_type": "clip", "size": "1.71 GB"},
+                    {"repo_id": "stabilityai/stable-diffusion-2-1", "filename": "text_encoder/model.safetensors",
+                     "save_as": "CLIP_ViT_L_14.safetensors", "model_type": "clip", "size": "492 MB"},
+                    {"repo_id": "openai/clip-vit-base-patch32", "filename": "pytorch_model.bin",
+                     "save_as": "clip_b.safetensors", "model_type": "clip", "size": "151 MB"},
+                    {"repo_id": "openai/clip-vit-base-patch16", "filename": "pytorch_model.bin",
+                     "save_as": "clip_b16.safetensors", "model_type": "clip", "size": "151 MB"},
+                ],
+                "total_size": "2.75 GB"
             }
         }
 
@@ -699,13 +1081,16 @@ class ModelDownloader:
         """Get disk usage information for the models directory."""
         try:
             stat = shutil.disk_usage(self.models_base)
+            # Convert bytes to GB with proper calculation
+            gb_divisor = 1024 * 1024 * 1024  # 1024^3
             return {
-                'total': stat.total / (1024**3),  # GB
-                'used': stat.used / (1024**3),
-                'free': stat.free / (1024**3),
-                'percent': (stat.used / stat.total) * 100
+                'total': round(stat.total / gb_divisor, 1),  # GB with 1 decimal
+                'used': round(stat.used / gb_divisor, 1),
+                'free': round(stat.free / gb_divisor, 1),
+                'percent': round((stat.used / stat.total) * 100, 1) if stat.total > 0 else 0
             }
-        except:
+        except Exception as e:
+            print(f"Error getting disk usage: {e}")
             return {'total': 0, 'used': 0, 'free': 0, 'percent': 0}
 
     def get_transfer_status(self) -> Dict:
@@ -847,3 +1232,83 @@ class ModelDownloader:
         """Get status of all bundle downloads."""
         with self.download_lock:
             return self.bundle_downloads.copy()
+
+    def search_bundles(self, query: str) -> Dict:
+        """Search bundles by name, description, models, or category."""
+        query_lower = query.lower().strip()
+        if not query_lower:
+            return self.model_bundles
+
+        matching_bundles = {}
+
+        for bundle_id, bundle in self.model_bundles.items():
+            # Search in bundle name
+            if query_lower in bundle.get('name', '').lower():
+                matching_bundles[bundle_id] = bundle
+                continue
+
+            # Search in bundle description
+            if query_lower in bundle.get('description', '').lower():
+                matching_bundles[bundle_id] = bundle
+                continue
+
+            # Search in category
+            if query_lower in bundle.get('category', '').lower():
+                matching_bundles[bundle_id] = bundle
+                continue
+
+            # Search in model names
+            for model in bundle.get('models', []):
+                model_name = model.get('save_as') or model.get('filename', '')
+                if query_lower in model_name.lower():
+                    matching_bundles[bundle_id] = bundle
+                    break
+
+                # Also search in repo_id
+                if query_lower in model.get('repo_id', '').lower():
+                    matching_bundles[bundle_id] = bundle
+                    break
+
+        return matching_bundles
+
+    def get_bundles_by_category(self, category: str = None) -> Dict:
+        """Filter bundles by category."""
+        if not category or category.lower() == 'all':
+            return self.model_bundles
+
+        filtered_bundles = {}
+        for bundle_id, bundle in self.model_bundles.items():
+            if bundle.get('category', '').lower() == category.lower():
+                filtered_bundles[bundle_id] = bundle
+
+        return filtered_bundles
+
+    def get_bundle_categories(self) -> List[str]:
+        """Get list of all unique bundle categories."""
+        categories = set()
+        for bundle in self.model_bundles.values():
+            category = bundle.get('category', 'Other')
+            categories.add(category)
+
+        # Return sorted list with preferred order
+        category_order = [
+            'Text Encoders',
+            'FLUX Bundles',
+            'Wan Video Bundles',
+            'Image Generation',
+            'Video Generation',
+            'Workflow Bundles',
+            'Utility Models',
+            'Other Models'
+        ]
+
+        sorted_categories = []
+        for cat in category_order:
+            if cat in categories:
+                sorted_categories.append(cat)
+                categories.remove(cat)
+
+        # Add any remaining categories
+        sorted_categories.extend(sorted(categories))
+
+        return sorted_categories
