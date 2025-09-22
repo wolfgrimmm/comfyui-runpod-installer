@@ -29,11 +29,15 @@ except ImportError:
     print("ℹ️ hf_transfer not available - downloads will use standard speed")
 
 class ModelDownloader:
-    def __init__(self, models_base_path="/workspace/ComfyUI/models"):
+    def __init__(self, models_base_path="/workspace/models"):
         """Initialize the model downloader with base paths."""
         self.models_base = models_base_path
         self.downloads = {}  # Track active downloads
         self.download_lock = threading.Lock()
+        self.bundle_downloads = {}  # Track bundle downloads
+
+        # Define model bundles
+        self.model_bundles = self._get_model_bundles()
 
         # Define model paths for ComfyUI
         self.model_paths = {
@@ -69,6 +73,224 @@ class ModelDownloader:
         # Create directories if they don't exist
         for path in self.model_paths.values():
             Path(path).mkdir(parents=True, exist_ok=True)
+
+    def _get_model_bundles(self):
+        """Define pre-configured model bundles for easy download."""
+        return {
+            # SwarmUI Bundles
+            "qwen_image_core": {
+                "name": "Qwen Image Core Bundle",
+                "description": "Core Qwen Image models for image generation with necessary components",
+                "category": "SwarmUI Bundles",
+                "models": [
+                    {"repo_id": "city96/Qwen-Image-GGUF", "filename": "qwen_image-Q8_0.gguf",
+                     "model_type": "diffusion_models", "size": "11.8 GB"},
+                    {"repo_id": "city96/Qwen-Image-Edit-GGUF", "filename": "qwen_image_edit-Q8_0.gguf",
+                     "model_type": "diffusion_models", "size": "11.8 GB"},
+                    {"repo_id": "Comfy-Org/Qwen_2.5-VL-7B_FP8_Scaled", "filename": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+                     "model_type": "clip", "size": "7.2 GB"},
+                    {"repo_id": "black-forest-labs/FLUX.1-dev", "filename": "vae/diffusion_pytorch_model.safetensors",
+                     "save_as": "qwen_image_vae.safetensors", "model_type": "vae", "size": "335 MB"},
+                    {"repo_id": "Comfy-Org/qwen-image-loras", "filename": "qwen_image_lightning_8steps_v1.1.safetensors",
+                     "model_type": "loras", "size": "185 MB"},
+                ],
+                "total_size": "31.3 GB"
+            },
+            "wan22_core": {
+                "name": "Wan 2.2 Core 8 Steps Bundle",
+                "description": "New Wan 2.2 models in FP8 for efficient 8-step video generation",
+                "category": "SwarmUI Bundles",
+                "models": [
+                    {"repo_id": "OpenGVLab/InternVideo2", "filename": "wan2.2_i2v_high_noise_14b_fp8_scaled.safetensors",
+                     "model_type": "diffusion_models", "size": "13.5 GB"},
+                    {"repo_id": "OpenGVLab/InternVideo2", "filename": "wan2.2_i2v_low_noise_14b_fp8_scaled.safetensors",
+                     "model_type": "diffusion_models", "size": "13.5 GB"},
+                    {"repo_id": "OpenGVLab/InternVideo2", "filename": "wan2.2_t2v_high_noise_14b_fp8_scaled.safetensors",
+                     "model_type": "diffusion_models", "size": "13.5 GB"},
+                    {"repo_id": "OpenGVLab/InternVideo2", "filename": "wan2.2_t2v_low_noise_14b_fp8_scaled.safetensors",
+                     "model_type": "diffusion_models", "size": "13.5 GB"},
+                    {"repo_id": "OpenGVLab/InternVideo2", "filename": "wan2.2_vae.safetensors",
+                     "model_type": "vae", "size": "335 MB"},
+                    {"repo_id": "Comfy-Org/Wan_2.1_ComfyUI_repackaged", "filename": "split_files/text_encoders/umt5_xxl_fp16.safetensors",
+                     "model_type": "clip", "size": "23.7 GB"},
+                ],
+                "total_size": "78.0 GB"
+            },
+            "wan21_core": {
+                "name": "Wan 2.1 Core Models Bundle (GGUF Q6_K + Best LoRAs)",
+                "description": "Core Wan 2.1 models for video generation including T2V, I2V and companion LoRAs",
+                "category": "SwarmUI Bundles",
+                "models": [
+                    {"repo_id": "Comfy-Org/Wan_2.1_ComfyUI_repackaged", "filename": "split_files/diffusion_models/wan2.1_t2v_1.3B_fp16.safetensors",
+                     "save_as": "Wan2.1_1.3b_Text_to_Video.safetensors", "model_type": "diffusion_models", "size": "2.5 GB"},
+                    {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Wan21_T2V_14B_720p_GGUF_Q6_K.gguf",
+                     "model_type": "diffusion_models", "size": "10.7 GB"},
+                    {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Wan21_I2V_14B_720p_GGUF_Q6_K.gguf",
+                     "model_type": "diffusion_models", "size": "10.7 GB"},
+                    {"repo_id": "Comfy-Org/Wan_2.1_ComfyUI_repackaged", "filename": "split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+                     "model_type": "clip", "size": "11.9 GB"},
+                    {"repo_id": "Kijai/WanVideo_comfy", "filename": "wan-256-hw-16-vae.safetensors",
+                     "save_as": "wan_2.1_vae.safetensors", "model_type": "vae", "size": "128 MB"},
+                    {"repo_id": "openai/clip-vit-large-patch14", "filename": "pytorch_model.bin",
+                     "save_as": "clip_vision_h.safetensors", "model_type": "clip_vision", "size": "1.7 GB"},
+                    {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Wan21_14B_LightX2V_CFG_Step_Distill_LoRA_V2_T2V_I2V_Rank_64.safetensors",
+                     "model_type": "loras", "size": "377 MB"},
+                    {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Wan21_T2V_14B_FusionX_LoRA.safetensors",
+                     "model_type": "loras", "size": "188 MB"},
+                    {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Wan21_I2V_14B_FusionX_LoRA.safetensors",
+                     "model_type": "loras", "size": "188 MB"},
+                    {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Wan21_14B_Self_Forcing_LoRA_T2V_I2V.safetensors",
+                     "model_type": "loras", "size": "188 MB"},
+                ],
+                "total_size": "38.7 GB"
+            },
+            "flux_bundle": {
+                "name": "FLUX Models Bundle",
+                "description": "Core set of FLUX models for SwarmUI plus common utility models",
+                "category": "SwarmUI Bundles",
+                "models": [
+                    {"repo_id": "Comfy-Org/FLUX.1-dev", "filename": "flux1-dev.safetensors",
+                     "save_as": "FLUX_Dev.safetensors", "model_type": "checkpoints", "size": "23.8 GB"},
+                    {"repo_id": "black-forest-labs/FLUX.1-Fill-dev", "filename": "flux1-fill-dev.safetensors",
+                     "save_as": "FLUX_DEV_Fill.safetensors", "model_type": "checkpoints", "size": "23.8 GB"},
+                    {"repo_id": "black-forest-labs/FLUX.1-Redux-dev", "filename": "flux1-redux-dev.safetensors",
+                     "save_as": "FLUX_DEV_Redux.safetensors", "model_type": "checkpoints", "size": "23.8 GB"},
+                    {"repo_id": "Comfy-Org/flux_text_encoders", "filename": "t5xxl_fp16.safetensors",
+                     "save_as": "t5xxl_enconly.safetensors", "model_type": "clip", "size": "9.5 GB"},
+                    {"repo_id": "black-forest-labs/FLUX.1-dev", "filename": "ae.safetensors",
+                     "save_as": "FLUX_VAE.safetensors", "model_type": "vae", "size": "335 MB"},
+                    {"repo_id": "comfyanonymous/flux_text_encoders", "filename": "clip_l.safetensors",
+                     "model_type": "clip", "size": "246 MB"},
+                ],
+                "total_size": "81.5 GB"
+            },
+            "hidream_i1_dev": {
+                "name": "HiDream-I1 Dev Bundle (Recommended)",
+                "description": "Recommended HiDream-I1 Dev model (Q8 GGUF) with necessary supporting files",
+                "category": "SwarmUI Bundles",
+                "models": [
+                    {"repo_id": "MonsterMMORPG/HiDream-I1-Dev", "filename": "HiDream-I1-Dev-Q8_0.gguf",
+                     "model_type": "diffusion_models", "size": "10.6 GB"},
+                    {"repo_id": "MonsterMMORPG/HiDream-I1-Dev", "filename": "HiDream-I1_VAE.safetensors",
+                     "model_type": "vae", "size": "335 MB"},
+                    {"repo_id": "MonsterMMORPG/HiDream-I1-Dev", "filename": "clip_l.safetensors",
+                     "model_type": "clip", "size": "246 MB"},
+                    {"repo_id": "MonsterMMORPG/HiDream-I1-Dev", "filename": "t5xxl_fp16.safetensors",
+                     "model_type": "clip", "size": "9.5 GB"},
+                ],
+                "total_size": "20.7 GB"
+            },
+            # ComfyUI Bundles
+            "clothing_migration": {
+                "name": "Clothing Migration Workflow Bundle",
+                "description": "All necessary models for Clothing Migration workflow in ComfyUI",
+                "category": "ComfyUI Bundles",
+                "models": [
+                    {"repo_id": "John6666/joy-caption-alpha-two-flux-nf4-gguf", "filename": "model.safetensors",
+                     "model_type": "text_encoders", "size": "8.5 GB"},
+                    {"repo_id": "TTPlanet/Migration-LoRA-Cloth", "filename": "migration_lora_cloth.safetensors",
+                     "model_type": "loras", "size": "185 MB"},
+                    {"repo_id": "TTPlanet/Figures-TTP-Migration-LoRA", "filename": "figures_migration.safetensors",
+                     "model_type": "loras", "size": "185 MB"},
+                    {"repo_id": "google/siglip-so400m-patch14-384", "filename": "model.safetensors",
+                     "model_type": "clip_vision", "size": "877 MB"},
+                    {"repo_id": "meta-llama/Meta-Llama-3.1-8B-Instruct", "filename": "model.safetensors",
+                     "model_type": "text_encoders", "size": "16.1 GB"},
+                    {"repo_id": "black-forest-labs/FLUX.1-dev", "filename": "ae.safetensors",
+                     "model_type": "vae", "size": "335 MB"},
+                    {"repo_id": "alimama-creative/FLUX-dev-Controlnet-Inpainting-Beta", "filename": "diffusion_pytorch_model.safetensors",
+                     "model_type": "controlnet", "size": "3.58 GB"},
+                    {"repo_id": "comfyanonymous/flux_text_encoders", "filename": "t5xxl_fp16.safetensors",
+                     "model_type": "clip", "size": "9.5 GB"},
+                    {"repo_id": "comfyanonymous/flux_text_encoders", "filename": "clip_l.safetensors",
+                     "model_type": "clip", "size": "246 MB"},
+                ],
+                "total_size": "39.3 GB"
+            },
+            "comfyui_multitalk": {
+                "name": "ComfyUI MultiTalk Bundle",
+                "description": "All models for ComfyUI MultiTalk workflow including Wan 2.1 MultiTalk",
+                "category": "ComfyUI Bundles",
+                "models": [
+                    {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Wan21_14B_LightX2V_CFG_Step_Distill_LoRA_V2_T2V_I2V_Rank_64.safetensors",
+                     "model_type": "loras", "size": "377 MB"},
+                    {"repo_id": "Kijai/WanVideo_comfy", "filename": "wan2.1_uni3c_controlnet.safetensors",
+                     "model_type": "controlnet", "size": "1.3 GB"},
+                    {"repo_id": "OpenGVLab/InternVideo2", "filename": "WanVideo_2.1_MultiTalk_14B_FP32.safetensors",
+                     "model_type": "diffusion_models", "size": "56 GB"},
+                    {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Wan21_I2V_14B_480p_GGUF_Q8.gguf",
+                     "model_type": "diffusion_models", "size": "14.3 GB"},
+                    {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Wan21_I2V_14B_720p_GGUF_Q8.gguf",
+                     "model_type": "diffusion_models", "size": "14.3 GB"},
+                    {"repo_id": "openai/clip-vit-large-patch14", "filename": "pytorch_model.bin",
+                     "save_as": "clip_vision_h.safetensors", "model_type": "clip_vision", "size": "1.7 GB"},
+                    {"repo_id": "Comfy-Org/Wan_2.1_ComfyUI_repackaged", "filename": "split_files/text_encoders/umt5_xxl_fp16.safetensors",
+                     "model_type": "clip", "size": "23.7 GB"},
+                    {"repo_id": "Kijai/WanVideo_comfy", "filename": "wan-256-hw-16-vae.safetensors",
+                     "save_as": "wan_2.1_vae.safetensors", "model_type": "vae", "size": "128 MB"},
+                ],
+                "total_size": "111.7 GB"
+            },
+            "sdxl_essential": {
+                "name": "SDXL Essential Bundle",
+                "description": "SDXL base, refiner, and VAE",
+                "category": "Image Generation",
+                "models": [
+                    {"repo_id": "stabilityai/stable-diffusion-xl-base-1.0",
+                     "filename": "sd_xl_base_1.0.safetensors", "model_type": "checkpoints", "size": "6.9 GB"},
+                    {"repo_id": "stabilityai/stable-diffusion-xl-refiner-1.0",
+                     "filename": "sd_xl_refiner_1.0.safetensors", "model_type": "checkpoints", "size": "6.1 GB"},
+                    {"repo_id": "madebyollin/sdxl-vae-fp16-fix", "filename": "sdxl_vae.safetensors",
+                     "model_type": "vae", "size": "335 MB"},
+                ],
+                "total_size": "13.3 GB"
+            },
+            "controlnet_pack": {
+                "name": "ControlNet Collection",
+                "description": "Essential ControlNet models for SDXL",
+                "category": "Other Models",
+                "models": [
+                    {"repo_id": "diffusers/controlnet-canny-sdxl-1.0",
+                     "filename": "diffusion_pytorch_model.fp16.safetensors",
+                     "model_type": "controlnet", "size": "2.5 GB"},
+                    {"repo_id": "diffusers/controlnet-depth-sdxl-1.0",
+                     "filename": "diffusion_pytorch_model.fp16.safetensors",
+                     "model_type": "controlnet", "size": "2.5 GB"},
+                    {"repo_id": "SargeZT/controlnet-sd-xl-1.0-openpose-fp16",
+                     "filename": "OpenPoseXL2.safetensors",
+                     "model_type": "controlnet", "size": "2.5 GB"},
+                ],
+                "total_size": "7.5 GB"
+            },
+            "upscaler_pack": {
+                "name": "Upscaler Collection",
+                "description": "Popular upscaling models (4x)",
+                "category": "Other Models",
+                "models": [
+                    {"repo_id": "uwg/upscaler", "filename": "ESRGAN/ESRGAN_4x.pth",
+                     "model_type": "upscale_models", "size": "67 MB"},
+                    {"repo_id": "uwg/upscaler", "filename": "ESRGAN/RealESRGAN_x4plus.pth",
+                     "model_type": "upscale_models", "size": "67 MB"},
+                    {"repo_id": "uwg/upscaler", "filename": "ESRGAN/RealESRGAN_x4plus_anime_6B.pth",
+                     "model_type": "upscale_models", "size": "18 MB"},
+                    {"repo_id": "uwg/upscaler", "filename": "ESRGAN/4x_foolhardy_Remacri.pth",
+                     "model_type": "upscale_models", "size": "67 MB"},
+                ],
+                "total_size": "219 MB"
+            },
+            "insightface_bundle": {
+                "name": "InsightFace Bundle",
+                "description": "Face analysis and swap models",
+                "category": "Other Models",
+                "models": [
+                    {"repo_id": "public-data/insightface", "filename": "models/buffalo_l.zip",
+                     "model_type": "insightface", "size": "326 MB"},
+                    {"repo_id": "public-data/insightface", "filename": "models/antelopev2.zip",
+                     "model_type": "insightface", "size": "360 MB"},
+                ],
+                "total_size": "686 MB"
+            }
+        }
 
     def get_model_type_from_name(self, model_name: str, repo_id: str = "") -> str:
         """Determine model type from name and repo patterns."""
@@ -235,7 +457,8 @@ class ModelDownloader:
             return []
 
     def download_model(self, repo_id: str, filename: Optional[str] = None,
-                      model_type: Optional[str] = None, is_snapshot: bool = False) -> str:
+                      model_type: Optional[str] = None, is_snapshot: bool = False,
+                      save_as: Optional[str] = None) -> str:
         """
         Download a model from HuggingFace Hub.
 
@@ -276,7 +499,7 @@ class ModelDownloader:
         # Start download in background thread
         thread = threading.Thread(
             target=self._download_worker,
-            args=(download_id, repo_id, filename, dest_path, is_snapshot)
+            args=(download_id, repo_id, filename, dest_path, is_snapshot, save_as)
         )
         thread.daemon = True
         thread.start()
@@ -284,7 +507,8 @@ class ModelDownloader:
         return download_id
 
     def _download_worker(self, download_id: str, repo_id: str,
-                        filename: Optional[str], dest_path: str, is_snapshot: bool):
+                        filename: Optional[str], dest_path: str, is_snapshot: bool,
+                        save_as: Optional[str] = None):
         """Worker thread for downloading models."""
         try:
             with self.download_lock:
@@ -307,6 +531,13 @@ class ModelDownloader:
                     local_dir_use_symlinks=False,
                     resume_download=True
                 )
+
+                # If save_as is specified, rename the file
+                if save_as and local_path:
+                    final_path = os.path.join(dest_path, save_as)
+                    if os.path.exists(local_path):
+                        shutil.move(local_path, final_path)
+                        local_path = final_path
 
             with self.download_lock:
                 self.downloads[download_id]['status'] = 'completed'
@@ -368,3 +599,116 @@ class ModelDownloader:
         except Exception as e:
             print(f"Error deleting model: {e}")
             return False
+
+    def get_bundles(self) -> Dict:
+        """Get all available model bundles."""
+        return self.model_bundles
+
+    def download_bundle(self, bundle_id: str) -> str:
+        """
+        Download all models in a bundle.
+
+        Args:
+            bundle_id: ID of the bundle to download
+
+        Returns:
+            Bundle download ID for tracking progress
+        """
+        if bundle_id not in self.model_bundles:
+            raise ValueError(f"Bundle {bundle_id} not found")
+
+        bundle = self.model_bundles[bundle_id]
+        bundle_download_id = f"bundle_{bundle_id}_{int(time.time())}"
+
+        # Initialize bundle tracking
+        with self.download_lock:
+            self.bundle_downloads[bundle_download_id] = {
+                'bundle_id': bundle_id,
+                'bundle_name': bundle['name'],
+                'status': 'starting',
+                'total_models': len(bundle['models']),
+                'completed_models': 0,
+                'current_model': None,
+                'download_ids': [],
+                'started_at': time.time()
+            }
+
+        # Start bundle download in background thread
+        thread = threading.Thread(
+            target=self._download_bundle_worker,
+            args=(bundle_download_id, bundle)
+        )
+        thread.daemon = True
+        thread.start()
+
+        return bundle_download_id
+
+    def _download_bundle_worker(self, bundle_download_id: str, bundle: Dict):
+        """Worker thread for downloading bundle models."""
+        try:
+            with self.download_lock:
+                self.bundle_downloads[bundle_download_id]['status'] = 'downloading'
+
+            download_ids = []
+
+            # Download each model in the bundle
+            for i, model in enumerate(bundle['models']):
+                # Update current model being downloaded
+                with self.download_lock:
+                    self.bundle_downloads[bundle_download_id]['current_model'] = model.get('filename', model['repo_id'])
+
+                # Start individual model download
+                try:
+                    download_id = self.download_model(
+                        repo_id=model['repo_id'],
+                        filename=model.get('filename'),
+                        model_type=model['model_type'],
+                        is_snapshot=False,
+                        save_as=model.get('save_as')
+                    )
+                    download_ids.append(download_id)
+
+                    # Wait for this download to complete before starting next
+                    max_wait = 3600  # 1 hour max per model
+                    wait_time = 0
+                    while wait_time < max_wait:
+                        time.sleep(2)
+                        wait_time += 2
+
+                        with self.download_lock:
+                            if download_id in self.downloads:
+                                status = self.downloads[download_id]['status']
+                                if status == 'completed':
+                                    break
+                                elif status == 'error':
+                                    raise Exception(f"Failed to download {model.get('filename', model['repo_id'])}")
+
+                    # Update progress
+                    with self.download_lock:
+                        self.bundle_downloads[bundle_download_id]['completed_models'] = i + 1
+                        self.bundle_downloads[bundle_download_id]['download_ids'] = download_ids
+
+                except Exception as e:
+                    print(f"Error downloading model in bundle: {e}")
+                    # Continue with next model even if one fails
+                    continue
+
+            # Mark bundle as completed
+            with self.download_lock:
+                self.bundle_downloads[bundle_download_id]['status'] = 'completed'
+                self.bundle_downloads[bundle_download_id]['current_model'] = None
+
+        except Exception as e:
+            with self.download_lock:
+                self.bundle_downloads[bundle_download_id]['status'] = 'error'
+                self.bundle_downloads[bundle_download_id]['error'] = str(e)
+
+    def get_bundle_status(self, bundle_download_id: str) -> Optional[Dict]:
+        """Get status of a specific bundle download."""
+        with self.download_lock:
+            return self.bundle_downloads.get(bundle_download_id, None)
+
+    def get_all_bundle_downloads(self) -> Dict:
+        """Get status of all bundle downloads."""
+        with self.download_lock:
+            return self.bundle_downloads.copy()

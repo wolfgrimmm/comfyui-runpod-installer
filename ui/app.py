@@ -1216,6 +1216,42 @@ def get_disk_usage():
     usage = manager.model_downloader.get_disk_usage()
     return jsonify(usage)
 
+@app.route('/api/models/bundles')
+def get_bundles():
+    """Get available model bundles"""
+    if not manager.model_downloader:
+        return jsonify({'error': 'Model manager not available'}), 503
+
+    bundles = manager.model_downloader.get_bundles()
+    return jsonify(bundles)
+
+@app.route('/api/models/bundles/download', methods=['POST'])
+def download_bundle():
+    """Download a model bundle"""
+    if not manager.model_downloader:
+        return jsonify({'error': 'Model manager not available'}), 503
+
+    data = request.json
+    bundle_id = data.get('bundle_id')
+
+    if not bundle_id:
+        return jsonify({'error': 'bundle_id is required'}), 400
+
+    try:
+        bundle_download_id = manager.model_downloader.download_bundle(bundle_id)
+        return jsonify({'bundle_download_id': bundle_download_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/models/bundles/status')
+def get_bundle_downloads():
+    """Get status of all bundle downloads"""
+    if not manager.model_downloader:
+        return jsonify({'error': 'Model manager not available'}), 503
+
+    bundle_downloads = manager.model_downloader.get_all_bundle_downloads()
+    return jsonify(bundle_downloads)
+
 # ============= End Model Manager Routes =============
 
 if __name__ == '__main__':

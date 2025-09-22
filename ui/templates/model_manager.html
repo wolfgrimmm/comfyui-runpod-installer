@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ComfyUI Model Manager</title>
     <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --secondary: #8b5cf6;
+            --danger: #ef4444;
+            --bg-primary: #000;
+            --bg-secondary: #111;
+            --bg-tertiary: #1a1a1a;
+            --border-color: #333;
+            --text-primary: #fff;
+            --text-secondary: #999;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --shadow-color: rgba(0, 0, 0, 0.4);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,10 +27,15 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: var(--text-primary);
             min-height: 100vh;
             padding: 20px;
+            background-image:
+                radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
         }
 
         .container {
@@ -24,22 +44,26 @@
         }
 
         .header {
-            background: white;
-            border-radius: 10px;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
             padding: 20px 30px;
             margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 32px var(--shadow-color);
         }
 
         .header h1 {
-            color: #333;
+            color: var(--text-primary);
             font-size: 28px;
             margin-bottom: 10px;
+            font-weight: 600;
         }
 
         .disk-usage {
-            background: #f5f5f5;
-            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
             padding: 15px;
             margin-top: 15px;
         }
@@ -47,7 +71,8 @@
         .disk-bar {
             width: 100%;
             height: 30px;
-            background: #e0e0e0;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
             border-radius: 15px;
             overflow: hidden;
             margin: 10px 0;
@@ -55,51 +80,71 @@
 
         .disk-fill {
             height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
             transition: width 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-weight: bold;
+            font-weight: 600;
+            font-size: 12px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         }
 
         .tabs {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
-            background: white;
-            border-radius: 10px;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
             padding: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 32px var(--shadow-color);
         }
 
         .tab-button {
             padding: 12px 24px;
             background: transparent;
-            border: none;
-            border-radius: 8px;
+            border: 1px solid transparent;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 16px;
             font-weight: 500;
             transition: all 0.3s ease;
+            color: var(--text-secondary);
+        }
+
+        .tab-button:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--border-color);
         }
 
         .tab-button.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
 
         .tab-content {
             display: none;
-            background: white;
-            border-radius: 10px;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
             padding: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 32px var(--shadow-color);
         }
 
         .tab-content.active {
             display: block;
+        }
+
+        .tab-content h2 {
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            font-weight: 600;
         }
 
         .model-grid {
@@ -110,28 +155,32 @@
         }
 
         .model-card {
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
             padding: 15px;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: all 0.3s ease;
         }
 
         .model-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2);
+            background: rgba(16, 185, 129, 0.05);
         }
 
         .model-name {
-            font-weight: bold;
-            color: #333;
+            font-weight: 600;
+            color: var(--text-primary);
             margin-bottom: 8px;
             word-break: break-word;
         }
 
         .model-info {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 14px;
             margin-bottom: 10px;
+            line-height: 1.5;
         }
 
         .model-actions {
@@ -141,32 +190,50 @@
 
         .btn {
             padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
             transition: all 0.3s ease;
+            background: rgba(0, 0, 0, 0.5);
+            color: var(--text-primary);
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary);
+            border-color: var(--primary);
             color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
 
         .btn-danger {
-            background: #e74c3c;
+            background: var(--danger);
+            border-color: var(--danger);
             color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
 
         .btn-success {
-            background: #27ae60;
+            background: var(--primary);
+            border-color: var(--primary);
             color: white;
         }
 
-        .btn:hover {
+        .btn-success:hover {
+            background: var(--primary-dark);
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
 
         .search-container {
@@ -176,27 +243,36 @@
         .search-input {
             width: 100%;
             padding: 12px 20px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
             font-size: 16px;
-            transition: border-color 0.3s;
+            transition: all 0.3s;
+            color: var(--text-primary);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-secondary);
         }
 
         .search-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
         }
 
         .download-queue {
             margin-top: 30px;
             padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
         }
 
         .download-item {
-            background: white;
-            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
             padding: 15px;
             margin-bottom: 10px;
         }
@@ -204,7 +280,8 @@
         .progress-bar {
             width: 100%;
             height: 20px;
-            background: #e0e0e0;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
             border-radius: 10px;
             overflow: hidden;
             margin-top: 10px;
@@ -212,66 +289,164 @@
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #27ae60 0%, #2ecc71 100%);
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
             transition: width 0.3s ease;
         }
 
         .category-header {
             font-size: 18px;
-            font-weight: bold;
-            color: #333;
+            font-weight: 600;
+            color: var(--text-primary);
             margin: 20px 0 10px 0;
             padding: 10px;
-            background: #f5f5f5;
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 3px solid var(--primary);
             border-radius: 6px;
         }
 
         .empty-state {
             text-align: center;
             padding: 40px;
-            color: #999;
+            color: var(--text-secondary);
         }
 
         .loading {
             text-align: center;
             padding: 20px;
-            color: #666;
+            color: var(--text-secondary);
         }
 
         .error-message {
-            background: #fee;
-            border: 1px solid #fcc;
-            color: #c00;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger);
+            color: #fca5a5;
             padding: 10px;
-            border-radius: 6px;
+            border-radius: 8px;
             margin-bottom: 20px;
         }
 
         .success-message {
-            background: #efe;
-            border: 1px solid #cfc;
-            color: #060;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--primary);
+            color: #86efac;
             padding: 10px;
-            border-radius: 6px;
+            border-radius: 8px;
             margin-bottom: 20px;
         }
 
         .model-type-badge {
             display: inline-block;
             padding: 4px 8px;
-            background: #667eea;
+            background: var(--secondary);
             color: white;
             border-radius: 4px;
             font-size: 12px;
             font-weight: 500;
             margin-left: 8px;
         }
+
+        .bundle-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .bundle-card:hover {
+            border-color: var(--primary);
+            background: rgba(16, 185, 129, 0.05);
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2);
+        }
+
+        .bundle-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .bundle-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .bundle-description {
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+
+        .bundle-models {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .bundle-model-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .bundle-model-item:last-child {
+            border-bottom: none;
+        }
+
+        .bundle-model-name {
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .bundle-model-size {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .bundle-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bundle-size {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .bundle-progress {
+            width: 100%;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        .bundle-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎨 ComfyUI Model Manager</h1>
+            <h1>ComfyUI Model Manager</h1>
             <div class="disk-usage">
                 <div>Disk Usage: <span id="disk-info">Loading...</span></div>
                 <div class="disk-bar">
@@ -281,19 +456,31 @@
         </div>
 
         <div class="tabs">
-            <button class="tab-button active" onclick="switchTab('installed')">
-                📦 Installed Models
+            <button class="tab-button active" onclick="switchTab('bundles')">
+                Bundles
+            </button>
+            <button class="tab-button" onclick="switchTab('installed')">
+                Installed Models
             </button>
             <button class="tab-button" onclick="switchTab('browse')">
-                🔍 Browse Models
+                Browse Models
             </button>
             <button class="tab-button" onclick="switchTab('downloads')">
-                ⬇️ Downloads
+                Downloads
             </button>
         </div>
 
+        <!-- Bundles Tab -->
+        <div id="bundles-tab" class="tab-content active">
+            <h2>Model Bundles</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                Download pre-configured collections of models with a single click
+            </p>
+            <div id="bundle-list" class="loading">Loading bundles...</div>
+        </div>
+
         <!-- Installed Models Tab -->
-        <div id="installed-tab" class="tab-content active">
+        <div id="installed-tab" class="tab-content">
             <h2>Installed Models</h2>
             <div id="installed-models" class="loading">Loading installed models...</div>
         </div>
@@ -319,8 +506,9 @@
     </div>
 
     <script>
-        let currentTab = 'installed';
+        let currentTab = 'bundles';
         let downloadCheckInterval = null;
+        let bundleCheckInterval = null;
 
         function switchTab(tabName) {
             currentTab = tabName;
@@ -338,12 +526,189 @@
             document.getElementById(`${tabName}-tab`).classList.add('active');
 
             // Load tab-specific data
-            if (tabName === 'installed') {
+            if (tabName === 'bundles') {
+                loadBundles();
+                startBundleMonitoring();
+            } else if (tabName === 'installed') {
                 loadInstalledModels();
+                stopBundleMonitoring();
             } else if (tabName === 'downloads') {
                 startDownloadMonitoring();
+                stopBundleMonitoring();
             } else {
                 stopDownloadMonitoring();
+                stopBundleMonitoring();
+            }
+        }
+
+        async function loadBundles() {
+            try {
+                const response = await fetch('/api/models/bundles');
+                const bundles = await response.json();
+                const container = document.getElementById('bundle-list');
+
+                if (Object.keys(bundles).length === 0) {
+                    container.innerHTML = '<div class="empty-state">No bundles available</div>';
+                    return;
+                }
+
+                // Group bundles by category
+                const categories = {};
+                for (const [bundleId, bundle] of Object.entries(bundles)) {
+                    const category = bundle.category || 'Other';
+                    if (!categories[category]) {
+                        categories[category] = [];
+                    }
+                    categories[category].push({id: bundleId, ...bundle});
+                }
+
+                // Render bundles by category
+                let html = '';
+                const categoryOrder = ['SwarmUI Bundles', 'ComfyUI Bundles', 'Image Generation', 'Video Generation', 'Other Models'];
+
+                for (const category of categoryOrder) {
+                    if (categories[category]) {
+                        html += `<div class="category-header">${category}</div>`;
+
+                        for (const bundle of categories[category]) {
+                            const displayName = bundle.save_as || bundle.filename || bundle.repo_id?.split('/').pop() || 'Model';
+                            html += `
+                                <div class="bundle-card" id="bundle-${bundle.id}">
+                                    <div class="bundle-header">
+                                        <div>
+                                            <div class="bundle-title">${bundle.name}</div>
+                                            <div class="bundle-description">${bundle.description}</div>
+                                        </div>
+                                    </div>
+                                    <div class="bundle-models">
+                                        <div style="margin-bottom: 10px; color: var(--text-secondary); font-size: 14px;">
+                                            Contains ${bundle.models.length} models:
+                                        </div>
+                                        ${bundle.models.map(model => {
+                                            const modelName = model.save_as || model.filename || model.repo_id?.split('/').pop() || 'Model';
+                                            return `
+                                                <div class="bundle-model-item">
+                                                    <span class="bundle-model-name">${modelName}</span>
+                                                    <span class="bundle-model-size">${model.size}</span>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                    <div class="bundle-footer">
+                                        <span class="bundle-size">Total: ${bundle.total_size}</span>
+                                        <button class="btn btn-primary" onclick="downloadBundle('${bundle.id}')">
+                                            Download Bundle
+                                        </button>
+                                    </div>
+                                    <div class="bundle-progress" id="progress-${bundle.id}" style="display: none;">
+                                        <div class="bundle-progress-fill" id="progress-fill-${bundle.id}" style="width: 0%">
+                                            0%
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                }
+                container.innerHTML = html;
+
+                // Update bundle statuses
+                await updateBundleStatuses();
+            } catch (error) {
+                document.getElementById('bundle-list').innerHTML =
+                    `<div class="error-message">Error loading bundles: ${error.message}</div>`;
+            }
+        }
+
+        async function downloadBundle(bundleId) {
+            try {
+                const response = await fetch('/api/models/bundles/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bundle_id: bundleId })
+                });
+
+                const result = await response.json();
+
+                if (result.bundle_download_id) {
+                    showMessage('Bundle download started!', 'success');
+                    // Show progress bar for this bundle
+                    const progressBar = document.getElementById(`progress-${bundleId}`);
+                    if (progressBar) {
+                        progressBar.style.display = 'block';
+                    }
+                    // Disable download button
+                    const button = document.querySelector(`#bundle-${bundleId} .btn-primary`);
+                    if (button) {
+                        button.disabled = true;
+                        button.textContent = 'Downloading...';
+                    }
+                } else {
+                    showMessage('Failed to start bundle download', 'error');
+                }
+            } catch (error) {
+                showMessage(`Download failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function updateBundleStatuses() {
+            try {
+                const response = await fetch('/api/models/bundles/status');
+                const bundleDownloads = await response.json();
+
+                for (const [downloadId, bundleStatus] of Object.entries(bundleDownloads)) {
+                    const bundleId = bundleStatus.bundle_id;
+                    const progressBar = document.getElementById(`progress-${bundleId}`);
+                    const progressFill = document.getElementById(`progress-fill-${bundleId}`);
+                    const button = document.querySelector(`#bundle-${bundleId} .btn-primary`);
+
+                    if (!progressBar || !progressFill) continue;
+
+                    if (bundleStatus.status === 'downloading' || bundleStatus.status === 'starting') {
+                        progressBar.style.display = 'block';
+                        const progress = Math.round((bundleStatus.completed_models / bundleStatus.total_models) * 100);
+                        progressFill.style.width = `${progress}%`;
+                        progressFill.textContent = `${progress}% (${bundleStatus.completed_models}/${bundleStatus.total_models} models)`;
+
+                        if (button) {
+                            button.disabled = true;
+                            button.textContent = 'Downloading...';
+                        }
+                    } else if (bundleStatus.status === 'completed') {
+                        progressBar.style.display = 'block';
+                        progressFill.style.width = '100%';
+                        progressFill.textContent = 'Complete!';
+
+                        if (button) {
+                            button.disabled = false;
+                            button.textContent = '✓ Downloaded';
+                            button.classList.remove('btn-primary');
+                            button.classList.add('btn-success');
+                        }
+                    } else if (bundleStatus.status === 'error') {
+                        progressBar.style.display = 'none';
+
+                        if (button) {
+                            button.disabled = false;
+                            button.textContent = 'Retry Download';
+                        }
+                        showMessage(`Bundle download failed: ${bundleStatus.error}`, 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating bundle statuses:', error);
+            }
+        }
+
+        function startBundleMonitoring() {
+            updateBundleStatuses();
+            bundleCheckInterval = setInterval(updateBundleStatuses, 3000);
+        }
+
+        function stopBundleMonitoring() {
+            if (bundleCheckInterval) {
+                clearInterval(bundleCheckInterval);
+                bundleCheckInterval = null;
             }
         }
 
@@ -576,9 +941,10 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            loadInstalledModels();
+            loadBundles();  // Start with bundles tab
             updateDiskUsage();
             setInterval(updateDiskUsage, 30000); // Update every 30 seconds
+            startBundleMonitoring();  // Monitor bundle downloads
         });
 
         // Handle Enter key in search
