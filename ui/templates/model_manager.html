@@ -868,37 +868,27 @@
     </div>
 
     <script>
-        // Error handler to catch any JavaScript errors
-        window.addEventListener('error', function(e) {
-            console.error('JavaScript Error:', e.message, 'at', e.filename, ':', e.lineno);
-            alert('JavaScript Error: ' + e.message + ' (check console for details)');
-        });
+        let currentTab = 'bundles';
+        let downloadCheckInterval = null;
+        let bundleCheckInterval = null;
+        let allBundles = {};
+        let currentCategory = 'all';
+        let currentSearchQuery = '';
 
-        window.currentTab = 'bundles';
-        window.downloadCheckInterval = null;
-        window.bundleCheckInterval = null;
-        window.allBundles = {};
-        window.currentCategory = 'all';
-        window.currentSearchQuery = '';
-
-        // Utility functions for safe string handling
-        window.safeString = function(str) {
-            if (!str) return '';
-            return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
-        }
-
-        window.switchTab = function(tabName, event) {
-            window.currentTab = tabName;
+        function switchTab(tabName, event) {
+            currentTab = tabName;
 
             // Update tab buttons
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.remove('active');
             });
+
+            // Add active class to clicked button
             if (event && event.target) {
                 event.target.classList.add('active');
             } else {
-                // Find and activate the correct button if no event
-                document.querySelector(`.tab-button[onclick*="${tabName}"]`).classList.add('active');
+                // Find and activate the correct button if no event (called programmatically)
+                document.querySelector(`.tab-button[onclick*="${tabName}"]`)?.classList.add('active');
             }
 
             // Update tab content
@@ -923,7 +913,7 @@
             }
         }
 
-        window.loadBundles = async function() {
+        async function loadBundles() {
             try {
                 const response = await fetch('/api/models/bundles');
                 allBundles = await response.json();
@@ -939,7 +929,7 @@
             }
         }
 
-        window.loadCategories = async function() {
+        async function loadCategories() {
             try {
                 const response = await fetch('/api/models/bundles/categories');
                 const data = await response.json();
@@ -960,7 +950,7 @@
             }
         }
 
-        window.displayBundles = function(bundles) {
+        function displayBundles(bundles) {
             const container = document.getElementById('bundle-list');
 
                 if (Object.keys(bundles).length === 0) {
@@ -1055,9 +1045,9 @@
                 await updateBundleStatuses();
         }
 
-        window.filterByCategory = async function() {
+        async function filterByCategory() {
             const category = document.getElementById('category-filter').value;
-            window.currentCategory = category;
+            currentCategory = category;
 
             if (category === 'all') {
                 displayBundles(allBundles);
@@ -1076,9 +1066,9 @@
             }
         }
 
-        window.searchBundles = async function() {
+        async function searchBundles() {
             const query = document.getElementById('bundle-search').value.trim();
-            window.currentSearchQuery = query;
+            currentSearchQuery = query;
 
             if (!query) {
                 // Reset to current category filter
@@ -1103,7 +1093,7 @@
             }
         }
 
-        window.sortBundles = function() {
+        function sortBundles() {
             const sortBy = document.getElementById('sort-bundles').value;
             const container = document.getElementById('bundle-list');
 
@@ -1154,7 +1144,7 @@
             displayBundles(sortedBundles);
         }
 
-        window.downloadAllInCategory = async function(categoryName) {
+        async function downloadAllInCategory(categoryName) {
             // Get all bundles in this category
             const normalizedCategory = categoryName.replace(/_/g, ' ');
             const bundlesToDownload = [];
@@ -1184,7 +1174,7 @@
             }
         }
 
-        window.toggleBundleDetails = function(bundleId) {
+        function toggleBundleDetails(bundleId) {
             const details = document.getElementById(`details-${bundleId}`);
             const arrow = document.getElementById(`arrow-${bundleId}`);
 
@@ -1197,7 +1187,7 @@
             }
         }
 
-        window.downloadBundle = async function(bundleId) {
+        async function downloadBundle(bundleId) {
             try {
                 const response = await fetch('/api/models/bundles/download', {
                     method: 'POST',
@@ -1228,7 +1218,7 @@
             }
         }
 
-        window.updateBundleStatuses = async function() {
+        async function updateBundleStatuses() {
             try {
                 const response = await fetch('/api/models/bundles/status');
                 const bundleDownloads = await response.json();
@@ -1282,19 +1272,19 @@
             }
         }
 
-        window.startBundleMonitoring = function() {
+        function startBundleMonitoring() {
             updateBundleStatuses();
-            window.bundleCheckInterval = setInterval(updateBundleStatuses, 3000);
+            bundleCheckInterval = setInterval(updateBundleStatuses, 3000);
         }
 
-        window.stopBundleMonitoring = function() {
+        function stopBundleMonitoring() {
             if (bundleCheckInterval) {
                 clearInterval(bundleCheckInterval);
                 bundleCheckInterval = null;
             }
         }
 
-        window.loadInstalledModels = async function() {
+        async function loadInstalledModels() {
             try {
                 const response = await fetch('/api/models/installed');
                 const data = await response.json();
@@ -1337,7 +1327,7 @@
             }
         }
 
-        window.searchModels = async function() {
+        async function searchModels() {
             const query = document.getElementById('search-input').value;
             if (!query) return;
 
@@ -1386,7 +1376,7 @@
             }
         }
 
-        window.downloadModel = async function(repoId, filename = null) {
+        async function downloadModel(repoId, filename = null) {
             try {
                 const response = await fetch('/api/models/download', {
                     method: 'POST',
@@ -1410,7 +1400,7 @@
             }
         }
 
-        window.deleteModel = async function(path, name) {
+        async function deleteModel(path, name) {
             if (!confirm(`Are you sure you want to delete ${name}?`)) return;
 
             try {
@@ -1434,7 +1424,7 @@
             }
         }
 
-        window.updateDiskUsage = async function() {
+        async function updateDiskUsage() {
             try {
                 const response = await fetch('/api/models/disk-usage');
                 const data = await response.json();
@@ -1450,7 +1440,7 @@
             }
         }
 
-        window.updateDownloadQueue = async function() {
+        async function updateDownloadQueue() {
             try {
                 const response = await fetch('/api/models/downloads');
                 const downloads = await response.json();
@@ -1492,24 +1482,24 @@
             }
         }
 
-        window.startDownloadMonitoring = function() {
+        function startDownloadMonitoring() {
             updateDownloadQueue();
-            window.downloadCheckInterval = setInterval(updateDownloadQueue, 2000);
+            downloadCheckInterval = setInterval(updateDownloadQueue, 2000);
         }
 
-        window.stopDownloadMonitoring = function() {
+        function stopDownloadMonitoring() {
             if (downloadCheckInterval) {
                 clearInterval(downloadCheckInterval);
                 downloadCheckInterval = null;
             }
         }
 
-        window.formatCategoryName = function(category) {
+        function formatCategoryName(category) {
             return category.replace(/_/g, ' ')
                           .replace(/\b\w/g, l => l.toUpperCase());
         }
 
-        window.showMessage = function(message, type) {
+        function showMessage(message, type) {
             const className = type === 'error' ? 'error-message' : 'success-message';
             const messageDiv = document.createElement('div');
             messageDiv.className = className;
@@ -1522,11 +1512,11 @@
         }
 
         // CivitAI Integration Functions
-        window.currentSource = 'huggingface';
-        window.currentModelData = {};
+        let currentSource = 'huggingface';
+        let currentModelData = {};
 
-        window.selectSource = function(source) {
-            window.currentSource = source;
+        function selectSource(source) {
+            currentSource = source;
 
             // Update button states
             document.getElementById('source-hf').classList.toggle('active', source === 'huggingface');
@@ -1545,7 +1535,7 @@
             }
         }
 
-        window.checkCivitAIAuth = async function() {
+        async function checkCivitAIAuth() {
             try {
                 const response = await fetch('/api/civitai/verify-key');
                 const data = await response.json();
@@ -1566,7 +1556,7 @@
             }
         }
 
-        window.searchCivitAI = async function() {
+        async function searchCivitAI() {
             const query = document.getElementById('civitai-query').value;
             const type = document.getElementById('civitai-type').value;
             const sort = document.getElementById('civitai-sort').value;
@@ -1595,7 +1585,7 @@
             }
         }
 
-        window.getCivitAITrending = async function() {
+        async function getCivitAITrending() {
             const resultsContainer = document.getElementById('search-results');
             resultsContainer.innerHTML = '<div class="loading">Loading trending models...</div>';
 
@@ -1608,7 +1598,7 @@
             }
         }
 
-        window.displayCivitAIResults = function(data) {
+        function displayCivitAIResults(data) {
             const resultsContainer = document.getElementById('search-results');
 
             if (!data.items || data.items.length === 0) {
@@ -1625,7 +1615,7 @@
                 const baseModel = latestVersion.baseModel || 'Unknown';
 
                 // Store model data for modal
-                window.currentModelData[model.id] = model;
+                currentModelData[model.id] = model;
 
                 html += `
                     <div class="civitai-model-card">
@@ -1661,7 +1651,7 @@
             resultsContainer.innerHTML = html;
         }
 
-        window.showModelDetails = async function(modelId) {
+        async function showModelDetails(modelId) {
             const model = currentModelData[modelId];
             if (!model) return;
 
@@ -1701,7 +1691,7 @@
             modal.style.display = 'block';
         }
 
-        window.downloadCivitAIModel = async function(versionId, modelType) {
+        async function downloadCivitAIModel(versionId, modelType) {
             try {
                 const response = await fetch('/api/civitai/download', {
                     method: 'POST',
@@ -1724,15 +1714,15 @@
             }
         }
 
-        window.showAPIKeyModal = function() {
+        function showAPIKeyModal() {
             document.getElementById('apiKeyModal').style.display = 'block';
         }
 
-        window.closeAPIKeyModal = function() {
+        function closeAPIKeyModal() {
             document.getElementById('apiKeyModal').style.display = 'none';
         }
 
-        window.saveAPIKey = async function() {
+        async function saveAPIKey() {
             const apiKey = document.getElementById('api-key-input').value;
             if (!apiKey) {
                 showToast('Please enter an API key', 'error');
@@ -1759,21 +1749,21 @@
             }
         }
 
-        window.closeModal = function() {
+        function closeModal() {
             document.getElementById('modelModal').style.display = 'none';
         }
 
-        window.copyText = function(text) {
+        function copyText(text) {
             navigator.clipboard.writeText(text);
             showToast('Copied to clipboard!', 'success');
         }
 
-        window.copyTriggerWords = function() {
+        function copyTriggerWords() {
             const text = document.getElementById('modal-trigger-words').textContent;
             copyText(text);
         }
 
-        window.formatNumber = function(num) {
+        function formatNumber(num) {
             if (num >= 1000000) {
                 return (num / 1000000).toFixed(1) + 'M';
             } else if (num >= 1000) {
@@ -1782,7 +1772,7 @@
             return num.toString();
         }
 
-        window.showToast = function(message, type = 'info') {
+        function showToast(message, type = 'info') {
             // Simple toast notification (you can enhance this)
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
@@ -1802,37 +1792,22 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
-                // Initialize
+        // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM Content Loaded - Initializing Model Manager');
-            try {
-                loadBundles();  // Start with bundles tab
-                updateDiskUsage();
-                setInterval(updateDiskUsage, 30000); // Update every 30 seconds
-                startBundleMonitoring();  // Monitor bundle downloads
-            } catch (e) {
-                console.error('Initialization error:', e);
-                alert('Failed to initialize Model Manager: ' + e.message);
-            }
+            loadBundles();  // Start with bundles tab
+            updateDiskUsage();
+            setInterval(updateDiskUsage, 30000); // Update every 30 seconds
+            startBundleMonitoring();  // Monitor bundle downloads
         });
 
         // Handle Enter key in search
         document.addEventListener('DOMContentLoaded', () => {
-            const searchInput = document.getElementById('search-input');
-            if (searchInput) {
-                searchInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        searchModels();
-                    }
-                });
-            }
+            document.getElementById('search-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    searchModels();
+                }
+            });
         });
-
-        // Test that functions are available
-        console.log('Model Manager functions loaded. Testing availability:');
-        console.log('switchTab available:', typeof window.switchTab);
-        console.log('loadBundles available:', typeof window.loadBundles);
-        console.log('downloadBundle available:', typeof window.downloadBundle);
     </script>
 </body>
 </html>
