@@ -28,7 +28,29 @@ except ImportError:
     HF_TRANSFER_AVAILABLE = False
     print("ℹ️ hf_transfer not available - downloads will use standard speed")
 
-from civitai_integration import CivitAIClient
+# Import CivitAI integration with proper error handling
+try:
+    from civitai_integration import CivitAIClient
+    CIVITAI_AVAILABLE = True
+except ImportError:
+    CIVITAI_AVAILABLE = False
+    print("⚠️ CivitAI integration not available - CivitAI features disabled")
+    # Create a dummy CivitAIClient class for compatibility
+    class CivitAIClient:
+        def __init__(self, *args, **kwargs):
+            pass
+        def search_civitai_models(self, *args, **kwargs):
+            return {"items": [], "metadata": {"totalItems": 0}}
+        def download_civitai_model(self, *args, **kwargs):
+            raise NotImplementedError("CivitAI integration not available")
+        def get_civitai_trending(self, *args, **kwargs):
+            return {"items": [], "metadata": {"totalItems": 0}}
+        def set_civitai_api_key(self, *args, **kwargs):
+            return False
+        def verify_api_key(self):
+            return False
+        def get_popular_bundles(self):
+            return {}
 
 class ModelDownloader:
     def __init__(self, models_base_path="/workspace/models"):
