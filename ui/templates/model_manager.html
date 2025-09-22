@@ -913,7 +913,7 @@
                 stopDownloadMonitoring();
                 stopBundleMonitoring();
             }
-        }
+        };
 
         window.loadBundles = async function() {
             try {
@@ -929,7 +929,7 @@
                 document.getElementById('bundle-list').innerHTML =
                     `<div class="error-message">Error loading bundles: ${error.message}</div>`;
             }
-        }
+        };
 
         window.loadCategories = async function() {
             try {
@@ -950,7 +950,7 @@
             } catch (error) {
                 console.error('Error loading categories:', error);
             }
-        }
+        };
 
         window.displayBundles = function(bundles) {
             const container = document.getElementById('bundle-list');
@@ -1045,7 +1045,7 @@
 
                 // Update bundle statuses
                 await updateBundleStatuses();
-        }
+        };
 
         window.filterByCategory = async function() {
             const category = document.getElementById('category-filter').value;
@@ -1066,7 +1066,7 @@
                     console.error('Error filtering bundles:', error);
                 }
             }
-        }
+        };
 
         window.searchBundles = async function() {
             const query = document.getElementById('bundle-search').value.trim();
@@ -1093,7 +1093,7 @@
             } catch (error) {
                 console.error('Error searching bundles:', error);
             }
-        }
+        };
 
         window.sortBundles = function() {
             const sortBy = document.getElementById('sort-bundles').value;
@@ -1144,7 +1144,7 @@
 
             // Re-display with sorted order
             displayBundles(sortedBundles);
-        }
+        };
 
         window.downloadAllInCategory = async function(categoryName) {
             // Get all bundles in this category
@@ -1174,7 +1174,7 @@
                     console.error(`Failed to download bundle ${bundleId}:`, error);
                 }
             }
-        }
+        };
 
         window.toggleBundleDetails = function(bundleId) {
             const details = document.getElementById(`details-${bundleId}`);
@@ -1187,7 +1187,7 @@
                 details.classList.add('expanded');
                 arrow.classList.add('expanded');
             }
-        }
+        };
 
         window.downloadBundle = async function(bundleId) {
             try {
@@ -1218,7 +1218,7 @@
             } catch (error) {
                 showMessage(`Download failed: ${error.message}`, 'error');
             }
-        }
+        };
 
         window.updateBundleStatuses = async function() {
             try {
@@ -1272,19 +1272,19 @@
             } catch (error) {
                 console.error('Error updating bundle statuses:', error);
             }
-        }
+        };
 
         window.startBundleMonitoring = function() {
             updateBundleStatuses();
             bundleCheckInterval = setInterval(updateBundleStatuses, 3000);
-        }
+        };
 
         window.stopBundleMonitoring = function() {
             if (bundleCheckInterval) {
                 clearInterval(bundleCheckInterval);
                 bundleCheckInterval = null;
             }
-        }
+        };
 
         window.loadInstalledModels = async function() {
             try {
@@ -1327,7 +1327,7 @@
                 document.getElementById('installed-models').innerHTML =
                     `<div class="error-message">Error loading models: ${error.message}</div>`;
             }
-        }
+        };
 
         window.searchModels = async function() {
             const query = document.getElementById('search-input').value;
@@ -1376,7 +1376,7 @@
                 resultsContainer.innerHTML =
                     `<div class="error-message">Search failed: ${error.message}</div>`;
             }
-        }
+        };
 
         window.downloadModel = async function(repoId, filename = null) {
             try {
@@ -1400,7 +1400,7 @@
             } catch (error) {
                 showMessage(`Download failed: ${error.message}`, 'error');
             }
-        }
+        };
 
         window.deleteModel = async function(path, name) {
             if (!confirm(`Are you sure you want to delete ${name}?`)) return;
@@ -1424,7 +1424,7 @@
             } catch (error) {
                 showMessage(`Delete failed: ${error.message}`, 'error');
             }
-        }
+        };
 
         window.updateDiskUsage = async function() {
             try {
@@ -1440,7 +1440,7 @@
             } catch (error) {
                 console.error('Error updating disk usage:', error);
             }
-        }
+        };
 
         window.updateDownloadQueue = async function() {
             try {
@@ -1482,24 +1482,24 @@
             } catch (error) {
                 console.error('Error updating downloads:', error);
             }
-        }
+        };
 
         window.startDownloadMonitoring = function() {
             updateDownloadQueue();
             downloadCheckInterval = setInterval(updateDownloadQueue, 2000);
-        }
+        };
 
         window.stopDownloadMonitoring = function() {
             if (downloadCheckInterval) {
                 clearInterval(downloadCheckInterval);
                 downloadCheckInterval = null;
             }
-        }
+        };
 
         window.formatCategoryName = function(category) {
             return category.replace(/_/g, ' ')
                           .replace(/\b\w/g, l => l.toUpperCase());
-        }
+        };
 
         window.showMessage = function(message, type) {
             const className = type === 'error' ? 'error-message' : 'success-message';
@@ -1511,7 +1511,7 @@
             container.insertBefore(messageDiv, container.firstChild);
 
             setTimeout(() => messageDiv.remove(), 5000);
-        }
+        };
 
         // CivitAI Integration Functions
         let currentSource = 'huggingface';
@@ -1535,7 +1535,7 @@
             if (source === 'civitai') {
                 checkCivitAIAuth();
             }
-        }
+        };
 
         window.checkCivitAIAuth = async function() {
             try {
@@ -1556,7 +1556,7 @@
             } catch (error) {
                 console.error('Error checking auth:', error);
             }
-        }
+        };
 
         window.searchCivitAI = async function() {
             const query = document.getElementById('civitai-query').value;
@@ -1585,7 +1585,7 @@
             } catch (error) {
                 resultsContainer.innerHTML = `<div class="error">Error searching CivitAI: ${error.message}</div>`;
             }
-        }
+        };
 
         window.getCivitAITrending = async function() {
             const resultsContainer = document.getElementById('search-results');
@@ -1598,7 +1598,7 @@
             } catch (error) {
                 resultsContainer.innerHTML = `<div class="error">Error loading trending: ${error.message}</div>`;
             }
-        }
+        };
 
         window.displayCivitAIResults = function(data) {
             const resultsContainer = document.getElementById('search-results');
@@ -1651,7 +1651,7 @@
 
             html += '</div>';
             resultsContainer.innerHTML = html;
-        }
+        };
 
         window.showModelDetails = async function(modelId) {
             const model = currentModelData[modelId];
@@ -1691,7 +1691,7 @@
             };
 
             modal.style.display = 'block';
-        }
+        };
 
         window.downloadCivitAIModel = async function(versionId, modelType) {
             try {
@@ -1714,15 +1714,15 @@
             } catch (error) {
                 showToast('Error: ' + error.message, 'error');
             }
-        }
+        };
 
         window.showAPIKeyModal = function() {
             document.getElementById('apiKeyModal').style.display = 'block';
-        }
+        };
 
         window.closeAPIKeyModal = function() {
             document.getElementById('apiKeyModal').style.display = 'none';
-        }
+        };
 
         window.saveAPIKey = async function() {
             const apiKey = document.getElementById('api-key-input').value;
@@ -1749,21 +1749,21 @@
             } catch (error) {
                 showToast('Error saving API key: ' + error.message, 'error');
             }
-        }
+        };
 
         window.closeModal = function() {
             document.getElementById('modelModal').style.display = 'none';
-        }
+        };
 
         window.copyText = function(text) {
             navigator.clipboard.writeText(text);
             showToast('Copied to clipboard!', 'success');
-        }
+        };
 
         window.copyTriggerWords = function() {
             const text = document.getElementById('modal-trigger-words').textContent;
             copyText(text);
-        }
+        };
 
         window.formatNumber = function(num) {
             if (num >= 1000000) {
@@ -1772,7 +1772,7 @@
                 return (num / 1000).toFixed(1) + 'K';
             }
             return num.toString();
-        }
+        };
 
         window.showToast = function(message, type = 'info') {
             // Simple toast notification (you can enhance this)
@@ -1792,7 +1792,7 @@
             `;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
-        }
+        };
 
             // Initialize
             document.addEventListener('DOMContentLoaded', () => {
