@@ -354,6 +354,54 @@
             transition: all 0.3s ease;
         }
 
+        .bundle-expand-arrow {
+            cursor: pointer;
+            margin-right: 10px;
+            display: inline-block;
+            transition: transform 0.3s ease;
+            user-select: none;
+        }
+
+        .bundle-expand-arrow.expanded {
+            transform: rotate(90deg);
+        }
+
+        .bundle-details {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .bundle-details.expanded {
+            display: block;
+        }
+
+        .bundle-model-list {
+            margin-top: 10px;
+        }
+
+        .bundle-model-item {
+            padding: 8px 15px;
+            margin: 5px 0;
+            background: rgba(0, 0, 0, 0.4);
+            border-left: 2px solid var(--primary);
+            border-radius: 4px;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bundle-model-name {
+            color: var(--text-primary);
+        }
+
+        .bundle-model-size {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
         .bundle-card:hover {
             border-color: var(--primary);
             background: rgba(16, 185, 129, 0.05);
@@ -365,6 +413,7 @@
             justify-content: space-between;
             align-items: start;
             margin-bottom: 15px;
+            cursor: pointer;
         }
 
         .bundle-title {
@@ -564,42 +613,53 @@
 
                 // Render bundles by category
                 let html = '';
-                const categoryOrder = ['SwarmUI Bundles', 'ComfyUI Bundles', 'Image Generation', 'Video Generation', 'Other Models'];
+                const categoryOrder = ['FLUX Bundles', 'Wan Video Bundles', 'Image Generation', 'Video Generation', 'Workflow Bundles', 'Other'];
 
                 for (const category of categoryOrder) {
                     if (categories[category]) {
                         html += `<div class="category-header">${category}</div>`;
 
                         for (const bundle of categories[category]) {
-                            const displayName = bundle.save_as || bundle.filename || bundle.repo_id?.split('/').pop() || 'Model';
+                            // Calculate total size in GB only
+                            const totalSizeGB = bundle.total_size ? bundle.total_size.split(' ')[0] + ' GB' : 'Size unknown';
+
                             html += `
                                 <div class="bundle-card" id="bundle-${bundle.id}">
-                                    <div class="bundle-header">
-                                        <div>
-                                            <div class="bundle-title">${bundle.name}</div>
-                                            <div class="bundle-description">${bundle.description}</div>
+                                    <div class="bundle-header" onclick="toggleBundleDetails('${bundle.id}')">
+                                        <div style="flex: 1;">
+                                            <div style="display: flex; align-items: center;">
+                                                <span class="bundle-expand-arrow" id="arrow-${bundle.id}">▶</span>
+                                                <div class="bundle-title">${bundle.name}</div>
+                                            </div>
+                                            <div class="bundle-description" style="margin-left: 25px; margin-top: 5px;">${bundle.description}</div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div class="bundle-size" style="font-size: 16px; font-weight: 600; color: var(--primary);">Total: ${totalSizeGB}</div>
+                                            <div style="color: var(--text-secondary); font-size: 14px; margin-top: 5px;">${bundle.models.length} models</div>
                                         </div>
                                     </div>
-                                    <div class="bundle-models">
-                                        <div style="margin-bottom: 10px; color: var(--text-secondary); font-size: 14px;">
-                                            Contains ${bundle.models.length} models:
+
+                                    <div class="bundle-details" id="details-${bundle.id}">
+                                        <div style="margin-bottom: 15px; color: var(--text-primary); font-weight: 600;">Includes:</div>
+                                        <div class="bundle-model-list">
+                                            ${bundle.models.map(model => {
+                                                const modelName = model.save_as || model.filename || model.repo_id?.split('/').pop() || 'Model';
+                                                const modelSize = model.size ? model.size.split(' ')[0] + ' GB' : 'Size unknown';
+                                                return `
+                                                    <div class="bundle-model-item">
+                                                        <span class="bundle-model-name">• ${modelName}</span>
+                                                        <span class="bundle-model-size">${modelSize}</span>
+                                                    </div>
+                                                `;
+                                            }).join('')}
                                         </div>
-                                        ${bundle.models.map(model => {
-                                            const modelName = model.save_as || model.filename || model.repo_id?.split('/').pop() || 'Model';
-                                            return `
-                                                <div class="bundle-model-item">
-                                                    <span class="bundle-model-name">${modelName}</span>
-                                                    <span class="bundle-model-size">${model.size}</span>
-                                                </div>
-                                            `;
-                                        }).join('')}
+                                        <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                                            <button class="btn btn-primary" id="btn-${bundle.id}" onclick="downloadBundle('${bundle.id}')">
+                                                Download Bundle
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="bundle-footer">
-                                        <span class="bundle-size">Total: ${bundle.total_size}</span>
-                                        <button class="btn btn-primary" onclick="downloadBundle('${bundle.id}')">
-                                            Download Bundle
-                                        </button>
-                                    </div>
+
                                     <div class="bundle-progress" id="progress-${bundle.id}" style="display: none;">
                                         <div class="bundle-progress-fill" id="progress-fill-${bundle.id}" style="width: 0%">
                                             0%
@@ -617,6 +677,19 @@
             } catch (error) {
                 document.getElementById('bundle-list').innerHTML =
                     `<div class="error-message">Error loading bundles: ${error.message}</div>`;
+            }
+        }
+
+        function toggleBundleDetails(bundleId) {
+            const details = document.getElementById(`details-${bundleId}`);
+            const arrow = document.getElementById(`arrow-${bundleId}`);
+
+            if (details.classList.contains('expanded')) {
+                details.classList.remove('expanded');
+                arrow.classList.remove('expanded');
+            } else {
+                details.classList.add('expanded');
+                arrow.classList.add('expanded');
             }
         }
 
@@ -638,7 +711,7 @@
                         progressBar.style.display = 'block';
                     }
                     // Disable download button
-                    const button = document.querySelector(`#bundle-${bundleId} .btn-primary`);
+                    const button = document.getElementById(`btn-${bundleId}`);
                     if (button) {
                         button.disabled = true;
                         button.textContent = 'Downloading...';
@@ -660,7 +733,7 @@
                     const bundleId = bundleStatus.bundle_id;
                     const progressBar = document.getElementById(`progress-${bundleId}`);
                     const progressFill = document.getElementById(`progress-fill-${bundleId}`);
-                    const button = document.querySelector(`#bundle-${bundleId} .btn-primary`);
+                    const button = document.getElementById(`btn-${bundleId}`);
 
                     if (!progressBar || !progressFill) continue;
 
@@ -681,7 +754,7 @@
 
                         if (button) {
                             button.disabled = false;
-                            button.textContent = '✓ Downloaded';
+                            button.textContent = 'Downloaded';
                             button.classList.remove('btn-primary');
                             button.classList.add('btn-success');
                         }
@@ -692,7 +765,12 @@
                             button.disabled = false;
                             button.textContent = 'Retry Download';
                         }
-                        showMessage(`Bundle download failed: ${bundleStatus.error}`, 'error');
+                        const failedModels = bundleStatus.failed_models;
+                        if (failedModels && failedModels.length > 0) {
+                            showMessage(`Bundle download incomplete - ${failedModels.length} models failed`, 'error');
+                        } else {
+                            showMessage(`Bundle download failed: ${bundleStatus.error || 'Unknown error'}`, 'error');
+                        }
                     }
                 }
             } catch (error) {

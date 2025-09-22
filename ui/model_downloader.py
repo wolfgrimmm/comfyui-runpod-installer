@@ -81,7 +81,7 @@ class ModelDownloader:
             "qwen_image_core": {
                 "name": "Qwen Image Core Bundle",
                 "description": "Core Qwen Image models for image generation with necessary components",
-                "category": "SwarmUI Bundles",
+                "category": "Image Generation",
                 "models": [
                     {"repo_id": "city96/Qwen-Image-GGUF", "filename": "qwen_image-Q8_0.gguf",
                      "model_type": "diffusion_models", "size": "11.8 GB"},
@@ -99,7 +99,7 @@ class ModelDownloader:
             "wan22_core": {
                 "name": "Wan 2.2 Core 8 Steps Bundle",
                 "description": "New Wan 2.2 models in FP8 for efficient 8-step video generation",
-                "category": "SwarmUI Bundles",
+                "category": "Wan Video Bundles",
                 "models": [
                     {"repo_id": "OpenGVLab/InternVideo2", "filename": "wan2.2_i2v_high_noise_14b_fp8_scaled.safetensors",
                      "model_type": "diffusion_models", "size": "13.5 GB"},
@@ -119,7 +119,7 @@ class ModelDownloader:
             "wan21_core": {
                 "name": "Wan 2.1 Core Models Bundle (GGUF Q6_K + Best LoRAs)",
                 "description": "Core Wan 2.1 models for video generation including T2V, I2V and companion LoRAs",
-                "category": "SwarmUI Bundles",
+                "category": "Wan Video Bundles",
                 "models": [
                     {"repo_id": "Comfy-Org/Wan_2.1_ComfyUI_repackaged", "filename": "split_files/diffusion_models/wan2.1_t2v_1.3B_fp16.safetensors",
                      "save_as": "Wan2.1_1.3b_Text_to_Video.safetensors", "model_type": "diffusion_models", "size": "2.5 GB"},
@@ -147,7 +147,7 @@ class ModelDownloader:
             "flux_bundle": {
                 "name": "FLUX Models Bundle",
                 "description": "Core set of FLUX models for ComfyUI plus common utility models",
-                "category": "SwarmUI Bundles",
+                "category": "FLUX Bundles",
                 "models": [
                     {"repo_id": "Comfy-Org/FLUX.1-dev", "filename": "flux1-dev.safetensors",
                      "save_as": "FLUX_Dev.safetensors", "model_type": "checkpoints", "size": "23.8 GB"},
@@ -171,7 +171,7 @@ class ModelDownloader:
             "flux_gguf_bundle": {
                 "name": "FLUX GGUF Optimized Bundle",
                 "description": "Quantized FLUX models for low VRAM including Kontext and Krea",
-                "category": "SwarmUI Bundles",
+                "category": "FLUX Bundles",
                 "models": [
                     {"repo_id": "city96/FLUX.1-dev-gguf", "filename": "flux1-dev-Q8_0.gguf",
                      "save_as": "FLUX_Dev_GGUF_Q8_0.gguf", "model_type": "diffusion_models", "size": "12.2 GB"},
@@ -195,7 +195,7 @@ class ModelDownloader:
             "hidream_i1_dev": {
                 "name": "HiDream-I1 Dev Bundle (Recommended)",
                 "description": "Recommended HiDream-I1 Dev model (Q8 GGUF) with necessary supporting files",
-                "category": "SwarmUI Bundles",
+                "category": "Image Generation",
                 "models": [
                     {"repo_id": "MonsterMMORPG/HiDream-I1-Dev", "filename": "HiDream-I1-Dev-Q8_0.gguf",
                      "model_type": "diffusion_models", "size": "10.6 GB"},
@@ -245,7 +245,7 @@ class ModelDownloader:
             "wan21_extended": {
                 "name": "Wan 2.1 Extended Bundle (All LoRAs)",
                 "description": "Complete collection of Wan 2.1 LoRAs including CausVid, Phantom, and all FusionX variants",
-                "category": "Video Generation",
+                "category": "Wan Video Bundles",
                 "models": [
                     {"repo_id": "Kijai/WanVideo_comfy", "filename": "Wan21_CausVid_14B_T2V_lora_rank32_v2.safetensors",
                      "save_as": "Wan21_CausVid_14B_T2V_lora_rank32_v2.safetensors", "model_type": "loras", "size": "188 MB"},
@@ -265,7 +265,7 @@ class ModelDownloader:
             "wan21_fusionx_gguf": {
                 "name": "Wan 2.1 FusionX GGUF Collection",
                 "description": "All GGUF quantizations of Wan 2.1 FusionX models for I2V and T2V",
-                "category": "Video Generation",
+                "category": "Wan Video Bundles",
                 "models": [
                     {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Wan21_FusionX_I2V_14B_GGUF_Q8.gguf",
                      "model_type": "diffusion_models", "size": "14.3 GB"},
@@ -312,7 +312,7 @@ class ModelDownloader:
             "clothing_migration": {
                 "name": "Clothing Migration Workflow Bundle",
                 "description": "All necessary models for Clothing Migration workflow in ComfyUI",
-                "category": "ComfyUI Bundles",
+                "category": "Workflow Bundles",
                 "models": [
                     {"repo_id": "John6666/joy-caption-alpha-two-flux-nf4-gguf", "filename": "model.safetensors",
                      "model_type": "text_encoders", "size": "8.5 GB"},
@@ -338,7 +338,7 @@ class ModelDownloader:
             "comfyui_multitalk": {
                 "name": "ComfyUI MultiTalk Bundle",
                 "description": "All models for ComfyUI MultiTalk workflow including Wan 2.1 MultiTalk",
-                "category": "ComfyUI Bundles",
+                "category": "Workflow Bundles",
                 "models": [
                     {"repo_id": "MonsterMMORPG/Wan_GGUF", "filename": "Wan21_14B_LightX2V_CFG_Step_Distill_LoRA_V2_T2V_I2V_Rank_64.safetensors",
                      "model_type": "loras", "size": "377 MB"},
@@ -817,8 +817,15 @@ class ModelDownloader:
                         self.bundle_downloads[bundle_download_id]['download_ids'] = download_ids
 
                 except Exception as e:
-                    print(f"Error downloading model in bundle: {e}")
-                    # Continue with next model even if one fails
+                    print(f"Error downloading model {model.get('filename', model['repo_id'])} in bundle: {e}")
+                    # Log error but continue with next model
+                    with self.download_lock:
+                        if 'failed_models' not in self.bundle_downloads[bundle_download_id]:
+                            self.bundle_downloads[bundle_download_id]['failed_models'] = []
+                        self.bundle_downloads[bundle_download_id]['failed_models'].append({
+                            'model': model.get('filename', model['repo_id']),
+                            'error': str(e)
+                        })
                     continue
 
             # Mark bundle as completed
