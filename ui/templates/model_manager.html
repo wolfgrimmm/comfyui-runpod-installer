@@ -670,16 +670,16 @@
         </div>
 
         <div class="tabs">
-            <button class="tab-button active" onclick="switchTab('bundles')">
+            <button class="tab-button active" onclick="switchTab('bundles', event)">
                 Bundles
             </button>
-            <button class="tab-button" onclick="switchTab('installed')">
+            <button class="tab-button" onclick="switchTab('installed', event)">
                 Installed Models
             </button>
-            <button class="tab-button" onclick="switchTab('browse')">
+            <button class="tab-button" onclick="switchTab('browse', event)">
                 Browse Models
             </button>
-            <button class="tab-button" onclick="switchTab('downloads')">
+            <button class="tab-button" onclick="switchTab('downloads', event)">
                 Downloads
             </button>
         </div>
@@ -875,14 +875,19 @@
         let currentCategory = 'all';
         let currentSearchQuery = '';
 
-        function switchTab(tabName) {
+        function switchTab(tabName, event) {
             currentTab = tabName;
 
             // Update tab buttons
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // Find and activate the correct button if no event
+                document.querySelector(`.tab-button[onclick*="${tabName}"]`).classList.add('active');
+            }
 
             // Update tab content
             document.querySelectorAll('.tab-content').forEach(content => {
@@ -1384,7 +1389,7 @@
 
                 if (result.download_id) {
                     showMessage('Download started!', 'success');
-                    switchTab('downloads');
+                    switchTab('downloads', null);
                 } else {
                     showMessage('Failed to start download', 'error');
                 }
@@ -1698,7 +1703,7 @@
                 const data = await response.json();
                 if (data.download_id) {
                     showToast('Download started! Check the Downloads tab for progress.');
-                    switchTab('downloads');
+                    switchTab('downloads', null);
                 } else {
                     showToast('Error starting download: ' + (data.error || 'Unknown error'), 'error');
                 }
