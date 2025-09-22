@@ -1,0 +1,6 @@
+
+Click below link to download zip file that contains 53 demo videos
+
+You can drag and drop videos into ComfyUI to see full workflow
+
+https://huggingface.co/MonsterMMORPG/Generative-AI/resolve/main/SECourses_MultiTalk_Demo_Videos_With_Meta_Data_Workflow.zip 

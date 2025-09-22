@@ -61,10 +61,10 @@ setup_venv_if_needed() {
     
     # Upgrade pip
     pip install --upgrade pip wheel setuptools
-    
-    # Install PyTorch with CUDA 12.4 (better compatibility with CUDA 12.9 runtime)
-    echo "Installing PyTorch with CUDA 12.4 (optimized for CUDA 12.9)..."
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+    # Install PyTorch 2.8.0 with CUDA 12.9
+    echo "Installing PyTorch 2.8.0 with CUDA 12.9..."
+    pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
     
     # Install ComfyUI requirements
     echo "Installing ComfyUI requirements..."

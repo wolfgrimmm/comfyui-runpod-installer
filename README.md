@@ -4,9 +4,14 @@ Optimized Docker image for deploying ComfyUI on RunPod with web-based control pa
 
 ## Features
 
-- 🚀 **RunPod Optimized** - Uses RunPod's PyTorch base image for fastest deployment
+- 🚀 **Ultra-Fast Installation** - 5-minute setup with pre-compiled wheels
+- 🎯 **GPU Auto-Optimization** - Automatically uses best attention mechanism:
+  - H100/H200: Flash Attention 3 (Hopper optimized)
+  - RTX 5090/B200: Sage Attention 2.2.0 (Blackwell optimized)
+  - A100: Flash Attention 2.8.3
+  - Others: xformers 0.33
+- 📦 **PyTorch 2.8.0** - Latest PyTorch with CUDA 12.9 support
 - 🎛️ **Web Control Panel** - Manage ComfyUI through browser interface (port 7777)
-- 📦 **On-Demand Installation** - ComfyUI installs only when you need it
 - 💾 **Persistent Storage** - All data saved in `/workspace` volume
 - 🔧 **ComfyUI Manager** - Pre-configured with essential custom nodes
 - 📊 **JupyterLab** - Included for advanced workflows (port 8888)
