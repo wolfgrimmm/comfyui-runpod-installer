@@ -18,6 +18,16 @@ try:
 except ImportError:
     HF_AVAILABLE = False
 
+# Enable hf_transfer for faster downloads if available
+try:
+    import hf_transfer
+    os.environ['HF_HUB_ENABLE_HF_TRANSFER'] = '1'
+    print("✅ hf_transfer enabled for faster downloads (2-5x speed improvement)")
+    HF_TRANSFER_AVAILABLE = True
+except ImportError:
+    HF_TRANSFER_AVAILABLE = False
+    print("ℹ️ hf_transfer not available - downloads will use standard speed")
+
 class ModelDownloader:
     def __init__(self, models_base_path="/workspace/ComfyUI/models"):
         """Initialize the model downloader with base paths."""
@@ -338,6 +348,14 @@ class ModelDownloader:
             }
         except:
             return {'total': 0, 'used': 0, 'free': 0, 'percent': 0}
+
+    def get_transfer_status(self) -> Dict:
+        """Get the status of hf_transfer for diagnostics."""
+        return {
+            'hf_transfer_available': HF_TRANSFER_AVAILABLE,
+            'hf_transfer_enabled': os.environ.get('HF_HUB_ENABLE_HF_TRANSFER') == '1',
+            'speed_boost': '2-5x faster' if HF_TRANSFER_AVAILABLE else 'standard speed'
+        }
 
     def delete_model(self, model_path: str) -> bool:
         """Delete a model file or directory."""
