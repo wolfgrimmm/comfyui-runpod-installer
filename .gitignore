@@ -46,3 +46,10 @@ service_account.json
 SwarmUI_Model_Downloader_v80/
 Comfy_UI_V52/
 ComfyUI_UI_V52/
+
+# Instructions and how-to guides (keep separate)
+.instructions/
+*.instructions.md
+*_SETUP.md
+*_GUIDE.md
+*_HOWTO.md

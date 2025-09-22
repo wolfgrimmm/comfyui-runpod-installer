@@ -62,12 +62,7 @@ Supports all model types: FLUX, SDXL, LoRA, ControlNet, VAE, CLIP, and more.
 
 ## ☁️ Google Drive Integration (Optional)
 
-### Automatic Setup with RunPod Secrets
-1. Create service account ([guide](docs/GOOGLE_DRIVE.md))
-2. Add RunPod secrets:
-   - `GDRIVE_SERVICE_ACCOUNT` - Service account JSON
-   - `GDRIVE_FOLDER_ID` - Your Drive folder ID
-3. Deploy pod - sync starts automatically!
+Automatic backup of generated outputs to Google Drive using service account authentication.
 
 ### Features
 - Auto-sync every 60 seconds
@@ -121,14 +116,13 @@ The installer automatically detects your GPU and installs the best attention mec
 - Use quantized models (GGUF format)
 - Clear VRAM: `nvidia-smi --gpu-reset`
 
-See [full troubleshooting guide](docs/TROUBLESHOOTING.md) for more solutions.
+Check documentation for detailed troubleshooting steps.
 
 ## 📚 Documentation
 
-- [Complete Setup Guide](docs/SETUP.md)
-- [Google Drive Integration](docs/GOOGLE_DRIVE.md)
-- [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [Automated Setup Options](docs/AUTOMATED_SETUP.md)
+- [System Overview](docs/OVERVIEW.md) - Architecture and components
+- Setup instructions available separately
+- Troubleshooting guides available separately
 
 ## 💡 Tips & Tricks
 
