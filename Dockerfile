@@ -212,23 +212,49 @@ echo "🔍 Detecting GPU for optimal attention mechanism..."
 GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 || echo "Unknown")
 echo "   GPU detected: $GPU_NAME"
 
-# Detect GPU family regardless of variant (NVL, SXM, PCIe, etc.)
-if echo "$GPU_NAME" | grep -qE "H100|H200|H800|NVIDIA H100|NVIDIA H200"; then
+# Detect GPU family - Complete RunPod GPU Support
+if echo "$GPU_NAME" | grep -qE "B200|NVIDIA B200"; then
+    # Blackwell GPUs (latest generation)
+    GPU_TYPE="blackwell"
+    echo "   🚀 Blackwell architecture detected (B200)"
+elif echo "$GPU_NAME" | grep -qE "H100|H200|H800|NVIDIA H100|NVIDIA H200"; then
+    # Hopper GPUs - H100 NVL, H100 SXM, H200 SXM, H100 PCIe
     GPU_TYPE="hopper"
     echo "   ⚡ Hopper architecture detected"
-elif echo "$GPU_NAME" | grep -qE "RTX 5090|RTX 5080|B200|B100|NVIDIA B200"; then
+elif echo "$GPU_NAME" | grep -qE "RTX 4090|RTX 4080|RTX 4070|RTX 4060"; then
+    # Ada Lovelace Consumer GPUs
+    GPU_TYPE="ada"
+    echo "   📦 Ada Lovelace architecture detected (RTX 40 series)"
+elif echo "$GPU_NAME" | grep -qE "L40|L40S|L4|NVIDIA L40|NVIDIA L4"; then
+    # Ada Lovelace Data Center GPUs
+    GPU_TYPE="ada"
+    echo "   📦 Ada Lovelace architecture detected (L-series)"
+elif echo "$GPU_NAME" | grep -qE "RTX 6000 Ada|RTX 5000 Ada|RTX 4000 Ada|RTX 2000 Ada|RTX Ada"; then
+    # Ada Lovelace Professional GPUs
+    GPU_TYPE="ada"
+    echo "   📦 Ada Lovelace architecture detected (RTX Ada)"
+elif echo "$GPU_NAME" | grep -qE "RTX PRO 6000|RTX 6000 WK|RTX 6000"; then
+    # RTX PRO 6000/6000 WK (96GB VRAM) - Likely Ada architecture
+    GPU_TYPE="ada"
+    echo "   📦 Ada architecture detected (RTX PRO 6000)"
+elif echo "$GPU_NAME" | grep -qE "A100|A40|A30|A10|NVIDIA A100|NVIDIA A40"; then
+    # Ampere Data Center GPUs
+    GPU_TYPE="ampere"
+    echo "   ⚡ Ampere architecture detected (A-series)"
+elif echo "$GPU_NAME" | grep -qE "RTX 3090|RTX 3080|RTX 3070|RTX 3060"; then
+    # Ampere Consumer GPUs (RTX 30 series)
+    GPU_TYPE="ampere"
+    echo "   📦 Ampere architecture detected (RTX 30 series)"
+elif echo "$GPU_NAME" | grep -qE "RTX 5090|RTX 5080|RTX 5070|RTX 5060"; then
+    # RTX 50 series (when released, likely Blackwell)
     GPU_TYPE="blackwell"
-    echo "   🚀 Blackwell architecture detected"
-elif echo "$GPU_NAME" | grep -qE "A100|A40|A30|A10|NVIDIA A100"; then
+    echo "   🚀 Blackwell architecture detected (RTX 50 series)"
+elif echo "$GPU_NAME" | grep -qE "A800|A6000"; then
+    # Other Ampere variants
     GPU_TYPE="ampere"
     echo "   ⚡ Ampere architecture detected"
-elif echo "$GPU_NAME" | grep -qE "RTX 4090|RTX 4080|RTX 4070|L40|L40S|RTX 6000 Ada"; then
-    GPU_TYPE="ada"
-    echo "   📦 Ada Lovelace architecture detected"
-elif echo "$GPU_NAME" | grep -qE "RTX 3090|RTX 3080|RTX 3070|RTX 3060"; then
-    GPU_TYPE="ampere"
-    echo "   📦 Ampere (RTX 30xx) architecture detected"
 else
+    # Unknown or older GPUs - use broadest compatibility
     GPU_TYPE="generic"
     echo "   📦 Generic GPU detected"
 fi
@@ -241,11 +267,13 @@ echo "✅ All attention mechanisms pre-installed:"
 if python -c "import flash_attn; v=flash_attn.__version__; print(f'   ✅ Flash Attention {v}'); exit(0 if v.startswith('3') else 1)" 2>/dev/null; then
     echo "      🚀 Flash Attention 3 available (Hopper optimized)"
     if [[ "$GPU_TYPE" == "hopper" ]]; then
+        echo "      ✓ Selected for $GPU_NAME"
         echo "export COMFYUI_ATTENTION_MECHANISM=flash3" >> /workspace/venv/.env_settings
     fi
 elif python -c "import flash_attn; print(f'   ✅ Flash Attention {flash_attn.__version__}')" 2>/dev/null; then
     echo "      ⚡ Flash Attention 2 available"
     if [[ "$GPU_TYPE" == "ampere" ]] || [[ "$GPU_TYPE" == "ada" ]]; then
+        echo "      ✓ Selected for $GPU_NAME"
         echo "export COMFYUI_ATTENTION_MECHANISM=flash2" >> /workspace/venv/.env_settings
     fi
 fi
@@ -253,6 +281,7 @@ fi
 if python -c "import sageattention" 2>/dev/null; then
     echo "   ✅ Sage Attention 2.2.0 available"
     if [[ "$GPU_TYPE" == "blackwell" ]]; then
+        echo "      ✓ Selected for $GPU_NAME (Blackwell optimized)"
         echo "export COMFYUI_ATTENTION_MECHANISM=sage" >> /workspace/venv/.env_settings
     fi
 fi
@@ -260,9 +289,22 @@ fi
 if python -c "import xformers" 2>/dev/null; then
     echo "   ✅ xformers 0.33 available (universal fallback)"
     if [[ "$GPU_TYPE" == "generic" ]]; then
+        echo "      ✓ Selected for $GPU_NAME"
         echo "export COMFYUI_ATTENTION_MECHANISM=xformers" >> /workspace/venv/.env_settings
     fi
 fi
+
+# Log the final configuration
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 GPU Configuration Summary:"
+echo "   GPU Model: $GPU_NAME"
+echo "   Architecture: $GPU_TYPE"
+if [ -f /workspace/venv/.env_settings ]; then
+    source /workspace/venv/.env_settings
+    echo "   Selected Mechanism: ${COMFYUI_ATTENTION_MECHANISM:-auto-detect}"
+fi
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # If no specific mechanism was set, let ComfyUI auto-detect
 if ! grep -q "COMFYUI_ATTENTION_MECHANISM" /workspace/venv/.env_settings 2>/dev/null; then

@@ -17,23 +17,49 @@ echo "📦 Detected Python version: $PYTHON_VERSION"
 GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 || echo "Unknown")
 echo "🔍 GPU detected: $GPU_NAME"
 
-# Determine GPU type
-if echo "$GPU_NAME" | grep -qE "H100|H200|H800"; then
+# Determine GPU type - Complete RunPod GPU Support
+if echo "$GPU_NAME" | grep -qE "B200|NVIDIA B200"; then
+    # Blackwell GPUs (latest generation)
+    GPU_ARCH="blackwell"
+    CUDA_ARCH="10.0"
+elif echo "$GPU_NAME" | grep -qE "H100|H200|H800|NVIDIA H100|NVIDIA H200"; then
+    # Hopper GPUs - H100 NVL, H100 SXM, H200 SXM, H100 PCIe
     GPU_ARCH="hopper"
     CUDA_ARCH="9.0"
-elif echo "$GPU_NAME" | grep -qE "RTX 4090|RTX 4080|RTX 4070|L40|L40S|RTX 6000 Ada"; then
+elif echo "$GPU_NAME" | grep -qE "RTX 4090|RTX 4080|RTX 4070|RTX 4060"; then
+    # Ada Lovelace Consumer GPUs
     GPU_ARCH="ada"
     CUDA_ARCH="8.9"
-elif echo "$GPU_NAME" | grep -qE "A100|A40|A30|A10"; then
+elif echo "$GPU_NAME" | grep -qE "L40|L40S|L4|NVIDIA L40|NVIDIA L4"; then
+    # Ada Lovelace Data Center GPUs
+    GPU_ARCH="ada"
+    CUDA_ARCH="8.9"
+elif echo "$GPU_NAME" | grep -qE "RTX 6000 Ada|RTX 5000 Ada|RTX 4000 Ada|RTX 2000 Ada|RTX Ada"; then
+    # Ada Lovelace Professional GPUs
+    GPU_ARCH="ada"
+    CUDA_ARCH="8.9"
+elif echo "$GPU_NAME" | grep -qE "RTX PRO 6000|RTX 6000 WK|RTX 6000"; then
+    # RTX PRO 6000/6000 WK (96GB VRAM) - Likely Ada architecture
+    GPU_ARCH="ada"
+    CUDA_ARCH="8.9"
+elif echo "$GPU_NAME" | grep -qE "A100|A40|A30|A10|NVIDIA A100|NVIDIA A40"; then
+    # Ampere Data Center GPUs
     GPU_ARCH="ampere"
     CUDA_ARCH="8.0,8.6"
 elif echo "$GPU_NAME" | grep -qE "RTX 3090|RTX 3080|RTX 3070|RTX 3060"; then
+    # Ampere Consumer GPUs (RTX 30 series)
     GPU_ARCH="ampere"
     CUDA_ARCH="8.6"
-elif echo "$GPU_NAME" | grep -qE "RTX 5090|RTX 5080|B200|B100"; then
+elif echo "$GPU_NAME" | grep -qE "RTX 5090|RTX 5080|RTX 5070|RTX 5060"; then
+    # RTX 50 series (when released, likely Blackwell)
     GPU_ARCH="blackwell"
     CUDA_ARCH="10.0"
+elif echo "$GPU_NAME" | grep -qE "A800|A6000"; then
+    # Other Ampere variants
+    GPU_ARCH="ampere"
+    CUDA_ARCH="8.0,8.6"
 else
+    # Unknown or older GPUs - use broadest compatibility
     GPU_ARCH="unknown"
     CUDA_ARCH="7.5,8.0,8.6,8.9,9.0"
 fi
@@ -86,15 +112,23 @@ if [ "$GPU_ARCH" != "hopper" ]; then
     fi
 fi
 
-# 3. Install Sage Attention (for Blackwell and newer)
-echo "📦 Installing Sage Attention 2.2.0..."
-# Try different Python versions
-for PY_VER in $CP_TAG cp310 cp311; do
-    if pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-${PY_VER}-${PY_VER}-linux_x86_64.whl 2>/dev/null; then
-        echo "✅ Sage Attention installed successfully"
-        break
-    fi
-done
+# 3. Install Sage Attention (for Blackwell GPUs like B200)
+if [ "$GPU_ARCH" == "blackwell" ]; then
+    echo "📦 Installing Sage Attention 2.2.0 for Blackwell GPU..."
+    # Try different Python versions
+    for PY_VER in $CP_TAG cp310 cp311; do
+        if pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-${PY_VER}-${PY_VER}-linux_x86_64.whl 2>/dev/null; then
+            echo "✅ Sage Attention installed successfully for Blackwell GPU"
+            break
+        fi
+    done
+else
+    echo "📦 Installing Sage Attention 2.2.0 (optional)..."
+    # Try installing for other GPUs as fallback option
+    for PY_VER in $CP_TAG cp310 cp311; do
+        pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-${PY_VER}-${PY_VER}-linux_x86_64.whl 2>/dev/null && break
+    done || echo "   Note: Sage Attention not installed (not required for $GPU_ARCH)"
+fi
 
 # 4. Install/Compile Flash Attention 3 for Hopper GPUs
 if [ "$GPU_ARCH" == "hopper" ]; then
