@@ -28,6 +28,8 @@ except ImportError:
     HF_TRANSFER_AVAILABLE = False
     print("ℹ️ hf_transfer not available - downloads will use standard speed")
 
+from civitai_integration import CivitAIClient
+
 class ModelDownloader:
     def __init__(self, models_base_path="/workspace/models"):
         """Initialize the model downloader with base paths."""
@@ -35,6 +37,9 @@ class ModelDownloader:
         self.downloads = {}  # Track active downloads
         self.download_lock = threading.Lock()
         self.bundle_downloads = {}  # Track bundle downloads
+
+        # Initialize CivitAI client
+        self.civitai_client = CivitAIClient(models_base_path=models_base_path)
 
         # Define model bundles
         self.model_bundles = self._get_model_bundles()
@@ -799,6 +804,57 @@ class ModelDownloader:
                      "save_as": "clip_b16.safetensors", "model_type": "clip", "size": "151 MB"},
                 ],
                 "total_size": "2.75 GB"
+            },
+
+            # CivitAI Popular Models Bundles
+            "civitai_essentials": {
+                "name": "CivitAI Essentials Bundle",
+                "description": "Most popular community models from CivitAI",
+                "category": "CivitAI Collections",
+                "source": "civitai",
+                "models": [
+                    {"name": "Realistic Vision V6.0", "version_id": 245598, "type": "Checkpoint", "size": "2.0 GB"},
+                    {"name": "DreamShaper 8", "version_id": 128713, "type": "Checkpoint", "size": "2.0 GB"},
+                    {"name": "Detail Tweaker LoRA", "version_id": 135867, "type": "LORA", "size": "144 MB"},
+                    {"name": "VAE ft-mse-840000", "version_id": 155202, "type": "VAE", "size": "335 MB"},
+                ],
+                "total_size": "4.5 GB"
+            },
+            "civitai_anime": {
+                "name": "Anime Style Bundle",
+                "description": "Top-rated anime style models from CivitAI",
+                "category": "CivitAI Collections",
+                "source": "civitai",
+                "models": [
+                    {"name": "Anything V5", "version_id": 189063, "type": "Checkpoint", "size": "2.1 GB"},
+                    {"name": "Counterfeit V3", "version_id": 157292, "type": "Checkpoint", "size": "2.0 GB"},
+                    {"name": "Anime Lineart LoRA", "version_id": 160168, "type": "LORA", "size": "128 MB"},
+                ],
+                "total_size": "4.2 GB"
+            },
+            "civitai_photorealism": {
+                "name": "Photorealistic Bundle",
+                "description": "Ultra-realistic model collection from CivitAI",
+                "category": "CivitAI Collections",
+                "source": "civitai",
+                "models": [
+                    {"name": "Juggernaut XL", "version_id": 198962, "type": "Checkpoint", "size": "6.5 GB"},
+                    {"name": "RealESRGAN 4x", "version_id": 124576, "type": "Upscaler", "size": "64 MB"},
+                    {"name": "Face Detailer", "version_id": 145893, "type": "LORA", "size": "144 MB"},
+                ],
+                "total_size": "6.7 GB"
+            },
+            "civitai_sdxl": {
+                "name": "SDXL Collection",
+                "description": "Best SDXL models from CivitAI community",
+                "category": "CivitAI Collections",
+                "source": "civitai",
+                "models": [
+                    {"name": "Juggernaut XL V9", "version_id": 288982, "type": "Checkpoint", "size": "6.5 GB"},
+                    {"name": "SDXL Offset LoRA", "version_id": 178925, "type": "LORA", "size": "49 MB"},
+                    {"name": "SDXL Turbo", "version_id": 221544, "type": "Checkpoint", "size": "6.5 GB"},
+                ],
+                "total_size": "13.0 GB"
             }
         }
 
@@ -1312,3 +1368,216 @@ class ModelDownloader:
         sorted_categories.extend(sorted(categories))
 
         return sorted_categories
+
+    # CivitAI Integration Methods
+    def search_civitai_models(self, query: str = None, model_type: str = None,
+                             sort: str = "Highest Rated", nsfw: bool = False,
+                             limit: int = 20, page: int = 1) -> Dict:
+        """
+        Search models on CivitAI.
+
+        Args:
+            query: Search query
+            model_type: Type of model to filter
+            sort: Sort order
+            nsfw: Include NSFW content
+            limit: Results per page
+            page: Page number
+
+        Returns:
+            Search results from CivitAI
+        """
+        import asyncio
+
+        async def search():
+            types = [model_type] if model_type else None
+            return await self.civitai_client.search_models(
+                query=query, types=types, sort=sort,
+                nsfw=nsfw, limit=limit, page=page
+            )
+
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            results = loop.run_until_complete(search())
+            loop.close()
+            return results
+        except Exception as e:
+            return {'error': str(e), 'items': []}
+
+    def download_civitai_model(self, version_id: int, model_type: str = None) -> str:
+        """
+        Download a model from CivitAI.
+
+        Args:
+            version_id: CivitAI model version ID
+            model_type: Type of model for folder organization
+
+        Returns:
+            Download ID for tracking
+        """
+        download_id = f"civitai_{version_id}_{int(time.time())}"
+
+        def download_thread():
+            try:
+                with self.download_lock:
+                    self.downloads[download_id] = {
+                        'status': 'downloading',
+                        'progress': 0,
+                        'error': None,
+                        'source': 'civitai',
+                        'version_id': version_id,
+                        'started_at': time.time()
+                    }
+
+                # Progress callback
+                def progress_update(info):
+                    with self.download_lock:
+                        if download_id in self.downloads:
+                            self.downloads[download_id]['progress'] = info['percentage']
+                            self.downloads[download_id]['downloaded'] = info.get('downloaded', 0)
+                            self.downloads[download_id]['total'] = info.get('total', 0)
+
+                # Download the model
+                dest_path = self.civitai_client.download_model(
+                    model_version_id=version_id,
+                    model_type=model_type,
+                    progress_callback=progress_update
+                )
+
+                # Update status
+                with self.download_lock:
+                    self.downloads[download_id]['status'] = 'completed'
+                    self.downloads[download_id]['dest_path'] = dest_path
+                    self.downloads[download_id]['progress'] = 100
+
+            except Exception as e:
+                with self.download_lock:
+                    self.downloads[download_id]['status'] = 'error'
+                    self.downloads[download_id]['error'] = str(e)
+
+        # Start download in background thread
+        thread = threading.Thread(target=download_thread)
+        thread.start()
+
+        return download_id
+
+    def download_civitai_bundle(self, bundle_id: str) -> str:
+        """
+        Download all models in a CivitAI bundle.
+
+        Args:
+            bundle_id: ID of the CivitAI bundle
+
+        Returns:
+            Bundle download ID for tracking
+        """
+        if bundle_id not in self.model_bundles:
+            raise ValueError(f"Bundle '{bundle_id}' not found")
+
+        bundle = self.model_bundles[bundle_id]
+
+        # Check if it's a CivitAI bundle
+        if bundle.get('source') != 'civitai':
+            # Use regular bundle download for non-CivitAI bundles
+            return self.download_bundle(bundle_id)
+
+        bundle_download_id = f"bundle_{bundle_id}_{int(time.time())}"
+
+        def download_bundle_thread():
+            try:
+                with self.download_lock:
+                    self.bundle_downloads[bundle_download_id] = {
+                        'bundle_id': bundle_id,
+                        'status': 'downloading',
+                        'total_models': len(bundle['models']),
+                        'completed_models': 0,
+                        'failed_models': 0,
+                        'current_model': None,
+                        'models_status': {},
+                        'started_at': time.time(),
+                        'source': 'civitai'
+                    }
+
+                for idx, model in enumerate(bundle['models']):
+                    model_name = model.get('name', f'Model {idx+1}')
+
+                    with self.download_lock:
+                        self.bundle_downloads[bundle_download_id]['current_model'] = model_name
+                        self.bundle_downloads[bundle_download_id]['models_status'][model_name] = 'downloading'
+
+                    try:
+                        # Download CivitAI model
+                        version_id = model.get('version_id')
+                        model_type = model.get('type')
+
+                        if version_id:
+                            download_id = self.download_civitai_model(version_id, model_type)
+
+                            # Wait for download to complete
+                            while True:
+                                time.sleep(1)
+                                with self.download_lock:
+                                    if download_id in self.downloads:
+                                        status = self.downloads[download_id]['status']
+                                        if status == 'completed':
+                                            self.bundle_downloads[bundle_download_id]['completed_models'] += 1
+                                            self.bundle_downloads[bundle_download_id]['models_status'][model_name] = 'completed'
+                                            break
+                                        elif status == 'error':
+                                            self.bundle_downloads[bundle_download_id]['failed_models'] += 1
+                                            self.bundle_downloads[bundle_download_id]['models_status'][model_name] = 'error'
+                                            break
+
+                    except Exception as e:
+                        with self.download_lock:
+                            self.bundle_downloads[bundle_download_id]['failed_models'] += 1
+                            self.bundle_downloads[bundle_download_id]['models_status'][model_name] = f'error: {str(e)}'
+
+                # Mark bundle as completed
+                with self.download_lock:
+                    self.bundle_downloads[bundle_download_id]['status'] = 'completed'
+                    self.bundle_downloads[bundle_download_id]['current_model'] = None
+
+            except Exception as e:
+                with self.download_lock:
+                    self.bundle_downloads[bundle_download_id]['status'] = 'error'
+                    self.bundle_downloads[bundle_download_id]['error'] = str(e)
+
+        # Start bundle download in background thread
+        thread = threading.Thread(target=download_bundle_thread)
+        thread.start()
+
+        return bundle_download_id
+
+    def set_civitai_api_key(self, api_key: str) -> bool:
+        """
+        Set CivitAI API key.
+
+        Args:
+            api_key: CivitAI API key
+
+        Returns:
+            True if key is valid
+        """
+        self.civitai_client.api_key = api_key
+        os.environ['CIVITAI_API_KEY'] = api_key
+
+        # Verify the key
+        return self.civitai_client.verify_api_key()
+
+    def get_civitai_trending(self, period: str = "Week", limit: int = 20) -> Dict:
+        """Get trending models from CivitAI."""
+        import asyncio
+
+        async def get_trending():
+            return await self.civitai_client.get_trending_models(period=period, limit=limit)
+
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            results = loop.run_until_complete(get_trending())
+            loop.close()
+            return results
+        except Exception as e:
+            return {'error': str(e), 'items': []}

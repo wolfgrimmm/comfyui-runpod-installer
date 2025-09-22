@@ -131,6 +131,9 @@ if [ "$NEED_INSTALL" = "1" ]; then
     # Core packages for UI
     uv pip install flask==3.0.0 psutil requests
 
+    # CivitAI integration packages
+    uv pip install civitai-downloader aiofiles
+
     # ComfyUI requirements - PyTorch 2.8.0 with CUDA 12.9
     echo "📦 Installing PyTorch 2.8.0 with CUDA 12.9..."
     uv pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129

@@ -506,6 +506,155 @@
             font-weight: 600;
             font-size: 12px;
         }
+
+        /* CivitAI Model Cards */
+        .civitai-model-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+            transition: all 0.3s;
+        }
+
+        .civitai-model-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            border-color: var(--primary);
+        }
+
+        .model-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: var(--bg-tertiary);
+        }
+
+        .model-details {
+            flex: 1;
+        }
+
+        .model-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .model-meta {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .meta-badge {
+            padding: 4px 8px;
+            background: rgba(139, 92, 246, 0.2);
+            border: 1px solid var(--secondary);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-primary);
+        }
+
+        .trigger-words {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px;
+            margin: 10px 0;
+        }
+
+        .trigger-label {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .trigger-text {
+            color: var(--primary);
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .copy-trigger {
+            background: var(--primary);
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .model-stats {
+            display: flex;
+            gap: 15px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            position: relative;
+            background: var(--bg-secondary);
+            margin: 5% auto;
+            padding: 30px;
+            width: 80%;
+            max-width: 800px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal h2 {
+            color: var(--text-primary);
+            margin-bottom: 20px;
+        }
+
+        .modal-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+
+        .modal-section h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -584,11 +733,62 @@
         <!-- Browse Models Tab -->
         <div id="browse-tab" class="tab-content">
             <h2>Browse and Download Models</h2>
-            <div class="search-container">
-                <input type="text" class="search-input" id="search-input"
-                       placeholder="Search HuggingFace Hub (e.g., FLUX, SDXL, ControlNet)...">
+
+            <!-- Source Selector -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button id="source-hf" class="btn btn-secondary active" onclick="selectSource('huggingface')">
+                    🤗 HuggingFace
+                </button>
+                <button id="source-civitai" class="btn btn-secondary" onclick="selectSource('civitai')">
+                    🎨 CivitAI
+                </button>
             </div>
-            <button class="btn btn-primary" onclick="searchModels()">Search</button>
+
+            <!-- HuggingFace Search -->
+            <div id="huggingface-search" class="source-content">
+                <div class="search-container">
+                    <input type="text" class="search-input" id="search-input"
+                           placeholder="Search HuggingFace Hub (e.g., FLUX, SDXL, ControlNet)...">
+                </div>
+                <button class="btn btn-primary" onclick="searchModels()">Search</button>
+            </div>
+
+            <!-- CivitAI Search -->
+            <div id="civitai-search" class="source-content" style="display: none;">
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <input type="text" class="search-input" id="civitai-query" style="flex: 2; min-width: 300px;"
+                           placeholder="Search CivitAI models..." onkeypress="if(event.key==='Enter') searchCivitAI()">
+
+                    <select id="civitai-type" class="search-input" style="flex: 1; min-width: 150px;">
+                        <option value="">All Types</option>
+                        <option value="Checkpoint">Checkpoint</option>
+                        <option value="LORA">LoRA</option>
+                        <option value="TextualInversion">Textual Inversion</option>
+                        <option value="VAE">VAE</option>
+                        <option value="ControlNet">ControlNet</option>
+                    </select>
+
+                    <select id="civitai-sort" class="search-input" style="flex: 1; min-width: 150px;">
+                        <option value="Highest Rated">Highest Rated</option>
+                        <option value="Most Downloaded">Most Downloaded</option>
+                        <option value="Newest">Newest</option>
+                    </select>
+
+                    <label style="display: flex; align-items: center; gap: 5px; color: var(--text-secondary);">
+                        <input type="checkbox" id="civitai-nsfw"> Include NSFW
+                    </label>
+                </div>
+
+                <button class="btn btn-primary" onclick="searchCivitAI()">Search CivitAI</button>
+                <button class="btn btn-secondary" onclick="getCivitAITrending()">Show Trending</button>
+
+                <!-- API Key Status -->
+                <div id="civitai-auth-status" style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                    <span id="auth-status-text">Checking API key...</span>
+                    <button class="btn btn-sm" onclick="showAPIKeyModal()">Set API Key</button>
+                </div>
+            </div>
+
             <div id="search-results"></div>
         </div>
 
@@ -597,6 +797,72 @@
             <h2>Download Queue</h2>
             <div class="download-queue" id="download-queue">
                 <div class="empty-state">No active downloads</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CivitAI Model Details Modal -->
+    <div id="modelModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <h2 id="modal-title">Model Details</h2>
+
+            <div class="modal-section">
+                <h3>Trigger Words</h3>
+                <div id="modal-trigger-words" class="trigger-text">Loading...</div>
+                <button class="copy-trigger" onclick="copyTriggerWords()">Copy</button>
+            </div>
+
+            <div class="modal-section">
+                <h3>Model Information</h3>
+                <div id="modal-base-model">Base Model: Loading...</div>
+                <div id="modal-type">Type: Loading...</div>
+                <div id="modal-training">Training: Loading...</div>
+                <div id="modal-published">Published: Loading...</div>
+            </div>
+
+            <div class="modal-section">
+                <h3>Statistics</h3>
+                <div id="modal-stats">Downloads: Loading...</div>
+                <div id="modal-rating">Rating: Loading...</div>
+            </div>
+
+            <div class="modal-section">
+                <h3>Usage Tips</h3>
+                <div id="modal-description">Loading...</div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="btn btn-primary" id="modal-download-btn">Download Model</button>
+                <button class="btn btn-secondary" id="modal-civitai-link" onclick="">View on CivitAI</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div id="apiKeyModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeAPIKeyModal()">&times;</span>
+            <h2>CivitAI API Key Configuration</h2>
+
+            <div class="modal-section">
+                <h3>Set Your API Key</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 15px;">
+                    To access restricted models and get higher rate limits, enter your CivitAI API key.
+                </p>
+                <input type="text" id="api-key-input" class="search-input" placeholder="Enter your CivitAI API key...">
+                <button class="btn btn-primary" onclick="saveAPIKey()" style="margin-top: 10px;">Save API Key</button>
+            </div>
+
+            <div class="modal-section">
+                <h3>How to get an API key</h3>
+                <ol style="color: var(--text-secondary); line-height: 1.8;">
+                    <li>Log into <a href="https://civitai.com" target="_blank" style="color: var(--primary);">CivitAI</a></li>
+                    <li>Go to Account Settings</li>
+                    <li>Scroll to "API Keys" section</li>
+                    <li>Click "+ Add API key"</li>
+                    <li>Copy the generated key</li>
+                </ol>
             </div>
         </div>
     </div>
@@ -1236,6 +1502,287 @@
             container.insertBefore(messageDiv, container.firstChild);
 
             setTimeout(() => messageDiv.remove(), 5000);
+        }
+
+        // CivitAI Integration Functions
+        let currentSource = 'huggingface';
+        let currentModelData = {};
+
+        function selectSource(source) {
+            currentSource = source;
+
+            // Update button states
+            document.getElementById('source-hf').classList.toggle('active', source === 'huggingface');
+            document.getElementById('source-civitai').classList.toggle('active', source === 'civitai');
+
+            // Show/hide appropriate search UI
+            document.getElementById('huggingface-search').style.display = source === 'huggingface' ? 'block' : 'none';
+            document.getElementById('civitai-search').style.display = source === 'civitai' ? 'block' : 'none';
+
+            // Clear results
+            document.getElementById('search-results').innerHTML = '';
+
+            // Check CivitAI auth status when switching to CivitAI
+            if (source === 'civitai') {
+                checkCivitAIAuth();
+            }
+        }
+
+        async function checkCivitAIAuth() {
+            try {
+                const response = await fetch('/api/civitai/verify-key');
+                const data = await response.json();
+
+                const statusText = document.getElementById('auth-status-text');
+                if (data.has_key && data.is_valid) {
+                    statusText.innerHTML = '✅ API Key configured';
+                    statusText.style.color = 'var(--primary)';
+                } else if (data.has_key) {
+                    statusText.innerHTML = '⚠️ API Key invalid';
+                    statusText.style.color = 'var(--danger)';
+                } else {
+                    statusText.innerHTML = '⚠️ No API Key set (limited access)';
+                    statusText.style.color = 'var(--text-secondary)';
+                }
+            } catch (error) {
+                console.error('Error checking auth:', error);
+            }
+        }
+
+        async function searchCivitAI() {
+            const query = document.getElementById('civitai-query').value;
+            const type = document.getElementById('civitai-type').value;
+            const sort = document.getElementById('civitai-sort').value;
+            const nsfw = document.getElementById('civitai-nsfw').checked;
+
+            const resultsContainer = document.getElementById('search-results');
+            resultsContainer.innerHTML = '<div class="loading">Searching CivitAI...</div>';
+
+            try {
+                const response = await fetch('/api/civitai/search', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        query: query,
+                        type: type,
+                        sort: sort,
+                        nsfw: nsfw,
+                        limit: 20
+                    })
+                });
+
+                const data = await response.json();
+                displayCivitAIResults(data);
+            } catch (error) {
+                resultsContainer.innerHTML = `<div class="error">Error searching CivitAI: ${error.message}</div>`;
+            }
+        }
+
+        async function getCivitAITrending() {
+            const resultsContainer = document.getElementById('search-results');
+            resultsContainer.innerHTML = '<div class="loading">Loading trending models...</div>';
+
+            try {
+                const response = await fetch('/api/civitai/trending?period=Week&limit=20');
+                const data = await response.json();
+                displayCivitAIResults(data);
+            } catch (error) {
+                resultsContainer.innerHTML = `<div class="error">Error loading trending: ${error.message}</div>`;
+            }
+        }
+
+        function displayCivitAIResults(data) {
+            const resultsContainer = document.getElementById('search-results');
+
+            if (!data.items || data.items.length === 0) {
+                resultsContainer.innerHTML = '<div class="empty-state">No models found</div>';
+                return;
+            }
+
+            let html = '<div class="model-grid">';
+
+            data.items.forEach(model => {
+                const latestVersion = model.modelVersions?.[0] || {};
+                const preview = latestVersion.images?.[0]?.url || '';
+                const triggerWords = latestVersion.trainedWords?.join(', ') || 'None';
+                const baseModel = latestVersion.baseModel || 'Unknown';
+
+                // Store model data for modal
+                currentModelData[model.id] = model;
+
+                html += `
+                    <div class="civitai-model-card">
+                        ${preview ? `<img src="${preview}" class="model-preview" alt="${model.name}">` : '<div class="model-preview"></div>'}
+                        <div class="model-details">
+                            <div class="model-title">${model.name}</div>
+                            <div class="model-meta">
+                                <span class="meta-badge">${model.type}</span>
+                                <span class="meta-badge">${baseModel}</span>
+                            </div>
+                            ${triggerWords !== 'None' ? `
+                            <div class="trigger-words">
+                                <div class="trigger-label">Trigger Words:</div>
+                                <span class="trigger-text">${triggerWords}</span>
+                                <button class="copy-trigger" onclick="copyText('${triggerWords.replace(/'/g, "\\'")}')">Copy</button>
+                            </div>` : ''}
+                            <div class="model-stats">
+                                <span>⬇️ ${formatNumber(latestVersion.stats?.downloadCount || 0)}</span>
+                                <span>⭐ ${model.stats?.rating?.toFixed(1) || 'N/A'}</span>
+                                <span>❤️ ${formatNumber(model.stats?.favoriteCount || 0)}</span>
+                            </div>
+                            <div style="margin-top: 10px;">
+                                <button class="btn btn-primary btn-sm" onclick="showModelDetails(${model.id})">Details</button>
+                                <button class="btn btn-success btn-sm" onclick="downloadCivitAIModel(${latestVersion.id}, '${model.type}')">Download</button>
+                                <a href="https://civitai.com/models/${model.id}" target="_blank" class="btn btn-secondary btn-sm">View on CivitAI</a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            resultsContainer.innerHTML = html;
+        }
+
+        async function showModelDetails(modelId) {
+            const model = currentModelData[modelId];
+            if (!model) return;
+
+            const modal = document.getElementById('modelModal');
+            const latestVersion = model.modelVersions?.[0] || {};
+
+            // Fill modal with data
+            document.getElementById('modal-title').textContent = model.name;
+            document.getElementById('modal-trigger-words').textContent = latestVersion.trainedWords?.join(', ') || 'None';
+            document.getElementById('modal-base-model').textContent = `Base Model: ${latestVersion.baseModel || 'Unknown'}`;
+            document.getElementById('modal-type').textContent = `Type: ${model.type}`;
+            document.getElementById('modal-published').textContent = `Published: ${new Date(latestVersion.createdAt).toLocaleDateString()}`;
+            document.getElementById('modal-stats').textContent = `Downloads: ${formatNumber(latestVersion.stats?.downloadCount || 0)}`;
+            document.getElementById('modal-rating').textContent = `Rating: ${model.stats?.rating?.toFixed(1) || 'N/A'} (${model.stats?.ratingCount || 0} reviews)`;
+            document.getElementById('modal-description').innerHTML = model.description || 'No description available';
+
+            // Training info if available
+            const trainingInfo = latestVersion.trainingDetails;
+            if (trainingInfo) {
+                document.getElementById('modal-training').textContent =
+                    `Training: ${trainingInfo.steps || 'N/A'} steps, ${trainingInfo.epochs || 'N/A'} epochs`;
+            } else {
+                document.getElementById('modal-training').textContent = 'Training: Information not available';
+            }
+
+            // Set download button
+            document.getElementById('modal-download-btn').onclick = () => {
+                downloadCivitAIModel(latestVersion.id, model.type);
+                closeModal();
+            };
+
+            // Set CivitAI link
+            document.getElementById('modal-civitai-link').onclick = () => {
+                window.open(`https://civitai.com/models/${model.id}`, '_blank');
+            };
+
+            modal.style.display = 'block';
+        }
+
+        async function downloadCivitAIModel(versionId, modelType) {
+            try {
+                const response = await fetch('/api/civitai/download', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        version_id: versionId,
+                        model_type: modelType
+                    })
+                });
+
+                const data = await response.json();
+                if (data.download_id) {
+                    showToast('Download started! Check the Downloads tab for progress.');
+                    switchTab('downloads');
+                } else {
+                    showToast('Error starting download: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            }
+        }
+
+        function showAPIKeyModal() {
+            document.getElementById('apiKeyModal').style.display = 'block';
+        }
+
+        function closeAPIKeyModal() {
+            document.getElementById('apiKeyModal').style.display = 'none';
+        }
+
+        async function saveAPIKey() {
+            const apiKey = document.getElementById('api-key-input').value;
+            if (!apiKey) {
+                showToast('Please enter an API key', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/civitai/set-key', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({api_key: apiKey})
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showToast('API key saved successfully!', 'success');
+                    closeAPIKeyModal();
+                    checkCivitAIAuth();
+                } else {
+                    showToast('Invalid API key', 'error');
+                }
+            } catch (error) {
+                showToast('Error saving API key: ' + error.message, 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modelModal').style.display = 'none';
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text);
+            showToast('Copied to clipboard!', 'success');
+        }
+
+        function copyTriggerWords() {
+            const text = document.getElementById('modal-trigger-words').textContent;
+            copyText(text);
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
+        }
+
+        function showToast(message, type = 'info') {
+            // Simple toast notification (you can enhance this)
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                background: ${type === 'error' ? 'var(--danger)' : 'var(--primary)'};
+                color: white;
+                border-radius: 8px;
+                z-index: 10000;
+                animation: slideIn 0.3s;
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
 
         // Initialize

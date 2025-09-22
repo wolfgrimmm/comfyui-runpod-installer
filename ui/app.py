@@ -1285,6 +1285,141 @@ def filter_bundles():
     bundles = manager.model_downloader.get_bundles_by_category(category)
     return jsonify(bundles)
 
+# ============= CivitAI Integration Routes =============
+
+@app.route('/api/civitai/search', methods=['POST'])
+def search_civitai():
+    """Search models on CivitAI"""
+    try:
+        data = request.json
+        query = data.get('query', '')
+        model_type = data.get('type', None)
+        sort = data.get('sort', 'Highest Rated')
+        nsfw = data.get('nsfw', False)
+        page = data.get('page', 1)
+        limit = data.get('limit', 20)
+
+        results = manager.model_downloader.search_civitai_models(
+            query=query,
+            model_type=model_type,
+            sort=sort,
+            nsfw=nsfw,
+            page=page,
+            limit=limit
+        )
+
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/civitai/download', methods=['POST'])
+def download_civitai():
+    """Download a model from CivitAI"""
+    try:
+        data = request.json
+        version_id = data.get('version_id')
+        model_type = data.get('model_type')
+
+        if not version_id:
+            return jsonify({'error': 'version_id required'}), 400
+
+        download_id = manager.model_downloader.download_civitai_model(
+            version_id=int(version_id),
+            model_type=model_type
+        )
+
+        return jsonify({'download_id': download_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/civitai/trending')
+def get_civitai_trending():
+    """Get trending models from CivitAI"""
+    try:
+        period = request.args.get('period', 'Week')
+        limit = request.args.get('limit', 20, type=int)
+
+        results = manager.model_downloader.get_civitai_trending(
+            period=period,
+            limit=limit
+        )
+
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/civitai/set-key', methods=['POST'])
+def set_civitai_key():
+    """Set CivitAI API key"""
+    try:
+        data = request.json
+        api_key = data.get('api_key')
+
+        if not api_key:
+            return jsonify({'error': 'api_key required'}), 400
+
+        # Save to env file for persistence
+        env_file = '/workspace/.env'
+        env_lines = []
+        key_found = False
+
+        if os.path.exists(env_file):
+            with open(env_file, 'r') as f:
+                for line in f:
+                    if line.startswith('CIVITAI_API_KEY='):
+                        env_lines.append(f'CIVITAI_API_KEY={api_key}\n')
+                        key_found = True
+                    else:
+                        env_lines.append(line)
+
+        if not key_found:
+            env_lines.append(f'CIVITAI_API_KEY={api_key}\n')
+
+        with open(env_file, 'w') as f:
+            f.writelines(env_lines)
+
+        # Verify the key
+        is_valid = manager.model_downloader.set_civitai_api_key(api_key)
+
+        return jsonify({
+            'success': is_valid,
+            'message': 'API key set successfully' if is_valid else 'Invalid API key'
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/civitai/verify-key')
+def verify_civitai_key():
+    """Verify CivitAI API key"""
+    try:
+        is_valid = manager.model_downloader.civitai_client.verify_api_key()
+        has_key = bool(manager.model_downloader.civitai_client.api_key)
+
+        return jsonify({
+            'has_key': has_key,
+            'is_valid': is_valid
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/civitai/model/<int:model_id>')
+def get_civitai_model(model_id):
+    """Get details about a specific CivitAI model"""
+    try:
+        import asyncio
+
+        async def get_details():
+            return await manager.model_downloader.civitai_client.get_model_details(model_id)
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        details = loop.run_until_complete(get_details())
+        loop.close()
+
+        return jsonify(details)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # ============= End Model Manager Routes =============
 
 if __name__ == '__main__':
