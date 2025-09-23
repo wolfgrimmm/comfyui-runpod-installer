@@ -46,9 +46,22 @@ RUN cat > /app/init.sh << 'EOF'
 #!/bin/bash
 set -e
 
+# IMPORTANT: Deactivate any existing virtual environment first
+# This ensures we don't accidentally use /opt/venv or any other venv
+if [ -n "$VIRTUAL_ENV" ]; then
+    echo "⚠️ Deactivating existing virtual environment: $VIRTUAL_ENV"
+    deactivate 2>/dev/null || true
+    unset VIRTUAL_ENV
+    unset PYTHONHOME
+    # Reset PATH to remove any venv paths
+    export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/cuda/bin"
+fi
+
 # Quick check - if everything exists, exit fast
 if [ -d "/workspace/venv" ] && [ -f "/workspace/ComfyUI/main.py" ] && [ -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
     echo "✅ Environment already initialized (fast path)"
+    # Make sure we activate the correct venv
+    source /workspace/venv/bin/activate
     exit 0
 fi
 
@@ -98,7 +111,14 @@ mkdir -p /workspace/output /workspace/input /workspace/workflows
 # Setup Python virtual environment in persistent storage
 if [ ! -d "/workspace/venv" ]; then
     echo "📦 Creating virtual environment in /workspace/venv..."
-    python3.11 -m venv /workspace/venv
+    # Use python3.11 if available, otherwise fall back to python3
+    if command -v python3.11 &> /dev/null; then
+        python3.11 -m venv /workspace/venv
+        echo "   Using Python 3.11"
+    else
+        python3 -m venv /workspace/venv
+        echo "   Using Python $(python3 --version)"
+    fi
     source /workspace/venv/bin/activate
     NEED_INSTALL=1
 elif [ ! -f "/workspace/venv/.cuda129_upgraded" ]; then
@@ -147,9 +167,11 @@ if [ "$NEED_INSTALL" = "1" ]; then
     # ONNX Runtime 1.19+ supports CUDA 12.x
     uv pip install onnxruntime-gpu==1.19.2 || pip install onnxruntime-gpu==1.19.2
 
-    # Install triton for GPU kernel optimization - CRITICAL for attention mechanisms
-    echo "📦 Installing Triton for GPU optimizations..."
+    # Install triton for GPU kernel optimization - CRITICAL for Sage Attention + WAN 2.2!
+    echo "📦 Installing Triton (ESSENTIAL for 13x speedup with Sage Attention)..."
     uv pip install triton --upgrade
+    # Ensure latest version for RTX 5090 compatibility
+    pip install --upgrade triton
 
     # Install ninja and packaging for compiling from source
     uv pip install ninja packaging wheel
@@ -174,11 +196,35 @@ if [ "$NEED_INSTALL" = "1" ]; then
         pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/flash_attn-2.8.2-cp310-cp310-linux_x86_64.whl || \
         echo "Warning: Flash Attention 2 installation failed, will use xformers"
 
-    # 3. Sage Attention - For Blackwell/newer GPUs (try multiple Python versions)
-    echo "📦 Installing Sage Attention 2.2.0..."
-    pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-cp311-cp311-linux_x86_64.whl || \
-        pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-cp310-cp310-linux_x86_64.whl || \
-        echo "Warning: Sage Attention installation failed"
+    # 3. Sage Attention - CRITICAL for RTX 5090/Blackwell + WAN 2.2 (13x speedup!)
+    echo "📦 Installing Sage Attention (essential for WAN 2.2 performance)..."
+    SAGE_INSTALLED=0
+
+    # Try official PyPI first (most reliable)
+    echo "   Trying PyPI..."
+    if pip install sageattention 2>&1 | grep -E "Successfully|already"; then
+        echo "   ✅ Sage Attention installed from PyPI"
+        SAGE_INSTALLED=1
+    # Try ABI3 wheel for Python 3.9+ compatibility
+    elif pip install https://github.com/woct0rdho/SageAttention/releases/download/v2.2.0/sageattention-2.2.0-cp39-abi3-linux_x86_64.whl 2>&1 | grep -E "Successfully|already"; then
+        echo "   ✅ Sage Attention installed from ABI3 wheel"
+        SAGE_INSTALLED=1
+    # Try building from source as last resort
+    elif pip install git+https://github.com/thu-ml/SageAttention.git 2>&1 | grep -E "Successfully|already"; then
+        echo "   ✅ Sage Attention built from source"
+        SAGE_INSTALLED=1
+    else
+        echo "   ⚠️ Sage Attention installation failed!"
+        echo "   ⚠️ WAN 2.2 will be 13x SLOWER without Sage Attention"
+        echo "   ⚠️ Manual installation recommended: pip install sageattention"
+    fi
+
+    # Verify installation
+    if [ "$SAGE_INSTALLED" -eq 1 ] && python -c "import sageattention" 2>/dev/null; then
+        echo "   ✅ Sage Attention verified and working"
+    elif [ "$SAGE_INSTALLED" -eq 1 ]; then
+        echo "   ❌ Sage Attention installed but import failed"
+    fi
 
     # 4. Flash Attention 3 - Pre-compile for ALL GPUs to avoid runtime delays
     echo "🔨 Pre-compiling Flash Attention 3..."
@@ -255,41 +301,58 @@ elif echo "$GPU_NAME" | grep -qE "A800|A6000"; then
 else
     # Unknown or older GPUs - use broadest compatibility
     GPU_TYPE="generic"
-    echo "   📦 Generic GPU detected"
+    echo "   📦 Generic/Unknown GPU detected - will use safe defaults"
 fi
 
 # All attention mechanisms are now pre-installed during build
 # ComfyUI will auto-detect and use the best one available
 echo "✅ All attention mechanisms pre-installed:"
 
-# Check what's actually installed and log it
-if python -c "import flash_attn; v=flash_attn.__version__; print(f'   ✅ Flash Attention {v}'); exit(0 if v.startswith('3') else 1)" 2>/dev/null; then
-    echo "      🚀 Flash Attention 3 available (Hopper optimized)"
-    if [[ "$GPU_TYPE" == "hopper" ]]; then
-        echo "      ✓ Selected for $GPU_NAME"
-        echo "export COMFYUI_ATTENTION_MECHANISM=flash3" >> /workspace/venv/.env_settings
+# Create env settings file if it doesn't exist
+mkdir -p /workspace/venv
+touch /workspace/venv/.env_settings
+
+# Check what's actually installed and select appropriate mechanism
+# PRIORITY ORDER: Sage (for Blackwell) > Flash3 (for Hopper) > Flash2 > xformers
+ATTENTION_SET=0
+
+# FIRST PRIORITY: Sage Attention for Blackwell GPUs (RTX 5090) - CRITICAL for WAN 2.2!
+if [[ "$GPU_TYPE" == "blackwell" ]] && echo "$GPU_NAME" | grep -qE "5090|B200|RTX PRO 6000"; then
+    if python -c "import sageattention" 2>/dev/null; then
+        echo "   🚀 Sage Attention selected for $GPU_NAME (PRIORITY for WAN 2.2)"
+        echo "   ⚡ MASSIVE speedup: 40min → 3min generation!"
+        echo "export COMFYUI_ATTENTION_MECHANISM=sage" > /workspace/venv/.env_settings
+        ATTENTION_SET=1
+    else
+        echo "   ⚠️ Sage Attention not installed - WAN 2.2 will be 13x SLOWER!"
+        echo "   📦 Installing Sage Attention is CRITICAL for RTX 5090"
+        # Fallback to Flash Attention 2 but warn about performance
+        if python -c "import flash_attn" 2>/dev/null; then
+            echo "   ✅ Using Flash Attention 2 as fallback (slower for WAN 2.2)"
+            echo "export COMFYUI_ATTENTION_MECHANISM=flash2" > /workspace/venv/.env_settings
+            ATTENTION_SET=1
+        fi
     fi
-elif python -c "import flash_attn; print(f'   ✅ Flash Attention {flash_attn.__version__}')" 2>/dev/null; then
-    echo "      ⚡ Flash Attention 2 available"
-    if [[ "$GPU_TYPE" == "ampere" ]] || [[ "$GPU_TYPE" == "ada" ]]; then
-        echo "      ✓ Selected for $GPU_NAME"
-        echo "export COMFYUI_ATTENTION_MECHANISM=flash2" >> /workspace/venv/.env_settings
-    fi
+# Flash Attention 3 for Hopper GPUs
+elif [[ "$GPU_TYPE" == "hopper" ]] && python -c "import flash_attn; exit(0 if flash_attn.__version__.startswith('3') else 1)" 2>/dev/null; then
+    echo "   ✅ Flash Attention 3 available and selected for $GPU_NAME"
+    echo "export COMFYUI_ATTENTION_MECHANISM=flash3" > /workspace/venv/.env_settings
+    ATTENTION_SET=1
+# Flash Attention 2 for Ampere/Ada GPUs
+elif [[ "$GPU_TYPE" == "ampere" || "$GPU_TYPE" == "ada" ]] && python -c "import flash_attn" 2>/dev/null; then
+    echo "   ✅ Flash Attention 2 available and selected for $GPU_NAME"
+    echo "export COMFYUI_ATTENTION_MECHANISM=flash2" > /workspace/venv/.env_settings
+    ATTENTION_SET=1
 fi
 
-if python -c "import sageattention" 2>/dev/null; then
-    echo "   ✅ Sage Attention 2.2.0 available"
-    if [[ "$GPU_TYPE" == "blackwell" ]]; then
-        echo "      ✓ Selected for $GPU_NAME (Blackwell optimized)"
-        echo "export COMFYUI_ATTENTION_MECHANISM=sage" >> /workspace/venv/.env_settings
-    fi
-fi
-
-if python -c "import xformers" 2>/dev/null; then
-    echo "   ✅ xformers 0.33 available (universal fallback)"
-    if [[ "$GPU_TYPE" == "generic" ]]; then
-        echo "      ✓ Selected for $GPU_NAME"
-        echo "export COMFYUI_ATTENTION_MECHANISM=xformers" >> /workspace/venv/.env_settings
+# Default to xformers for everything else - it's the most compatible
+if [ "$ATTENTION_SET" -eq 0 ]; then
+    if python -c "import xformers" 2>/dev/null; then
+        echo "   ✅ xformers selected as safe default for $GPU_NAME"
+        echo "export COMFYUI_ATTENTION_MECHANISM=xformers" > /workspace/venv/.env_settings
+    else
+        echo "   ⚠️ No optimized attention available, using PyTorch native"
+        echo "export COMFYUI_ATTENTION_MECHANISM=default" > /workspace/venv/.env_settings
     fi
 fi
 
@@ -813,11 +876,26 @@ set -e
 echo "🚀 Starting RunPod Services..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+# IMPORTANT: Clean environment first - remove any pre-existing venv
+if [ -n "$VIRTUAL_ENV" ]; then
+    echo "⚠️ Found pre-activated venv: $VIRTUAL_ENV - deactivating..."
+    deactivate 2>/dev/null || true
+    unset VIRTUAL_ENV
+    unset PYTHONHOME
+    export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/cuda/bin"
+fi
+
 # Initialize environment (creates venv if needed)
 /app/init.sh
 
-# Activate virtual environment
-source /workspace/venv/bin/activate
+# Activate virtual environment - ONLY use /workspace/venv
+if [ -d "/workspace/venv" ]; then
+    source /workspace/venv/bin/activate
+    echo "✅ Activated /workspace/venv (Python: $(which python))"
+else
+    echo "❌ ERROR: /workspace/venv not found after init!"
+    exit 1
+fi
 
 # Ensure Google Drive sync is running (run after init.sh)
 echo "🔄 Ensuring Google Drive sync is active..."
@@ -883,13 +961,29 @@ RUN cat > /app/start_comfyui.sh << 'EOF'
 
 echo "🎨 Starting ComfyUI..."
 
-# Activate virtual environment
+# IMPORTANT: Deactivate any existing venv first (like /opt/venv)
+if [ -n "$VIRTUAL_ENV" ] && [ "$VIRTUAL_ENV" != "/workspace/venv" ]; then
+    echo "⚠️ Deactivating incorrect venv: $VIRTUAL_ENV"
+    deactivate 2>/dev/null || true
+    unset VIRTUAL_ENV
+    unset PYTHONHOME
+    export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/cuda/bin"
+fi
+
+# Activate virtual environment - ONLY from /workspace/venv
 if [ -d "/workspace/venv" ]; then
     source /workspace/venv/bin/activate
+    echo "✅ Using /workspace/venv (Python: $(which python))"
 else
     echo "⚠️ Virtual environment not found, creating..."
     /app/init.sh
-    source /workspace/venv/bin/activate
+    if [ -d "/workspace/venv" ]; then
+        source /workspace/venv/bin/activate
+        echo "✅ Created and activated /workspace/venv"
+    else
+        echo "❌ ERROR: Failed to create /workspace/venv"
+        exit 1
+    fi
 fi
 
 # Load attention mechanism configuration
@@ -901,7 +995,14 @@ fi
 # No runtime compilation needed!
 if [ -z "$COMFYUI_ATTENTION_MECHANISM" ]; then
     # Auto-detect best available mechanism if not set
-    if python -c "import flash_attn; exit(0 if flash_attn.__version__.startswith('3') else 1)" 2>/dev/null; then
+    # PRIORITY: Sage (for RTX 5090/Blackwell) > Flash3 > Flash2 > xformers
+    GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 || echo "Unknown")
+
+    # Check for RTX 5090/Blackwell first - Sage is CRITICAL for WAN 2.2 performance
+    if echo "$GPU_NAME" | grep -qE "5090|B200|RTX PRO 6000" && python -c "import sageattention" 2>/dev/null; then
+        export COMFYUI_ATTENTION_MECHANISM="sage"
+        echo "🎯 Auto-detected Sage Attention for $GPU_NAME (optimal for WAN 2.2)"
+    elif python -c "import flash_attn; exit(0 if flash_attn.__version__.startswith('3') else 1)" 2>/dev/null; then
         export COMFYUI_ATTENTION_MECHANISM="flash3"
         echo "🚀 Auto-detected Flash Attention 3"
     elif python -c "import flash_attn" 2>/dev/null; then
@@ -998,28 +1099,85 @@ if [ -d "$HOME/.triton" ] || [ -d "/root/.triton" ]; then
     rm -rf ~/.triton /root/.triton /tmp/triton_* 2>/dev/null || true
 fi
 
-case "$COMFYUI_ATTENTION_MECHANISM" in
-    flash3)
-        echo "🚀 Starting ComfyUI with Flash Attention 3 (Hopper optimized)"
-        exec python main.py --listen 0.0.0.0 --port 8188
-        ;;
-    flash2)
-        echo "⚡ Starting ComfyUI with Flash Attention 2"
-        exec python main.py --listen 0.0.0.0 --port 8188
-        ;;
-    sage)
-        echo "🎯 Starting ComfyUI with Sage Attention 2.2.0"
-        exec python main.py --listen 0.0.0.0 --port 8188 --use-sage-attention
-        ;;
-    xformers)
-        echo "📦 Starting ComfyUI with xformers"
-        exec python main.py --listen 0.0.0.0 --port 8188
-        ;;
-    auto|default|*)
-        echo "🌐 Starting ComfyUI with auto-selected attention"
-        exec python main.py --listen 0.0.0.0 --port 8188
-        ;;
-esac
+# Function to try starting ComfyUI with fallback
+start_comfyui_with_fallback() {
+    local attempt=1
+    local max_attempts=3
+
+    while [ $attempt -le $max_attempts ]; do
+        echo "📊 Attempt $attempt of $max_attempts to start ComfyUI..."
+
+        case "$COMFYUI_ATTENTION_MECHANISM" in
+            flash3)
+                echo "🚀 Starting ComfyUI with Flash Attention 3 (Hopper optimized)"
+                timeout 30 python main.py --listen 0.0.0.0 --port 8188 2>&1 | tee /tmp/comfyui_start.log &
+                ;;
+            flash2)
+                echo "⚡ Starting ComfyUI with Flash Attention 2"
+                timeout 30 python main.py --listen 0.0.0.0 --port 8188 2>&1 | tee /tmp/comfyui_start.log &
+                ;;
+            sage)
+                echo "🎯 Starting ComfyUI with Sage Attention 2.2.0"
+                timeout 30 python main.py --listen 0.0.0.0 --port 8188 --use-sage-attention 2>&1 | tee /tmp/comfyui_start.log &
+                ;;
+            xformers)
+                echo "📦 Starting ComfyUI with xformers"
+                timeout 30 python main.py --listen 0.0.0.0 --port 8188 --disable-smart-memory 2>&1 | tee /tmp/comfyui_start.log &
+                ;;
+            auto|default|*)
+                echo "🌐 Starting ComfyUI with auto-selected attention"
+                timeout 30 python main.py --listen 0.0.0.0 --port 8188 --disable-smart-memory 2>&1 | tee /tmp/comfyui_start.log &
+                ;;
+        esac
+
+        COMFYUI_PID=$!
+        sleep 10
+
+        # Check if ComfyUI started successfully
+        if kill -0 $COMFYUI_PID 2>/dev/null && curl -s http://localhost:8188 >/dev/null 2>&1; then
+            echo "✅ ComfyUI started successfully!"
+            wait $COMFYUI_PID
+            return 0
+        else
+            echo "⚠️ ComfyUI failed to start with $COMFYUI_ATTENTION_MECHANISM"
+            kill $COMFYUI_PID 2>/dev/null || true
+
+            # Check for common errors in log
+            if grep -q "CUDA out of memory\|OutOfMemoryError" /tmp/comfyui_start.log 2>/dev/null; then
+                echo "❌ Out of memory error detected"
+                export COMFYUI_ATTENTION_MECHANISM="xformers"
+                echo "🔄 Switching to xformers (lower memory usage)"
+            elif grep -q "sage\|SageAttention" /tmp/comfyui_start.log 2>/dev/null && [ "$COMFYUI_ATTENTION_MECHANISM" = "sage" ]; then
+                echo "❌ Sage Attention error detected"
+                export COMFYUI_ATTENTION_MECHANISM="xformers"
+                echo "🔄 Falling back to xformers"
+            elif grep -q "flash_attn\|Flash Attention" /tmp/comfyui_start.log 2>/dev/null && [[ "$COMFYUI_ATTENTION_MECHANISM" =~ flash ]]; then
+                echo "❌ Flash Attention error detected"
+                export COMFYUI_ATTENTION_MECHANISM="xformers"
+                echo "🔄 Falling back to xformers"
+            elif [ "$attempt" -eq 2 ]; then
+                # Second attempt: try with disabled optimizations
+                echo "🔄 Trying with disabled optimizations..."
+                export COMFYUI_ATTENTION_MECHANISM="default"
+            elif [ "$attempt" -eq 3 ]; then
+                # Final attempt: most conservative settings
+                echo "🔄 Final attempt with most conservative settings..."
+                # Try to start with minimal settings
+                exec python main.py --listen 0.0.0.0 --port 8188 --cpu --disable-smart-memory 2>&1 | tee /tmp/comfyui_start.log
+            fi
+
+            attempt=$((attempt + 1))
+        fi
+    done
+
+    echo "❌ Failed to start ComfyUI after $max_attempts attempts"
+    echo "📋 Last error log:"
+    tail -50 /tmp/comfyui_start.log
+    exit 1
+}
+
+# Try to start ComfyUI with fallback mechanism
+start_comfyui_with_fallback
 EOF
 
 RUN chmod +x /app/start_comfyui.sh

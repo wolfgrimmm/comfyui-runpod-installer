@@ -326,19 +326,27 @@ class ComfyUIManager:
             # Check if script exists
             script_path = "/app/start_comfyui.sh"
             if not os.path.exists(script_path):
-                # Fallback to direct command
-                cmd = ["python", "/workspace/ComfyUI/main.py", "--listen", "0.0.0.0", "--port", "8188"]
+                # Fallback to direct command with safe defaults
+                cmd = ["python", "/workspace/ComfyUI/main.py", "--listen", "0.0.0.0", "--port", "8188", "--disable-smart-memory"]
             else:
                 cmd = [script_path]
-            
+
             # Reset startup progress
             self.startup_progress = {"stage": "starting", "message": "Launching ComfyUI process...", "percent": 5}
+
+            # Setup environment with safe mode check
+            env_vars = {**os.environ, "COMFYUI_USER": username}
+
+            # Check if we should force safe mode (for problematic GPUs)
+            if os.path.exists("/workspace/.comfyui_safe_mode"):
+                print("🔒 Safe mode enabled - forcing xformers attention")
+                env_vars["COMFYUI_ATTENTION_MECHANISM"] = "xformers"
 
             self.comfyui_process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,  # Combine stderr with stdout for better logging
-                env={**os.environ, "COMFYUI_USER": username},
+                env=env_vars,
                 cwd="/workspace/ComfyUI",
                 bufsize=1,  # Line buffered
                 universal_newlines=False  # We'll decode manually
@@ -792,6 +800,50 @@ def stop_comfyui():
     """Stop ComfyUI"""
     manager.stop_comfyui()
     return jsonify({"success": True, "message": "ComfyUI stopped"})
+
+@app.route('/api/clear_cache', methods=['POST'])
+def clear_triton_cache():
+    """Clear Triton cache for Sage Attention/WAN 2.2 optimization"""
+    try:
+        import subprocess
+
+        # Run the cache clearing script
+        result = subprocess.run(
+            ["python3", "/app/scripts/clear_triton_cache.py"] if os.path.exists("/app/scripts/clear_triton_cache.py")
+            else ["bash", "/app/scripts/clear_triton_cache.sh"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        # Parse output for summary
+        output_lines = result.stdout.split('\n') if result.stdout else []
+        summary = {
+            "success": result.returncode == 0,
+            "message": "Cache cleared successfully" if result.returncode == 0 else "Cache clearing failed",
+            "details": output_lines[-5:] if output_lines else [],  # Last 5 lines for summary
+            "full_output": result.stdout
+        }
+
+        # If ComfyUI is running, suggest restart
+        if manager.is_comfyui_running():
+            summary["restart_suggested"] = True
+            summary["message"] += ". Restart ComfyUI to apply changes."
+
+        return jsonify(summary)
+
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            "success": False,
+            "message": "Cache clearing timed out",
+            "error": "Operation took too long"
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": "Failed to clear cache",
+            "error": str(e)
+        })
 
 @app.route('/api/status')
 def get_status():

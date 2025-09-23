@@ -4,6 +4,11 @@ echo "========================================="
 echo "WAN 2.2 Complete Models Download Script"
 echo "========================================="
 echo ""
+echo "🚀 RTX 5090/Blackwell GPU Performance Note:"
+echo "   Sage Attention + Triton = 13x FASTER (40min → 3min)"
+echo "   Make sure Sage Attention is installed for optimal speed!"
+echo "   Using Kijai's wrapper: https://civitai.com/models/1818841"
+echo ""
 
 # Check for huggingface_hub
 if ! python3 -c "import huggingface_hub" 2>/dev/null; then
