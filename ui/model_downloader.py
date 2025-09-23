@@ -1170,10 +1170,23 @@ class ModelDownloader:
             stat = shutil.disk_usage(self.models_base)
             # Convert bytes to GB with proper calculation
             gb_divisor = 1024 * 1024 * 1024  # 1024^3
+
+            total_gb = stat.total / gb_divisor
+            used_gb = stat.used / gb_divisor
+            free_gb = stat.free / gb_divisor
+
+            # Sanity check: if values are unreasonably large (> 10000 GB),
+            # they might be in MB or KB already
+            if total_gb > 10000:
+                # Values are likely in MB, divide by 1024 again
+                total_gb = total_gb / 1024
+                used_gb = used_gb / 1024
+                free_gb = free_gb / 1024
+
             return {
-                'total': round(stat.total / gb_divisor, 1),  # GB with 1 decimal
-                'used': round(stat.used / gb_divisor, 1),
-                'free': round(stat.free / gb_divisor, 1),
+                'total': round(total_gb, 1),  # GB with 1 decimal
+                'used': round(used_gb, 1),
+                'free': round(free_gb, 1),
                 'percent': round((stat.used / stat.total) * 100, 1) if stat.total > 0 else 0
             }
         except Exception as e:
@@ -1341,15 +1354,12 @@ class ModelDownloader:
             for model in bundle.get('models', []):
                 model_name = model.get('save_as') or model.get('filename', '')
                 bundle_text += ' ' + model_name.lower()
+                # Also add repo_id to searchable text
+                bundle_text += ' ' + model.get('repo_id', '').lower()
 
             # Check if all query words are found in bundle text (partial matching)
             if all(word in bundle_text for word in query_words):
                 matching_bundles[bundle_id] = bundle
-
-                # Also search in repo_id
-                if query_lower in model.get('repo_id', '').lower():
-                    matching_bundles[bundle_id] = bundle
-                    break
 
         return matching_bundles
 

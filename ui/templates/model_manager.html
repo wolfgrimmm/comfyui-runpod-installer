@@ -1022,7 +1022,7 @@
                             <div class="category-section">
                                 <div class="category-header" onclick="toggleCategory('${categoryId}')" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 8px; margin-bottom: 10px;">
                                     <div style="display: flex; align-items: center;">
-                                        <span class="category-arrow" id="cat-arrow-${categoryId}" style="margin-right: 10px; transition: transform 0.3s;">▼</span>
+                                        <span class="category-arrow" id="cat-arrow-${categoryId}" style="margin-right: 10px; transition: transform 0.3s; transform: rotate(-90deg);">▶</span>
                                         <span style="font-weight: 600; font-size: 16px;">${category}</span>
                                         <span style="margin-left: 10px; color: var(--text-secondary); font-size: 14px;">(${categoryBundles.length} bundles)</span>
                                     </div>
@@ -1032,7 +1032,7 @@
                                         </button>
                                     ` : ''}
                                 </div>
-                                <div class="category-content" id="cat-content-${categoryId}" style="display: block;">`;
+                                <div class="category-content" id="cat-content-${categoryId}" style="display: none;">`;
 
                         for (const bundle of categories[category]) {
                             // Use the original total size with correct units
