@@ -200,36 +200,53 @@ if [ "$NEED_INSTALL" = "1" ]; then
     echo "📦 Installing Sage Attention 2.2.0 (SageAttention2++ for WAN 2.2 performance)..."
     SAGE_INSTALLED=0
 
+    # First uninstall any existing sageattention to avoid conflicts
+    pip uninstall -y sageattention 2>/dev/null || true
+
     # Build from source for SageAttention 2.2.0 with SageAttention2++
     echo "   Building SageAttention 2.2.0 from source (includes SageAttention2++)..."
     cd /tmp && \
+    rm -rf sage-build && \
     git clone https://github.com/thu-ml/SageAttention.git sage-build && \
     cd sage-build && \
     export EXT_PARALLEL=4 NVCC_APPEND_FLAGS="--threads 8" MAX_JOBS=32 && \
-    if python setup.py install 2>&1 | grep -E "Successfully|Finished|installed"; then
+    echo "   Compiling CUDA kernels (this may take 2-3 minutes)..." && \
+    if pip install -e . 2>&1 | tee /tmp/sage_install.log | grep -E "Successfully|Finished|installed"; then
         echo "   ✅ SageAttention 2.2.0 built and installed from source"
-        SAGE_INSTALLED=1
-    # Fallback to pip install from git
-    elif pip install git+https://github.com/thu-ml/SageAttention.git 2>&1 | grep -E "Successfully|already"; then
-        echo "   ✅ SageAttention 2.2.0 installed via pip from git"
-        SAGE_INSTALLED=1
-    # Last resort: PyPI version 1.0.6 (slower but still better than nothing)
-    elif pip install sageattention==1.0.6 2>&1 | grep -E "Successfully|already"; then
-        echo "   ⚠️ Using SageAttention 1.0.6 (V1) - slower than V2++ but still provides speedup"
-        SAGE_INSTALLED=1
+        SAGE_INSTALLED=2
     else
-        echo "   ⚠️ Sage Attention installation failed!"
-        echo "   ⚠️ WAN 2.2 will be 13x SLOWER without Sage Attention"
-        echo "   ⚠️ Manual installation recommended"
+        echo "   ⚠️ Source build failed, checking error..."
+        tail -20 /tmp/sage_install.log
+        echo "   Trying pip install from git..."
+        if pip install git+https://github.com/thu-ml/SageAttention.git@main 2>&1 | tee /tmp/sage_pip.log | grep -E "Successfully|already"; then
+            echo "   ✅ SageAttention 2.2.0 installed via pip from git"
+            SAGE_INSTALLED=2
+        else
+            echo "   ⚠️ Git install failed, falling back to PyPI 1.0.6..."
+            # Last resort: PyPI version 1.0.6 (slower but still better than nothing)
+            if pip install sageattention==1.0.6 2>&1 | grep -E "Successfully|already"; then
+                echo "   ⚠️ Using SageAttention 1.0.6 (V1) - slower than V2++ but still provides speedup"
+                SAGE_INSTALLED=1
+            else
+                echo "   ❌ All Sage Attention installation methods failed!"
+                echo "   ⚠️ WAN 2.2 will be 13x SLOWER without Sage Attention"
+            fi
+        fi
     fi
     cd /workspace
 
     # Verify installation
-    if [ "$SAGE_INSTALLED" -eq 1 ] && python -c "import sageattention" 2>/dev/null; then
+    if [ "$SAGE_INSTALLED" -ge 1 ] && python -c "import sageattention" 2>/dev/null; then
         echo "   ✅ Sage Attention verified and working"
-        # Check version if possible
-        python -c "import sageattention; print(f'   Version: {getattr(sageattention, \"__version__\", \"unknown\")}')" 2>/dev/null || true
-    elif [ "$SAGE_INSTALLED" -eq 1 ]; then
+        # Check version and show what we got
+        if [ "$SAGE_INSTALLED" -eq 2 ]; then
+            echo "   🚀 Using SageAttention 2.2.0 with SageAttention2++ (OPTIMAL)"
+            python -c "import sageattention; v=getattr(sageattention, '__version__', 'dev'); print(f'   Installed version: {v}')" 2>/dev/null || echo "   Version: 2.2.0-dev"
+        else
+            echo "   ⚠️ Using SageAttention 1.0.6 (V1 - still provides speedup)"
+            python -c "import sageattention; print(f'   Installed version: {sageattention.__version__}')" 2>/dev/null || true
+        fi
+    elif [ "$SAGE_INSTALLED" -ge 1 ]; then
         echo "   ❌ Sage Attention installed but import failed"
     fi
 
