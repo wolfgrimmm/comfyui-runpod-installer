@@ -86,7 +86,7 @@ class ComfyUIManager:
                 self.users = json.load(f)
         else:
             # Default users
-            self.users = ["serhii", "marcin", "vlad", "ksenija", "max", "ivan"]
+            self.users = ["serhii", "marcin", "vlad", "ksenija", "max", "ivan", "antonia"]
             self.save_users()
         
         # Check if user was previously selected
