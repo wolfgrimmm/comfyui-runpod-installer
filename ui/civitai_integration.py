@@ -60,9 +60,17 @@ class CivitAIClient:
 
     def _load_api_key(self) -> Optional[str]:
         """Load API key from environment or .env file."""
-        # First check environment variable
+        # First check RunPod secret (RunPod prefixes user secrets with RUNPOD_SECRET_)
+        # User would create secret named "CIVITAI_API_KEY" and RunPod makes it available as "RUNPOD_SECRET_CIVITAI_API_KEY"
+        key = os.environ.get('RUNPOD_SECRET_CIVITAI_API_KEY')
+        if key:
+            print("✅ Using CivitAI API key from RunPod secret")
+            return key
+
+        # Then check regular environment variable
         key = os.environ.get('CIVITAI_API_KEY')
         if key:
+            print("✅ Using CivitAI API key from environment")
             return key
 
         # Try to load from .env file
@@ -72,13 +80,15 @@ class CivitAIClient:
                 with open(env_file, 'r') as f:
                     for line in f:
                         if line.startswith('CIVITAI_API_KEY='):
-                            key = line.strip().split('=', 1)[1]
+                            key = line.strip().split('=', 1)[1].strip('"\'')
                             # Also set it in environment for this session
                             os.environ['CIVITAI_API_KEY'] = key
+                            print("✅ Using CivitAI API key from .env file")
                             return key
             except Exception as e:
                 print(f"Error loading API key from .env: {e}")
 
+        print("⚠️ No CivitAI API key found - downloads may be rate limited")
         return None
 
     def get_model_path(self, model_type: str, base_model: Optional[str] = None) -> str:
@@ -281,8 +291,6 @@ class CivitAIClient:
 
         # Construct download URL
         download_url = f"{self.DOWNLOAD_URL}/{model_version_id}"
-        if self.api_key:
-            download_url += f"?token={self.api_key}"
 
         # Determine save path based on model type and base model
         if model_type:
@@ -292,8 +300,13 @@ class CivitAIClient:
 
         Path(save_dir).mkdir(parents=True, exist_ok=True)
 
-        # Start download
-        response = requests.get(download_url, stream=True, allow_redirects=True)
+        # Prepare headers with authorization
+        download_headers = {}
+        if self.api_key:
+            download_headers['Authorization'] = f'Bearer {self.api_key}'
+
+        # Start download with proper headers
+        response = requests.get(download_url, stream=True, allow_redirects=True, headers=download_headers)
         response.raise_for_status()
 
         # Get filename from content-disposition or URL
@@ -414,6 +427,115 @@ class CivitAIClient:
                 if response.status == 200:
                     return await response.json()
                 return None
+
+    def parse_civitai_url(self, url: str) -> Optional[int]:
+        """
+        Parse a CivitAI URL to extract the model version ID.
+
+        Supports formats:
+        - https://civitai.com/api/download/models/1094291
+        - https://civitai.com/models/1094291
+        - https://civitai.com/models/12345?modelVersionId=1094291
+        """
+        try:
+            # Direct download API URL
+            if '/api/download/models/' in url:
+                model_id = url.split('/api/download/models/')[1].split('?')[0]
+                return int(model_id)
+
+            # Model page URL with version ID
+            if 'modelVersionId=' in url:
+                parsed = urlparse(url)
+                params = parse_qs(parsed.query)
+                if 'modelVersionId' in params:
+                    return int(params['modelVersionId'][0])
+
+            # Simple model URL (will need to fetch latest version)
+            if '/models/' in url:
+                model_id = url.split('/models/')[1].split('?')[0].split('/')[0]
+                # This is a model ID, not version ID - would need to fetch latest version
+                # For now, return None and let user specify version
+                print(f"⚠️ URL contains model ID {model_id}, not version ID. Please use a version-specific URL.")
+                return None
+
+        except Exception as e:
+            print(f"Error parsing CivitAI URL: {e}")
+            return None
+
+    def download_from_url(self, url: str, filename: Optional[str] = None, progress_callback: Optional[callable] = None) -> str:
+        """
+        Download a model from a CivitAI URL.
+
+        Args:
+            url: CivitAI URL (can be model page or direct download URL)
+            filename: Optional custom filename
+            progress_callback: Optional progress callback
+
+        Returns:
+            Path to downloaded file
+        """
+        # Parse the URL to get model version ID
+        version_id = self.parse_civitai_url(url)
+
+        if not version_id:
+            # Try to parse as direct version ID
+            try:
+                version_id = int(url)
+            except:
+                raise ValueError(f"Could not parse CivitAI URL or version ID: {url}")
+
+        # Use the existing download_model method
+        return self.download_model(version_id, filename=filename, progress_callback=progress_callback)
+
+    def set_api_key(self, api_key: str) -> bool:
+        """
+        Set and save the CivitAI API key.
+
+        Args:
+            api_key: The CivitAI API key to save
+
+        Returns:
+            True if key is valid and saved, False otherwise
+        """
+        # Update the instance
+        self.api_key = api_key
+        self.headers = {'Authorization': f'Bearer {api_key}'} if api_key else {}
+
+        # Verify it works
+        if not self.verify_api_key():
+            print("❌ Invalid API key")
+            self.api_key = None
+            self.headers = {}
+            return False
+
+        # Save to .env file
+        env_file = '/workspace/.env'
+        try:
+            # Read existing .env content
+            env_content = []
+            if os.path.exists(env_file):
+                with open(env_file, 'r') as f:
+                    for line in f:
+                        if not line.startswith('CIVITAI_API_KEY='):
+                            env_content.append(line.rstrip('\n'))
+
+            # Add the new key
+            env_content.append(f'CIVITAI_API_KEY={api_key}')
+
+            # Write back
+            with open(env_file, 'w') as f:
+                f.write('\n'.join(env_content) + '\n')
+
+            # Also set in environment
+            os.environ['CIVITAI_API_KEY'] = api_key
+
+            print(f"✅ API key saved to {env_file}")
+            return True
+
+        except Exception as e:
+            print(f"⚠️ Could not save API key to file: {e}")
+            # Key is valid but couldn't save - still return True
+            return True
 
     def verify_api_key(self) -> bool:
         """Verify if the API key is valid."""
