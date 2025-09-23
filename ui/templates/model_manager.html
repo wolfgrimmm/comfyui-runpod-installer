@@ -236,6 +236,43 @@
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
 
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+        }
+
+        /* Smaller button sizes for better UX */
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-xs {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        /* Button groups for model cards */
+        .model-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .model-card-actions .btn {
+            flex: 1;
+            min-width: 80px;
+            text-align: center;
+        }
+
         .search-container {
             margin-bottom: 20px;
         }
@@ -979,16 +1016,23 @@
                         const categoryBundles = categories[category];
                         const showDownloadAll = categoryBundles.length > 1 && (category === 'Text Encoders' || category === 'FLUX Bundles');
 
+                        // Make category header collapsible
+                        const categoryId = category.replace(/[^a-zA-Z0-9]/g, '_');
                         html += `
-                            <div class="category-header" style="display: flex; justify-content: space-between; align-items: center;">
-                                <span>${category}</span>
-                                ${showDownloadAll ? `
-                                    <button class="btn btn-secondary" style="font-size: 14px; padding: 8px 16px;"
-                                            onclick="downloadAllInCategory('${category.replace(/[^a-zA-Z0-9]/g, '_')}')">
-                                        Download All ${category}
-                                    </button>
-                                ` : ''}
-                            </div>`;
+                            <div class="category-section">
+                                <div class="category-header" onclick="toggleCategory('${categoryId}')" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 8px; margin-bottom: 10px;">
+                                    <div style="display: flex; align-items: center;">
+                                        <span class="category-arrow" id="cat-arrow-${categoryId}" style="margin-right: 10px; transition: transform 0.3s;">▼</span>
+                                        <span style="font-weight: 600; font-size: 16px;">${category}</span>
+                                        <span style="margin-left: 10px; color: var(--text-secondary); font-size: 14px;">(${categoryBundles.length} bundles)</span>
+                                    </div>
+                                    ${showDownloadAll ? `
+                                        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); downloadAllInCategory('${categoryId}')">
+                                            Download All
+                                        </button>
+                                    ` : ''}
+                                </div>
+                                <div class="category-content" id="cat-content-${categoryId}" style="display: block;">`;
 
                         for (const bundle of categories[category]) {
                             // Use the original total size with correct units
@@ -1017,8 +1061,8 @@
                                                 const modelName = model.save_as || model.filename || model.repo_id?.split('/').pop() || 'Model';
                                                 const modelSize = model.size || 'Size unknown';
                                                 return `
-                                                    <div class="bundle-model-item">
-                                                        <span class="bundle-model-name">• ${modelName}</span>
+                                                    <div class="bundle-model-item" style="padding-left: 20px;">
+                                                        <span class="bundle-model-name">${modelName}</span>
                                                         <span class="bundle-model-size">${modelSize}</span>
                                                     </div>
                                                 `;
@@ -1039,6 +1083,7 @@
                                 </div>
                             `;
                         }
+                        html += '</div></div>'; // Close category-content and category-section
                     }
                 }
                 container.innerHTML = html;
@@ -1189,6 +1234,19 @@
             }
         }
 
+        function toggleCategory(categoryId) {
+            const content = document.getElementById(`cat-content-${categoryId}`);
+            const arrow = document.getElementById(`cat-arrow-${categoryId}`);
+
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                arrow.style.transform = 'rotate(0deg)';
+            } else {
+                content.style.display = 'none';
+                arrow.style.transform = 'rotate(-90deg)';
+            }
+        }
+
         async function downloadBundle(bundleId) {
             try {
                 const response = await fetch('/api/models/bundles/download', {
@@ -1312,7 +1370,7 @@
                                     <span class="model-type-badge">${model.type}</span>
                                 </div>
                                 <div class="model-actions">
-                                    <button class="btn btn-danger" onclick="deleteModel('${model.path}', '${model.name}')">
+                                    <button class="btn btn-danger btn-sm" onclick="deleteModel('${model.path}', '${model.name}')">
                                         Delete
                                     </button>
                                 </div>
@@ -1434,9 +1492,14 @@
                 const diskInfo = document.getElementById('disk-info');
                 const diskFill = document.getElementById('disk-fill');
 
-                diskInfo.textContent = `${data.used.toFixed(1)} GB / ${data.total.toFixed(1)} GB (${data.free.toFixed(1)} GB free)`;
-                diskFill.style.width = `${data.percent}%`;
-                diskFill.textContent = `${data.percent.toFixed(1)}%`;
+                // Display disk usage in a clean format
+                const usedGB = parseFloat(data.used).toFixed(1);
+                const totalGB = parseFloat(data.total).toFixed(1);
+                const percentUsed = parseFloat(data.percent).toFixed(1);
+
+                diskInfo.textContent = `Used: ${usedGB} GB / ${totalGB} GB`;
+                diskFill.style.width = `${percentUsed}%`;
+                diskFill.textContent = `${percentUsed}%`;
             } catch (error) {
                 console.error('Error updating disk usage:', error);
             }
@@ -1639,10 +1702,10 @@
                                 <span>⭐ ${model.stats?.rating?.toFixed(1) || 'N/A'}</span>
                                 <span>❤️ ${formatNumber(model.stats?.favoriteCount || 0)}</span>
                             </div>
-                            <div style="margin-top: 10px;">
+                            <div class="model-card-actions">
                                 <button class="btn btn-primary btn-sm" onclick="showModelDetails(${model.id})">Details</button>
                                 <button class="btn btn-success btn-sm" onclick="downloadCivitAIModel(${latestVersion.id}, '${model.type}')">Download</button>
-                                <a href="https://civitai.com/models/${model.id}" target="_blank" class="btn btn-secondary btn-sm">View on CivitAI</a>
+                                <a href="https://civitai.com/models/${model.id}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration: none;">View on CivitAI</a>
                             </div>
                         </div>
                     </div>

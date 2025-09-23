@@ -1321,35 +1321,30 @@ class ModelDownloader:
             return self.bundle_downloads.copy()
 
     def search_bundles(self, query: str) -> Dict:
-        """Search bundles by name, description, models, or category."""
+        """Search bundles by name, description, models, or category with partial matching."""
         query_lower = query.lower().strip()
         if not query_lower:
             return self.model_bundles
 
         matching_bundles = {}
+        query_words = query_lower.split()  # Split query into words for better partial matching
 
         for bundle_id, bundle in self.model_bundles.items():
-            # Search in bundle name
-            if query_lower in bundle.get('name', '').lower():
-                matching_bundles[bundle_id] = bundle
-                continue
+            # Check if any query word matches any part of the bundle info
+            bundle_text = ' '.join([
+                bundle.get('name', '').lower(),
+                bundle.get('description', '').lower(),
+                bundle.get('category', '').lower(),
+            ])
 
-            # Search in bundle description
-            if query_lower in bundle.get('description', '').lower():
-                matching_bundles[bundle_id] = bundle
-                continue
-
-            # Search in category
-            if query_lower in bundle.get('category', '').lower():
-                matching_bundles[bundle_id] = bundle
-                continue
-
-            # Search in model names
+            # Add model names to searchable text
             for model in bundle.get('models', []):
                 model_name = model.get('save_as') or model.get('filename', '')
-                if query_lower in model_name.lower():
-                    matching_bundles[bundle_id] = bundle
-                    break
+                bundle_text += ' ' + model_name.lower()
+
+            # Check if all query words are found in bundle text (partial matching)
+            if all(word in bundle_text for word in query_words):
+                matching_bundles[bundle_id] = bundle
 
                 # Also search in repo_id
                 if query_lower in model.get('repo_id', '').lower():
