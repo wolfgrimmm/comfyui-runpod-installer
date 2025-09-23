@@ -341,21 +341,7 @@
             border-radius: 6px;
         }
 
-        .btn-secondary {
-            background: linear-gradient(135deg, var(--secondary), #7c3aed);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .btn-secondary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
-        }
+        /* Removed duplicate .btn-secondary - using the one defined earlier */
 
         .empty-state {
             text-align: center;
@@ -699,9 +685,9 @@
         <div class="header">
             <h1>ComfyUI Model Manager</h1>
             <div class="disk-usage">
-                <div>Disk Usage: <span id="disk-info">Loading...</span></div>
+                <div>Disk Space Occupied: <span id="disk-info">Loading...</span></div>
                 <div class="disk-bar">
-                    <div class="disk-fill" id="disk-fill" style="width: 0%">0%</div>
+                    <div class="disk-fill" id="disk-fill" style="width: 0%">0% Used</div>
                 </div>
             </div>
         </div>
@@ -1022,7 +1008,7 @@
                             <div class="category-section">
                                 <div class="category-header" onclick="toggleCategory('${categoryId}')" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 8px; margin-bottom: 10px;">
                                     <div style="display: flex; align-items: center;">
-                                        <span class="category-arrow" id="cat-arrow-${categoryId}" style="margin-right: 10px; transition: transform 0.3s; transform: rotate(-90deg);">▶</span>
+                                        <span class="category-arrow" id="cat-arrow-${categoryId}" style="margin-right: 10px; transition: transform 0.3s;">▶</span>
                                         <span style="font-weight: 600; font-size: 16px;">${category}</span>
                                         <span style="margin-left: 10px; color: var(--text-secondary); font-size: 14px;">(${categoryBundles.length} bundles)</span>
                                     </div>
@@ -1240,10 +1226,10 @@
 
             if (content.style.display === 'none') {
                 content.style.display = 'block';
-                arrow.style.transform = 'rotate(0deg)';
+                arrow.style.transform = 'rotate(90deg)';  // Point down when open
             } else {
                 content.style.display = 'none';
-                arrow.style.transform = 'rotate(-90deg)';
+                arrow.style.transform = 'rotate(0deg)';  // Point right when closed
             }
         }
 
@@ -1497,9 +1483,9 @@
                 const totalGB = parseFloat(data.total).toFixed(1);
                 const percentUsed = parseFloat(data.percent).toFixed(1);
 
-                diskInfo.textContent = `Used: ${usedGB} GB / ${totalGB} GB`;
+                diskInfo.textContent = `${usedGB} GB of ${totalGB} GB`;
                 diskFill.style.width = `${percentUsed}%`;
-                diskFill.textContent = `${percentUsed}%`;
+                diskFill.textContent = `${percentUsed}% Used`;
             } catch (error) {
                 console.error('Error updating disk usage:', error);
             }
@@ -1666,10 +1652,18 @@
         function displayCivitAIResults(data) {
             const resultsContainer = document.getElementById('search-results');
 
+            // Check for errors
+            if (data.error) {
+                resultsContainer.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                return;
+            }
+
             if (!data.items || data.items.length === 0) {
                 resultsContainer.innerHTML = '<div class="empty-state">No models found</div>';
                 return;
             }
+
+            console.log(`Displaying ${data.items.length} CivitAI models`);
 
             let html = '<div class="model-grid">';
 

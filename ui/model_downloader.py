@@ -1432,13 +1432,19 @@ class ModelDownloader:
                 nsfw=nsfw, limit=limit, page=page
             )
 
+        if not self.civitai_client:
+            print("⚠️ CivitAI client not initialized")
+            return {'error': 'CivitAI integration not available', 'items': []}
+
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             results = loop.run_until_complete(search())
             loop.close()
+            print(f"✅ CivitAI search returned {len(results.get('items', []))} models")
             return results
         except Exception as e:
+            print(f"❌ CivitAI search error: {e}")
             return {'error': str(e), 'items': []}
 
     def download_civitai_model(self, version_id: int, model_type: str = None) -> str:
@@ -1604,6 +1610,10 @@ class ModelDownloader:
 
     def get_civitai_trending(self, period: str = "Week", limit: int = 20) -> Dict:
         """Get trending models from CivitAI."""
+        if not self.civitai_client:
+            print("⚠️ CivitAI client not initialized")
+            return {'error': 'CivitAI integration not available', 'items': []}
+
         import asyncio
 
         async def get_trending():
@@ -1614,6 +1624,8 @@ class ModelDownloader:
             asyncio.set_event_loop(loop)
             results = loop.run_until_complete(get_trending())
             loop.close()
+            print(f"✅ CivitAI trending returned {len(results.get('items', []))} models")
             return results
         except Exception as e:
+            print(f"❌ CivitAI trending error: {e}")
             return {'error': str(e), 'items': []}
