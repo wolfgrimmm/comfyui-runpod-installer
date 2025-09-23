@@ -778,6 +778,22 @@
 
             <!-- CivitAI Search -->
             <div id="civitai-search" class="source-content" style="display: none;">
+                <!-- Direct URL Download Section -->
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid var(--primary); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
+                    <h3 style="color: var(--primary); margin-bottom: 10px; font-size: 16px;">🔗 Direct URL Download</h3>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" class="search-input" id="civitai-url-input"
+                               style="flex: 1;"
+                               placeholder="Paste CivitAI model URL here (e.g., https://civitai.com/models/123456)"
+                               onkeypress="if(event.key==='Enter') downloadFromURL()">
+                        <button class="btn btn-success" onclick="downloadFromURL()">Download from URL</button>
+                    </div>
+                    <small style="color: var(--text-secondary); display: block; margin-top: 8px;">
+                        Supports: civitai.com/models/*, civitai.com/api/download/models/*
+                    </small>
+                </div>
+
+                <!-- Search Section -->
                 <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
                     <input type="text" class="search-input" id="civitai-query" style="flex: 2; min-width: 300px;"
                            placeholder="Search CivitAI models..." onkeypress="if(event.key==='Enter') searchCivitAI()">
@@ -1770,6 +1786,51 @@
                 }
             } catch (error) {
                 showToast('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function downloadFromURL() {
+            const urlInput = document.getElementById('civitai-url-input');
+            const url = urlInput.value.trim();
+
+            if (!url) {
+                showToast('Please enter a CivitAI URL', 'error');
+                return;
+            }
+
+            if (!url.includes('civitai.com')) {
+                showToast('Please enter a valid CivitAI URL', 'error');
+                return;
+            }
+
+            // Disable button and show loading state
+            const button = event.target;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Downloading...';
+
+            try {
+                const response = await fetch('/api/civitai/download-url', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(`✅ Model downloaded successfully! ${data.filename || ''}`, 'success');
+                    urlInput.value = ''; // Clear input
+                    switchTab('downloads', null); // Switch to downloads tab
+                } else {
+                    showToast(`❌ Download failed: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showToast(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                // Re-enable button
+                button.disabled = false;
+                button.textContent = originalText;
             }
         }
 

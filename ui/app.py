@@ -1397,6 +1397,43 @@ def download_civitai():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/civitai/download-url', methods=['POST'])
+def download_civitai_url():
+    """Download a model from CivitAI using direct URL"""
+    try:
+        data = request.json
+        url = data.get('url', '').strip()
+
+        if not url:
+            return jsonify({'error': 'URL required'}), 400
+
+        # Check if it's a CivitAI URL
+        if 'civitai.com' not in url.lower():
+            return jsonify({'error': 'Not a CivitAI URL'}), 400
+
+        # Use the CivitAI client to download from URL
+        if not manager.model_downloader or not manager.model_downloader.civitai_client:
+            return jsonify({'error': 'CivitAI integration not available'}), 500
+
+        try:
+            # Parse and download the model
+            result_path = manager.model_downloader.civitai_client.download_from_url(url)
+
+            return jsonify({
+                'success': True,
+                'message': f'Model downloaded successfully',
+                'path': result_path,
+                'filename': os.path.basename(result_path) if result_path else None
+            })
+        except Exception as download_error:
+            return jsonify({
+                'success': False,
+                'error': f'Download failed: {str(download_error)}'
+            }), 500
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/civitai/trending')
 def get_civitai_trending():
     """Get trending models from CivitAI"""
