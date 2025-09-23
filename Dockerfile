@@ -216,10 +216,10 @@ GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head 
 echo "   GPU detected: $GPU_NAME"
 
 # Detect GPU family - Complete RunPod GPU Support
-if echo "$GPU_NAME" | grep -qE "B200|NVIDIA B200"; then
-    # Blackwell GPUs (latest generation)
+if echo "$GPU_NAME" | grep -qE "B200|NVIDIA B200|RTX PRO 6000|RTX 6000 WK|RTX 6000"; then
+    # Blackwell GPUs (latest generation) - including RTX PRO 6000 with 96GB GDDR7
     GPU_TYPE="blackwell"
-    echo "   🚀 Blackwell architecture detected (B200)"
+    echo "   🚀 Blackwell architecture detected"
 elif echo "$GPU_NAME" | grep -qE "H100|H200|H800|NVIDIA H100|NVIDIA H200"; then
     # Hopper GPUs - H100 NVL, H100 SXM, H200 SXM, H100 PCIe
     GPU_TYPE="hopper"
@@ -233,13 +233,9 @@ elif echo "$GPU_NAME" | grep -qE "L40|L40S|L4|NVIDIA L40|NVIDIA L4"; then
     GPU_TYPE="ada"
     echo "   📦 Ada Lovelace architecture detected (L-series)"
 elif echo "$GPU_NAME" | grep -qE "RTX 6000 Ada|RTX 5000 Ada|RTX 4000 Ada|RTX 2000 Ada|RTX Ada"; then
-    # Ada Lovelace Professional GPUs
+    # Ada Lovelace Professional GPUs (older RTX Ada generation, not the new Blackwell RTX PRO 6000)
     GPU_TYPE="ada"
     echo "   📦 Ada Lovelace architecture detected (RTX Ada)"
-elif echo "$GPU_NAME" | grep -qE "RTX PRO 6000|RTX 6000 WK|RTX 6000"; then
-    # RTX PRO 6000/6000 WK (96GB VRAM) - Likely Ada architecture
-    GPU_TYPE="ada"
-    echo "   📦 Ada architecture detected (RTX PRO 6000)"
 elif echo "$GPU_NAME" | grep -qE "A100|A40|A30|A10|NVIDIA A100|NVIDIA A40"; then
     # Ampere Data Center GPUs
     GPU_TYPE="ampere"
