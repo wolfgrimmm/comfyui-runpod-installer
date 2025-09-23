@@ -1361,6 +1361,7 @@ def search_civitai():
         nsfw = data.get('nsfw', False)
         page = data.get('page', 1)
         limit = data.get('limit', 20)
+        cursor = data.get('cursor', None)  # Support cursor-based pagination
 
         results = manager.model_downloader.search_civitai_models(
             query=query,
@@ -1368,7 +1369,8 @@ def search_civitai():
             sort=sort,
             nsfw=nsfw,
             page=page,
-            limit=limit
+            limit=limit,
+            cursor=cursor
         )
 
         return jsonify(results)

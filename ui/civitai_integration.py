@@ -152,7 +152,8 @@ class CivitAIClient:
                           username: Optional[str] = None,
                           tag: Optional[str] = None,
                           limit: int = 20,
-                          page: int = 1) -> Dict:
+                          page: int = 1,
+                          cursor: Optional[str] = None) -> Dict:
         """
         Search for models on CivitAI.
 
@@ -163,18 +164,26 @@ class CivitAIClient:
             period: Time period for sorting (AllTime, Year, Month, Week, Day)
             nsfw: Include NSFW content
             limit: Number of results per page
-            page: Page number
+            page: Page number (only used when no query)
+            cursor: Cursor for pagination (used with query)
 
         Returns:
             Dictionary containing search results
         """
         params = {
             'limit': limit,
-            'page': page,
         }
 
+        # Use cursor-based pagination when searching with query
         if query:
             params['query'] = query
+            # Use cursor for pagination with search queries
+            if cursor:
+                params['cursor'] = cursor
+            # Don't use page parameter with queries
+        else:
+            # Only use page parameter when NOT searching (browsing)
+            params['page'] = page
         if types:
             params['types'] = types if isinstance(types, str) else ','.join(types)
         if sort:

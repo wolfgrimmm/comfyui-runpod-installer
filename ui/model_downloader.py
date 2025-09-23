@@ -1408,7 +1408,7 @@ class ModelDownloader:
     # CivitAI Integration Methods
     def search_civitai_models(self, query: str = None, model_type: str = None,
                              sort: str = "Highest Rated", nsfw: bool = False,
-                             limit: int = 20, page: int = 1) -> Dict:
+                             limit: int = 20, page: int = 1, cursor: str = None) -> Dict:
         """
         Search models on CivitAI.
 
@@ -1418,7 +1418,8 @@ class ModelDownloader:
             sort: Sort order
             nsfw: Include NSFW content
             limit: Results per page
-            page: Page number
+            page: Page number (only used when no query)
+            cursor: Cursor for pagination (used with query)
 
         Returns:
             Search results from CivitAI
@@ -1429,7 +1430,7 @@ class ModelDownloader:
             types = [model_type] if model_type else None
             return await self.civitai_client.search_models(
                 query=query, types=types, sort=sort,
-                nsfw=nsfw, limit=limit, page=page
+                nsfw=nsfw, limit=limit, page=page, cursor=cursor
             )
 
         if not self.civitai_client:
