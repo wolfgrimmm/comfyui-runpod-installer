@@ -322,27 +322,8 @@ class ComfyUIManager:
             else:
                 # ComfyUI exists, just ensure venv is activated (fast)
                 print("ComfyUI already installed, skipping init")
-            
-            # Check if script exists
-            script_path = "/app/start_comfyui.sh"
-            if not os.path.exists(script_path):
-                print(f"⚠️ Script {script_path} not found, using fallback command")
-                # Fallback to direct command with venv activation
-                cmd = ["/bin/bash", "-c", """
-                    source /workspace/venv/bin/activate && \
-                    cd /workspace/ComfyUI && \
-                    python main.py --listen 0.0.0.0 --port 8188
-                """]
-            else:
-                print(f"✅ Using startup script: {script_path}")
-                cmd = [script_path]
 
-            print(f"📝 Running command: {cmd}")
-
-            # Reset startup progress
-            self.startup_progress = {"stage": "starting", "message": "Launching ComfyUI process...", "percent": 5}
-
-            # Setup environment with safe mode check
+            # Setup environment first, before building command
             env_vars = {**os.environ, "COMFYUI_USER": username}
 
             # Add important paths
@@ -362,10 +343,31 @@ class ComfyUIManager:
             except:
                 pass
 
-            # Check if we should force safe mode (for problematic GPUs)
+            # Check if we should force safe mode
             if os.path.exists("/workspace/.comfyui_safe_mode"):
                 print("🔒 Safe mode enabled - forcing xformers attention")
                 env_vars["COMFYUI_ATTENTION_MECHANISM"] = "xformers"
+
+            # Use direct command instead of complex script
+            print(f"🔧 Starting ComfyUI with direct command")
+
+            # Build the command based on attention mechanism
+            attention_mechanism = env_vars.get("COMFYUI_ATTENTION_MECHANISM", "")
+            base_cmd = "source /workspace/venv/bin/activate && cd /workspace/ComfyUI && python main.py --listen 0.0.0.0 --port 8188"
+
+            # Add attention-specific flags if needed
+            if attention_mechanism == "sage":
+                # Sage doesn't need special flags, it's detected automatically
+                base_cmd += " 2>&1 | tee /tmp/comfyui_start.log"
+            else:
+                base_cmd += " 2>&1 | tee /tmp/comfyui_start.log"
+
+            cmd = ["/bin/bash", "-c", base_cmd]
+
+            print(f"📝 Running command: {cmd}")
+
+            # Reset startup progress
+            self.startup_progress = {"stage": "starting", "message": "Launching ComfyUI process...", "percent": 5}
 
             print(f"📂 Starting from directory: /workspace/ComfyUI")
             print(f"🔧 Environment PATH: {env_vars.get('PATH', 'not set')}")
@@ -383,6 +385,27 @@ class ComfyUIManager:
             )
 
             print(f"🚀 ComfyUI process started with PID: {self.comfyui_process.pid}")
+
+            # Give it a moment to start
+            time.sleep(2)
+
+            # Check if it's still alive
+            if self.comfyui_process.poll() is not None:
+                exit_code = self.comfyui_process.poll()
+                print(f"❌ ComfyUI died immediately with exit code: {exit_code}")
+
+                # Try to get the error
+                if self.comfyui_process.stdout:
+                    output = self.comfyui_process.stdout.read().decode('utf-8', errors='ignore')
+                    print(f"📋 Process output:\n{output}")
+
+                # Check log file
+                if os.path.exists("/tmp/comfyui_start.log"):
+                    with open("/tmp/comfyui_start.log", "r") as f:
+                        log = f.read()
+                        print(f"📋 Log file contents:\n{log}")
+
+                return False, f"ComfyUI failed to start with exit code {exit_code}"
 
             # Start monitoring thread
             self.monitor_startup_logs()
