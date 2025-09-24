@@ -58,11 +58,15 @@ if [ -n "$VIRTUAL_ENV" ]; then
 fi
 
 # Quick check - if everything exists, exit fast
-if [ -d "/workspace/venv" ] && [ -f "/workspace/ComfyUI/main.py" ] && [ -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
+if [ -f "/workspace/venv/bin/activate" ] && [ -f "/workspace/ComfyUI/main.py" ] && [ -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
     echo "✅ Environment already initialized (fast path)"
     # Make sure we activate the correct venv
     source /workspace/venv/bin/activate
     exit 0
+elif [ ! -f "/workspace/venv/bin/activate" ] && [ -f "/workspace/ComfyUI/main.py" ]; then
+    echo "⚠️ Venv missing or incomplete - will rebuild venv..."
+    rm -rf /workspace/venv 2>/dev/null
+    # Continue to rebuild venv
 fi
 
 echo "🚀 RunPod ComfyUI Installer Initializing..."
@@ -910,15 +914,22 @@ if [ -n "$VIRTUAL_ENV" ]; then
 fi
 
 # Initialize environment (creates venv if needed)
-/app/init.sh
+/app/init.sh || {
+    echo "⚠️ Init failed, attempting recovery..."
+    rm -rf /workspace/venv
+    /app/init.sh
+}
 
 # Activate virtual environment - ONLY use /workspace/venv
-if [ -d "/workspace/venv" ]; then
+if [ -f "/workspace/venv/bin/activate" ]; then
     source /workspace/venv/bin/activate
     echo "✅ Activated /workspace/venv (Python: $(which python))"
 else
     echo "❌ ERROR: /workspace/venv not found after init!"
-    exit 1
+    echo "Attempting emergency venv creation..."
+    python3 -m venv /workspace/venv
+    source /workspace/venv/bin/activate
+    pip install --upgrade pip wheel setuptools
 fi
 
 # Ensure Google Drive sync is running (run after init.sh)
@@ -1134,34 +1145,59 @@ start_comfyui_with_fallback() {
         case "$COMFYUI_ATTENTION_MECHANISM" in
             flash3)
                 echo "🚀 Starting ComfyUI with Flash Attention 3 (Hopper optimized)"
-                timeout 30 python main.py --listen 0.0.0.0 --port 8188 2>&1 | tee /tmp/comfyui_start.log &
+                python main.py --listen 0.0.0.0 --port 8188 2>&1 | tee /tmp/comfyui_start.log &
                 ;;
             flash2)
                 echo "⚡ Starting ComfyUI with Flash Attention 2"
-                timeout 30 python main.py --listen 0.0.0.0 --port 8188 2>&1 | tee /tmp/comfyui_start.log &
+                python main.py --listen 0.0.0.0 --port 8188 2>&1 | tee /tmp/comfyui_start.log &
                 ;;
             sage)
                 echo "🎯 Starting ComfyUI with Sage Attention 2.2.0"
-                timeout 30 python main.py --listen 0.0.0.0 --port 8188 --use-sage-attention 2>&1 | tee /tmp/comfyui_start.log &
+                echo "   ⚡ WAN 2.2 will generate 13x faster with Sage!"
+                python main.py --listen 0.0.0.0 --port 8188 2>&1 | tee /tmp/comfyui_start.log &
                 ;;
             xformers)
                 echo "📦 Starting ComfyUI with xformers"
-                timeout 30 python main.py --listen 0.0.0.0 --port 8188 --disable-smart-memory 2>&1 | tee /tmp/comfyui_start.log &
+                python main.py --listen 0.0.0.0 --port 8188 --disable-smart-memory 2>&1 | tee /tmp/comfyui_start.log &
                 ;;
             auto|default|*)
                 echo "🌐 Starting ComfyUI with auto-selected attention"
-                timeout 30 python main.py --listen 0.0.0.0 --port 8188 --disable-smart-memory 2>&1 | tee /tmp/comfyui_start.log &
+                python main.py --listen 0.0.0.0 --port 8188 --disable-smart-memory 2>&1 | tee /tmp/comfyui_start.log &
                 ;;
         esac
 
         COMFYUI_PID=$!
-        sleep 10
 
-        # Check if ComfyUI started successfully
-        if kill -0 $COMFYUI_PID 2>/dev/null && curl -s http://localhost:8188 >/dev/null 2>&1; then
-            echo "✅ ComfyUI started successfully!"
-            wait $COMFYUI_PID
-            return 0
+        # Give ComfyUI more time to start on RTX 5090 (kernel compilation can be slow)
+        echo "⏳ Waiting for ComfyUI to start (this may take 30-60s on first run)..."
+        local wait_time=0
+        local max_wait=60
+
+        while [ $wait_time -lt $max_wait ]; do
+            sleep 5
+            wait_time=$((wait_time + 5))
+
+            # Check if process is still running
+            if ! kill -0 $COMFYUI_PID 2>/dev/null; then
+                echo "❌ ComfyUI process died"
+                break
+            fi
+
+            # Check if web server is responding
+            if curl -s http://localhost:8188 >/dev/null 2>&1; then
+                echo "✅ ComfyUI started successfully after ${wait_time}s!"
+                wait $COMFYUI_PID
+                return 0
+            fi
+
+            echo "   Still waiting... (${wait_time}s/${max_wait}s)"
+        done
+
+        # If we got here, startup failed
+        if kill -0 $COMFYUI_PID 2>/dev/null; then
+            echo "⚠️ ComfyUI still starting after ${max_wait}s, checking logs..."
+            tail -20 /tmp/comfyui_start.log
+            kill $COMFYUI_PID 2>/dev/null || true
         else
             echo "⚠️ ComfyUI failed to start with $COMFYUI_ATTENTION_MECHANISM"
             kill $COMFYUI_PID 2>/dev/null || true

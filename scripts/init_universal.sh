@@ -20,6 +20,11 @@ detect_python_env() {
         echo "✅ Found existing venv at /workspace/venv"
         source /workspace/venv/bin/activate
         return 0
+    elif [ -f "/workspace/.setup_complete" ] && [ ! -f "/workspace/venv/bin/activate" ]; then
+        # Setup was marked complete but venv is missing - need to rebuild
+        echo "⚠️ Venv missing but setup was previously complete - rebuilding..."
+        rm -f /workspace/.setup_complete /workspace/venv/.setup_complete 2>/dev/null
+        return 1
     fi
     
     # Check if system has all required packages (traditional build)
