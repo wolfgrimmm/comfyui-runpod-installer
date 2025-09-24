@@ -1803,11 +1803,13 @@
                 return;
             }
 
-            // Disable button and show loading state
-            const button = event.target;
+            // Find the button that was clicked
+            const button = document.querySelector('#civitai-search button.btn-success');
             const originalText = button.textContent;
             button.disabled = true;
             button.textContent = 'Downloading...';
+
+            showToast('🔄 Starting download from CivitAI...', 'info');
 
             try {
                 const response = await fetch('/api/civitai/download-url', {
@@ -1821,11 +1823,16 @@
                 if (data.success) {
                     showToast(`✅ Model downloaded successfully! ${data.filename || ''}`, 'success');
                     urlInput.value = ''; // Clear input
+                    // Refresh downloads list
+                    if (typeof loadDownloads === 'function') {
+                        loadDownloads();
+                    }
                     switchTab('downloads', null); // Switch to downloads tab
                 } else {
                     showToast(`❌ Download failed: ${data.error || 'Unknown error'}`, 'error');
                 }
             } catch (error) {
+                console.error('Download error:', error);
                 showToast(`❌ Error: ${error.message}`, 'error');
             } finally {
                 // Re-enable button
