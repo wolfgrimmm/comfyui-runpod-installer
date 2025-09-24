@@ -957,7 +957,8 @@ fi
 
 # Start Control Panel UI
 echo "🌐 Starting Control Panel on port 7777..."
-cd /app/ui && python app.py > /workspace/ui.log 2>&1 &
+cd /app/ui && python -u app.py 2>&1 | tee /workspace/ui.log &
+CONTROL_PID=$!
 
 # Start JupyterLab
 echo "📊 Starting JupyterLab on port 8888..."
@@ -968,13 +969,22 @@ jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root \
 # Wait for services
 sleep 3
 
-# Check status
-if lsof -i:7777 > /dev/null 2>&1; then
-    echo "✅ Control Panel running on http://localhost:7777"
-    echo "   Use the Control Panel to install and start ComfyUI"
+# Check Control Panel status
+if kill -0 $CONTROL_PID 2>/dev/null; then
+    if curl -s http://localhost:7777/health > /dev/null 2>&1; then
+        echo "✅ Control Panel running on http://localhost:7777"
+        echo "   Use the Control Panel to select user and start ComfyUI"
+    else
+        echo "⚠️ Control Panel process running but not responding on port 7777"
+        echo "📋 Checking for errors in log:"
+        tail -20 /workspace/ui.log 2>/dev/null || echo "No log file found"
+    fi
 else
-    echo "⚠️ Control Panel failed to start. Check /workspace/ui.log"
-    tail -20 /workspace/ui.log 2>/dev/null || true
+    echo "❌ Control Panel failed to start. Checking log for errors:"
+    tail -30 /workspace/ui.log 2>/dev/null || echo "No log file found"
+    echo ""
+    echo "Attempting to start with error output:"
+    cd /app/ui && python app.py 2>&1 | head -50 &
 fi
 
 if lsof -i:8888 > /dev/null 2>&1; then

@@ -781,15 +781,24 @@
                 <!-- Direct URL Download Section -->
                 <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid var(--primary); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
                     <h3 style="color: var(--primary); margin-bottom: 10px; font-size: 16px;">🔗 Direct URL Download</h3>
-                    <div style="display: flex; gap: 10px; align-items: center;">
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
                         <input type="text" class="search-input" id="civitai-url-input"
                                style="flex: 1;"
                                placeholder="Paste CivitAI model URL here (e.g., https://civitai.com/models/123456)"
                                onkeypress="if(event.key==='Enter') downloadFromURL()">
-                        <button class="btn btn-success" onclick="downloadFromURL()">Download from URL</button>
+                        <select id="civitai-folder-select" class="search-input" style="width: 150px;">
+                            <option value="auto">Auto-detect</option>
+                            <option value="Checkpoint">Checkpoints</option>
+                            <option value="LORA">LoRAs</option>
+                            <option value="VAE">VAE</option>
+                            <option value="ControlNet">ControlNet</option>
+                            <option value="TextualInversion">Embeddings</option>
+                            <option value="Upscaler">Upscaler</option>
+                        </select>
+                        <button class="btn btn-success" onclick="downloadFromURL()">Download</button>
                     </div>
-                    <small style="color: var(--text-secondary); display: block; margin-top: 8px;">
-                        Supports: civitai.com/models/*, civitai.com/api/download/models/*
+                    <small style="color: var(--text-secondary); display: block;">
+                        Supports: civitai.com/models/*, civitai.com/api/download/models/* • Auto-detect will determine folder based on model type
                     </small>
                 </div>
 
@@ -1792,6 +1801,8 @@
         async function downloadFromURL() {
             const urlInput = document.getElementById('civitai-url-input');
             const url = urlInput.value.trim();
+            const folderSelect = document.getElementById('civitai-folder-select');
+            const modelType = folderSelect.value;
 
             if (!url) {
                 showToast('Please enter a CivitAI URL', 'error');
@@ -1809,20 +1820,33 @@
             button.disabled = true;
             button.textContent = 'Downloading...';
 
-            showToast('🔄 Starting download from CivitAI...', 'info');
+            const folderName = modelType === 'auto' ? 'auto-detected folder' :
+                              modelType === 'Checkpoint' ? 'checkpoints' :
+                              modelType === 'LORA' ? 'loras' :
+                              modelType === 'VAE' ? 'vae' :
+                              modelType === 'ControlNet' ? 'controlnet' :
+                              modelType === 'TextualInversion' ? 'embeddings' :
+                              modelType === 'Upscaler' ? 'upscale_models' : 'models';
+
+            showToast(`🔄 Downloading to ${folderName}...`, 'info');
 
             try {
                 const response = await fetch('/api/civitai/download-url', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ url: url })
+                    body: JSON.stringify({
+                        url: url,
+                        model_type: modelType
+                    })
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    showToast(`✅ Model downloaded successfully! ${data.filename || ''}`, 'success');
+                    const folder = data.folder || folderName;
+                    showToast(`✅ Downloaded to ${folder}: ${data.filename || 'model'}`, 'success');
                     urlInput.value = ''; // Clear input
+                    folderSelect.value = 'auto'; // Reset to auto-detect
                     // Refresh downloads list
                     if (typeof loadDownloads === 'function') {
                         loadDownloads();

@@ -471,13 +471,14 @@ class CivitAIClient:
             print(f"Error parsing CivitAI URL: {e}")
             return None
 
-    def download_from_url(self, url: str, filename: Optional[str] = None, progress_callback: Optional[callable] = None) -> str:
+    def download_from_url(self, url: str, filename: Optional[str] = None, model_type: Optional[str] = None, progress_callback: Optional[callable] = None) -> str:
         """
         Download a model from a CivitAI URL.
 
         Args:
             url: CivitAI URL (can be model page or direct download URL)
             filename: Optional custom filename
+            model_type: Optional model type override (auto-detected if not provided)
             progress_callback: Optional progress callback
 
         Returns:
@@ -493,8 +494,9 @@ class CivitAIClient:
             except:
                 raise ValueError(f"Could not parse CivitAI URL or version ID: {url}")
 
-        # Use the existing download_model method
-        return self.download_model(version_id, filename=filename, progress_callback=progress_callback)
+        # Use the existing download_model method with model_type
+        # This will auto-detect type if not provided
+        return self.download_model(version_id, model_type=model_type, filename=filename, progress_callback=progress_callback)
 
     def set_api_key(self, api_key: str) -> bool:
         """

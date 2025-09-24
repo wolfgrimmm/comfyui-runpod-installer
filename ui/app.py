@@ -756,8 +756,12 @@ else:
 
 @app.route('/health')
 def health():
-    """Health check endpoint"""
-    return jsonify({'status': 'ok', 'timestamp': time.time()})
+    """Health check endpoint for monitoring"""
+    return jsonify({
+        'status': 'healthy',
+        'service': 'control-panel',
+        'timestamp': time.time()
+    }), 200
 
 @app.route('/')
 def index():
@@ -1403,6 +1407,7 @@ def download_civitai_url():
     try:
         data = request.json
         url = data.get('url', '').strip()
+        model_type = data.get('model_type', None)  # Optional model type override
 
         if not url:
             return jsonify({'error': 'URL required'}), 400
@@ -1416,13 +1421,30 @@ def download_civitai_url():
             return jsonify({'error': 'CivitAI integration not available'}), 500
 
         try:
-            # Parse and download the model
-            result_path = manager.model_downloader.civitai_client.download_from_url(url)
+            # Parse and download the model with optional type override
+            result_path = manager.model_downloader.civitai_client.download_from_url(
+                url,
+                model_type=model_type if model_type and model_type != 'auto' else None
+            )
+
+            # Determine the actual folder it was saved to
+            folder_name = 'downloads'  # default
+            if '/checkpoints/' in result_path:
+                folder_name = 'checkpoints'
+            elif '/loras/' in result_path:
+                folder_name = 'loras'
+            elif '/vae/' in result_path:
+                folder_name = 'vae'
+            elif '/controlnet/' in result_path:
+                folder_name = 'controlnet'
+            elif '/embeddings/' in result_path:
+                folder_name = 'embeddings'
 
             return jsonify({
                 'success': True,
-                'message': f'Model downloaded successfully',
+                'message': f'Model downloaded successfully to {folder_name}',
                 'path': result_path,
+                'folder': folder_name,
                 'filename': os.path.basename(result_path) if result_path else None
             })
         except Exception as download_error:
@@ -1549,4 +1571,11 @@ if __name__ == '__main__':
         else:
             print(f"⚠️ Could not start auto-sync: {message}")
 
-    app.run(host='0.0.0.0', port=7777, debug=False)
+    try:
+        print("🚀 Starting Control Panel on http://0.0.0.0:7777")
+        app.run(host='0.0.0.0', port=7777, debug=False, use_reloader=False)
+    except Exception as e:
+        print(f"❌ Failed to start Control Panel: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
