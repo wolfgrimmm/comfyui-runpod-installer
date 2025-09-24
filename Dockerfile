@@ -171,6 +171,9 @@ if [ "$NEED_INSTALL" = "1" ]; then
     # Video processing support (required by ComfyUI for video input)
     uv pip install av
 
+    # Text processing support (required for tokenization in many models)
+    uv pip install sentencepiece
+
     # ONNX Runtime 1.19+ supports CUDA 12.x
     uv pip install onnxruntime-gpu==1.19.2 || pip install onnxruntime-gpu==1.19.2
 
