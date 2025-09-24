@@ -1144,6 +1144,12 @@ cd /workspace/ComfyUI
 # Display which attention mechanism is being used
 echo "🎆 Attention Mechanism: $COMFYUI_ATTENTION_MECHANISM"
 
+# Disable torch inductor/Triton compilation to prevent errors on newer GPUs
+# This won't affect Sage Attention which has its own optimized kernels
+export TORCH_COMPILE_DISABLE=1
+export TORCHINDUCTOR_DISABLE=1
+echo "🔧 Torch inductor disabled (Sage Attention still active for RTX 5090)"
+
 # Clear Triton cache if it exists to prevent conflicts
 if [ -d "$HOME/.triton" ] || [ -d "/root/.triton" ]; then
     echo "🧹 Clearing Triton cache..."
