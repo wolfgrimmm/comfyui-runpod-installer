@@ -326,10 +326,18 @@ class ComfyUIManager:
             # Check if script exists
             script_path = "/app/start_comfyui.sh"
             if not os.path.exists(script_path):
-                # Fallback to direct command with safe defaults
-                cmd = ["python", "/workspace/ComfyUI/main.py", "--listen", "0.0.0.0", "--port", "8188", "--disable-smart-memory"]
+                print(f"⚠️ Script {script_path} not found, using fallback command")
+                # Fallback to direct command with venv activation
+                cmd = ["/bin/bash", "-c", """
+                    source /workspace/venv/bin/activate && \
+                    cd /workspace/ComfyUI && \
+                    python main.py --listen 0.0.0.0 --port 8188
+                """]
             else:
+                print(f"✅ Using startup script: {script_path}")
                 cmd = [script_path]
+
+            print(f"📝 Running command: {cmd}")
 
             # Reset startup progress
             self.startup_progress = {"stage": "starting", "message": "Launching ComfyUI process...", "percent": 5}
@@ -337,10 +345,32 @@ class ComfyUIManager:
             # Setup environment with safe mode check
             env_vars = {**os.environ, "COMFYUI_USER": username}
 
+            # Add important paths
+            env_vars["PATH"] = f"/workspace/venv/bin:{os.environ.get('PATH', '')}"
+            env_vars["VIRTUAL_ENV"] = "/workspace/venv"
+            env_vars["PYTHONPATH"] = "/workspace/ComfyUI"
+
+            # Check GPU and set attention mechanism
+            try:
+                gpu_check = subprocess.run(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+                                         capture_output=True, text=True, timeout=5)
+                gpu_name = gpu_check.stdout.strip() if gpu_check.returncode == 0 else ""
+
+                if "5090" in gpu_name or "RTX 5090" in gpu_name:
+                    print(f"🎯 Detected RTX 5090 - using Sage Attention for optimal performance")
+                    env_vars["COMFYUI_ATTENTION_MECHANISM"] = "sage"
+            except:
+                pass
+
             # Check if we should force safe mode (for problematic GPUs)
             if os.path.exists("/workspace/.comfyui_safe_mode"):
                 print("🔒 Safe mode enabled - forcing xformers attention")
                 env_vars["COMFYUI_ATTENTION_MECHANISM"] = "xformers"
+
+            print(f"📂 Starting from directory: /workspace/ComfyUI")
+            print(f"🔧 Environment PATH: {env_vars.get('PATH', 'not set')}")
+            print(f"🔧 VIRTUAL_ENV: {env_vars.get('VIRTUAL_ENV', 'not set')}")
+            print(f"🔧 COMFYUI_ATTENTION_MECHANISM: {env_vars.get('COMFYUI_ATTENTION_MECHANISM', 'not set')}")
 
             self.comfyui_process = subprocess.Popen(
                 cmd,
@@ -351,6 +381,8 @@ class ComfyUIManager:
                 bufsize=1,  # Line buffered
                 universal_newlines=False  # We'll decode manually
             )
+
+            print(f"🚀 ComfyUI process started with PID: {self.comfyui_process.pid}")
 
             # Start monitoring thread
             self.monitor_startup_logs()
@@ -367,15 +399,35 @@ class ComfyUIManager:
                 # Check if process died
                 if self.comfyui_process and self.comfyui_process.poll() is not None:
                     # Process died - mark as failed
-                    self.startup_progress = {"stage": "failed", "message": "ComfyUI process terminated unexpectedly", "percent": 0}
+                    exit_code = self.comfyui_process.poll()
+                    self.startup_progress = {"stage": "failed", "message": f"ComfyUI process terminated with code {exit_code}", "percent": 0}
+
                     # Try to get error output
                     stderr = ""
                     if self.comfyui_process.stdout:
                         try:
-                            stderr = self.comfyui_process.stdout.read().decode('utf-8', errors='ignore')[:500]
+                            stderr = self.comfyui_process.stdout.read().decode('utf-8', errors='ignore')
+                            print(f"❌ ComfyUI stdout/stderr:\n{stderr}")
                         except:
                             pass
-                    return False, f"ComfyUI process died: {stderr or 'Unknown error'}"
+
+                    # Also check log file
+                    log_content = ""
+                    if os.path.exists("/tmp/comfyui_start.log"):
+                        try:
+                            with open("/tmp/comfyui_start.log", "r") as f:
+                                log_content = f.read()[-1000:]  # Last 1000 chars
+                                print(f"📋 ComfyUI log file:\n{log_content}")
+                        except:
+                            pass
+
+                    error_msg = f"ComfyUI process died with exit code {exit_code}"
+                    if stderr:
+                        error_msg += f"\nOutput: {stderr[:500]}"
+                    if log_content:
+                        error_msg += f"\nLog: {log_content[:500]}"
+
+                    return False, error_msg
 
                 # Track if progress is still changing (activity indicator)
                 current_progress_msg = self.startup_progress.get('message', '')
@@ -386,12 +438,17 @@ class ComfyUIManager:
                 # Check readiness more frequently after initial startup phase
                 should_check_ready = (i % readiness_check_interval == 0) and i > 30
 
-                # Check startup progress
+                # Check startup progress - don't mark as ready too early
+                if i < 5:
+                    # Don't check readiness in first 5 seconds
+                    continue
+
                 if self.startup_progress.get('stage') == 'ready' or (should_check_ready and self.is_comfyui_ready()):
-                    # ComfyUI is ready!
-                    print(f"ComfyUI fully initialized after {i+1} seconds")
-                    self.start_time = time.time()
-                    # Save start time to file
+                    # Double-check that ComfyUI is actually ready
+                    if self.is_comfyui_ready():
+                        print(f"✅ ComfyUI fully initialized after {i+1} seconds")
+                        self.start_time = time.time()
+                        # Save start time to file
                     with open(START_TIME_FILE, 'w') as f:
                         f.write(str(self.start_time))
 
@@ -492,10 +549,17 @@ class ComfyUIManager:
     def is_comfyui_running(self):
         """Check if ComfyUI is running"""
         # First check our process handle
-        if self.comfyui_process and self.comfyui_process.poll() is None:
-            return True
+        if self.comfyui_process:
+            poll_result = self.comfyui_process.poll()
+            if poll_result is not None:
+                # Process has terminated
+                print(f"⚠️ ComfyUI process terminated with exit code: {poll_result}")
+                return False
+        else:
+            # No process handle
+            return False
 
-        # Check if port 8188 is actually listening
+        # Also check if port 8188 is actually listening
         import socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1)  # Add timeout to avoid hanging
