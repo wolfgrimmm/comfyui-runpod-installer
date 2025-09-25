@@ -297,7 +297,29 @@
         .status-dot.inactive::after {
             display: none;
         }
-        
+
+        .status-dot.initializing {
+            background: linear-gradient(135deg, #f59e0b, #fbbf24);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.error {
+            background: linear-gradient(135deg, #ef4444, #f87171);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+            animation: none;
+        }
+
+        .status-dot.error::after {
+            display: none;
+        }
+
+        .status-dot.starting {
+            background: linear-gradient(135deg, #6b7280, #9ca3af);
+            box-shadow: 0 0 20px rgba(107, 114, 128, 0.4);
+            animation: pulse 3s infinite;
+        }
+
         .status-text {
             font-size: 14px;
             font-weight: 500;
@@ -963,6 +985,65 @@
             return `http://${window.location.hostname}:${port}`;
         }
         
+        async function checkComfyUIStatus(updateUI = true) {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                if (!updateUI) {
+                    return data;
+                }
+
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+
+                if (data.running && data.ready) {
+                    // ComfyUI is fully ready
+                    statusDot.className = 'status-dot';
+                    statusText.textContent = data.current_user ? `Active • ${data.current_user}` : 'Active';
+
+                    // Update UI elements if needed
+                    const primaryBtn = document.getElementById('primaryBtn');
+                    if (primaryBtn && primaryBtn.style.display !== 'none') {
+                        primaryBtn.style.display = 'none';
+
+                        // Ensure action buttons are shown
+                        const actionsGrid = document.getElementById('actionsGrid');
+                        if (!document.getElementById('openBtn')) {
+                            const openBtn = document.createElement('button');
+                            openBtn.className = 'btn btn-primary';
+                            openBtn.id = 'openBtn';
+                            openBtn.textContent = 'Open ComfyUI';
+                            openBtn.onclick = openComfyUI;
+                            actionsGrid.appendChild(openBtn);
+                        }
+                    }
+
+                    return data;
+                } else if (data.running && !data.ready) {
+                    // ComfyUI is running but not ready yet
+                    statusDot.className = 'status-dot initializing';
+                    statusText.textContent = 'Initializing • ComfyUI starting...';
+
+                    // Continue checking
+                    setTimeout(() => checkComfyUIStatus(true), 2000);
+                    return data;
+                } else {
+                    // ComfyUI is not running
+                    statusDot.className = 'status-dot inactive';
+                    statusText.textContent = 'System Inactive';
+                    return data;
+                }
+            } catch (error) {
+                console.error('Status check error:', error);
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                statusDot.className = 'status-dot error';
+                statusText.textContent = 'Error • Cannot check status';
+                return { running: false, ready: false, error: error.message };
+            }
+        }
+
         async function startComfyUI() {
             const username = document.getElementById('username').value;
             if (!username || username === '') {
@@ -973,8 +1054,15 @@
             const primaryBtn = document.getElementById('primaryBtn');
             primaryBtn.disabled = true;
             primaryBtn.textContent = 'Starting...';
-            
-            showLoading(true, 'Starting ComfyUI...', 'Initializing workspace');
+
+            // Update status indicator instead of showing loading overlay
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            statusDot.className = 'status-dot starting';
+            statusText.textContent = 'Starting ComfyUI...';
+
+            // Optionally show loading overlay (make it less intrusive)
+            // showLoading(true, 'Starting ComfyUI...', 'Initializing workspace');
             checkAttempts = 0;
             
             try {
@@ -999,27 +1087,55 @@
                     eventSource.onmessage = (event) => {
                         const progress = JSON.parse(event.data);
 
-                        // Update loading text and progress
-                        document.getElementById('loadingText').textContent = progress.message || 'Starting ComfyUI...';
-                        document.getElementById('loadingProgress').textContent = `${progress.percent}%`;
+                        // Update status indicator instead of loading overlay
+                        const statusDot = document.getElementById('statusDot');
+                        const statusText = document.getElementById('statusText');
 
-                        // Show detailed status
-                        if (progress.stage === 'importing') {
-                            document.getElementById('loadingSubtext').textContent = 'Loading custom nodes...';
+                        // Update loading overlay if it's visible
+                        if (document.getElementById('loadingOverlay').classList.contains('active')) {
+                            document.getElementById('loadingText').textContent = progress.message || 'Starting ComfyUI...';
+                            document.getElementById('loadingProgress').textContent = `${progress.percent}%`;
+                        }
+
+                        // Update status based on stage
+                        if (progress.stage === 'importing' || progress.stage === 'loading_nodes') {
+                            statusDot.className = 'status-dot initializing';
+                            statusText.textContent = `Initializing • ${progress.message || 'Loading nodes...'}`;
+                            if (document.getElementById('loadingSubtext')) {
+                                document.getElementById('loadingSubtext').textContent = 'Loading custom nodes...';
+                            }
                         } else if (progress.stage === 'starting_server') {
-                            document.getElementById('loadingSubtext').textContent = 'Starting web server...';
+                            statusDot.className = 'status-dot initializing';
+                            statusText.textContent = 'Initializing • Starting server...';
+                            if (document.getElementById('loadingSubtext')) {
+                                document.getElementById('loadingSubtext').textContent = 'Starting web server...';
+                            }
                         } else if (progress.stage === 'ready') {
                             eventSource.close();
                             eventSourceClosed = true;
-                            // Continue with original ready logic below
+                            // Status will be updated by the checkInterval logic
                         } else if (progress.stage === 'failed') {
                             eventSource.close();
                             eventSourceClosed = true;
                             clearInterval(checkInterval);
+
+                            // Update status to show error
+                            statusDot.className = 'status-dot error';
+                            statusText.textContent = `Error • ${progress.message || 'Failed to start'}`;
+
+                            // Hide loading overlay if shown
                             showLoading(false);
                             showToast(progress.message || 'ComfyUI failed to start', 'error');
                             primaryBtn.textContent = 'Launch ComfyUI';
                             primaryBtn.disabled = false;
+                        } else if (progress.stage === 'initializing') {
+                            statusDot.className = 'status-dot starting';
+                            statusText.textContent = `Starting • ${progress.message || 'Initializing...'}`;
+                        } else {
+                            // Generic progress update
+                            statusDot.className = 'status-dot initializing';
+                            const percentText = progress.percent > 0 ? ` (${progress.percent}%)` : '';
+                            statusText.textContent = `Initializing • ${progress.message || 'Loading...'}${percentText}`;
                         }
                     };
 
@@ -1027,6 +1143,16 @@
                         if (!eventSourceClosed) {
                             eventSource.close();
                             eventSourceClosed = true;
+
+                            // Don't assume failure - EventSource timeout doesn't mean ComfyUI failed
+                            // The checkInterval will verify the actual status
+                            console.log('EventSource closed (timeout or error), falling back to status polling');
+
+                            // Update status to show we're still checking
+                            const statusDot = document.getElementById('statusDot');
+                            const statusText = document.getElementById('statusText');
+                            statusDot.className = 'status-dot initializing';
+                            statusText.textContent = 'Initializing • Checking status...';
                         }
                     };
 
@@ -1040,7 +1166,11 @@
 
                             if (statusData.running && statusData.ready) {
                                 clearInterval(checkInterval);
-                                showLoading(false);
+
+                                // Hide loading overlay if it's shown
+                                if (document.getElementById('loadingOverlay').classList.contains('active')) {
+                                    showLoading(false);
+                                }
                                 
                                 // Hide Launch button and show action buttons
                                 primaryBtn.style.display = 'none';
@@ -1102,12 +1232,24 @@
                         }
                     }, 1500);
                 } else {
+                    // Update status to show error
+                    const statusDot = document.getElementById('statusDot');
+                    const statusText = document.getElementById('statusText');
+                    statusDot.className = 'status-dot error';
+                    statusText.textContent = `Error • ${data.error || 'Failed to start'}`;
+
                     showLoading(false);
                     showToast(data.error || 'Failed to start ComfyUI', 'error');
                     primaryBtn.textContent = 'Launch ComfyUI';
                     primaryBtn.disabled = false;
                 }
             } catch (error) {
+                // Update status to show error
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                statusDot.className = 'status-dot error';
+                statusText.textContent = `Error • ${error.message}`;
+
                 showLoading(false);
                 showToast('Error: ' + error.message, 'error');
                 const primaryBtn = document.getElementById('primaryBtn');
@@ -1127,7 +1269,14 @@
                 stopBtn.textContent = 'Stopping...';
             }
 
-            showLoading(true, 'Stopping ComfyUI...');
+            // Update status indicator
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            statusDot.className = 'status-dot starting';
+            statusText.textContent = 'Stopping ComfyUI...';
+
+            // Optionally show loading overlay
+            // showLoading(true, 'Stopping ComfyUI...');
 
             try {
                 const response = await fetch('/api/stop', {
@@ -1185,7 +1334,14 @@
                 restartBtn.textContent = 'Restarting...';
             }
 
-            showLoading(true, 'Restarting ComfyUI...');
+            // Update status indicator
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            statusDot.className = 'status-dot starting';
+            statusText.textContent = 'Restarting ComfyUI...';
+
+            // Optionally show loading overlay
+            // showLoading(true, 'Restarting ComfyUI...');
 
             try {
                 // Stop first

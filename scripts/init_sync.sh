@@ -7,11 +7,17 @@ echo "[SYNC INIT] Starting Google Drive sync initialization..."
 
 # Function to setup rclone from any available source
 setup_rclone_config() {
+    # Check rclone version first
+    echo "[SYNC INIT] Rclone version: $(rclone version | head -1)"
+
     # Check if rclone already works
     if rclone lsd gdrive: >/dev/null 2>&1; then
         echo "[SYNC INIT] Rclone already working"
         return 0
     fi
+
+    # Log any existing error
+    echo "[SYNC INIT] Testing connection failed with: $(rclone lsd gdrive: 2>&1 | head -5)"
 
     echo "[SYNC INIT] Setting up rclone configuration..."
 
@@ -63,6 +69,8 @@ EOF
         if rclone lsd gdrive: >/dev/null 2>&1; then
             echo "[SYNC INIT] Successfully restored from workspace backup"
             return 0
+        else
+            echo "[SYNC INIT] Workspace backup failed: $(rclone lsd gdrive: 2>&1 | head -3)"
         fi
     fi
 
@@ -104,10 +112,42 @@ EOF
         if rclone lsd gdrive: >/dev/null 2>&1; then
             echo "[SYNC INIT] Successfully configured from GOOGLE_SERVICE_ACCOUNT"
             return 0
+        else
+            echo "[SYNC INIT] Service account auth failed: $(rclone lsd gdrive: 2>&1 | head -3)"
         fi
     fi
 
-    # 3. Try RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT
+    # 3. Try OAuth token refresh if available
+    if [ -f /workspace/.permanent_sync/oauth_token.json ]; then
+        echo "[SYNC INIT] Found OAuth token, checking if refresh needed"
+
+        # Create OAuth config
+        cat > /root/.config/rclone/rclone.conf << 'EOF'
+[gdrive]
+type = drive
+scope = drive
+token_json = {"access_token":"ACCESS_TOKEN","token_type":"Bearer","refresh_token":"REFRESH_TOKEN","expiry":"EXPIRY"}
+client_id = YOUR_CLIENT_ID
+client_secret = YOUR_CLIENT_SECRET
+EOF
+
+        # Replace with actual token
+        TOKEN_JSON=$(cat /workspace/.permanent_sync/oauth_token.json)
+        sed -i "s|token_json = .*|token_json = $TOKEN_JSON|" /root/.config/rclone/rclone.conf
+
+        # Try to refresh token
+        if rclone lsd gdrive: --refresh >/dev/null 2>&1; then
+            echo "[SYNC INIT] OAuth token refreshed successfully"
+            # Save refreshed token
+            NEW_TOKEN=$(rclone config dump | grep -A1 'token' | tail -1)
+            echo "$NEW_TOKEN" > /workspace/.permanent_sync/oauth_token.json
+            return 0
+        else
+            echo "[SYNC INIT] OAuth token refresh failed, will try service account"
+        fi
+    fi
+
+    # 4. Try RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT
     if [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
         echo "[SYNC INIT] Found RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT"
         echo "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
@@ -148,6 +188,10 @@ EOF
     fi
 
     echo "[SYNC INIT] ERROR: No valid credentials found"
+    echo "[SYNC INIT] Please provide one of:"
+    echo "  - GOOGLE_SERVICE_ACCOUNT or RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT env variable"
+    echo "  - Service account JSON file in /workspace/.permanent_sync/service_account.json"
+    echo "  - OAuth token in /workspace/.permanent_sync/oauth_token.json"
     return 1
 }
 
@@ -229,7 +273,9 @@ EOF
             if [ $? -eq 0 ]; then
                 echo "[SYNC] Sync completed successfully"
             else
-                echo "[SYNC] Sync had errors (see /tmp/rclone_sync.log)"
+                ERROR_MSG=$(tail -10 /tmp/rclone_sync.log 2>/dev/null | grep -i "error\|fail" | head -3)
+                echo "[SYNC] Sync failed: $ERROR_MSG"
+                echo "[SYNC] Full log at /tmp/rclone_sync.log"
             fi
         fi
     fi

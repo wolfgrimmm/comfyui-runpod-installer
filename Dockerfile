@@ -9,7 +9,9 @@ RUN apt-get update && apt-get install -y \
     git wget curl psmisc lsof unzip \
     python3.11-dev python3.11-venv python3-pip \
     build-essential software-properties-common \
-    && curl https://rclone.org/install.sh | bash \
+    && curl -O https://downloads.rclone.org/rclone-current-linux-amd64.deb \
+    && dpkg -i rclone-current-linux-amd64.deb \
+    && rm rclone-current-linux-amd64.deb \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -1040,6 +1042,37 @@ fi
 # Load attention mechanism configuration
 if [ -f "/workspace/venv/.env_settings" ]; then
     source /workspace/venv/.env_settings
+fi
+
+# Clean up incompatible TensorRT engines
+if [ -d "/workspace/ComfyUI/models/tensorrt" ]; then
+    echo "🔍 Checking for incompatible TensorRT engines..."
+
+    # Get current GPU compute capability
+    GPU_COMPUTE_CAP=$(python -c "import torch; cc = torch.cuda.get_device_capability(); print(f'{cc[0]}.{cc[1]}')" 2>/dev/null || echo "unknown")
+
+    if [ "$GPU_COMPUTE_CAP" != "unknown" ]; then
+        # Find and remove TRT engines that don't match current GPU
+        find /workspace/ComfyUI/models/tensorrt -name "*.trt" -type f 2>/dev/null | while read -r trt_file; do
+            # Extract compute capability from filename if present (e.g., _8.0.trt or _10.12.0.36.trt)
+            if [[ "$trt_file" =~ _([0-9]+\.[0-9]+)(\..*)?\.(trt|engine)$ ]]; then
+                ENGINE_CC="${BASH_REMATCH[1]}"
+                if [ "$ENGINE_CC" != "$GPU_COMPUTE_CAP" ]; then
+                    echo "  ⚠️ Removing incompatible engine (built for compute $ENGINE_CC, current is $GPU_COMPUTE_CAP): $(basename "$trt_file")"
+                    rm -f "$trt_file"
+                fi
+            else
+                # If we can't determine the compute capability, check with trtexec
+                echo "  🔍 Checking engine: $(basename "$trt_file")"
+                # Try to load the engine and catch errors
+                if ! python -c "import tensorrt as trt; logger = trt.Logger(trt.Logger.ERROR); runtime = trt.Runtime(logger); engine = runtime.deserialize_cuda_engine(open('$trt_file', 'rb').read())" 2>/dev/null; then
+                    echo "  ⚠️ Removing incompatible engine: $(basename "$trt_file")"
+                    rm -f "$trt_file"
+                fi
+            fi
+        done
+        echo "✅ TensorRT engine cleanup complete"
+    fi
 fi
 
 # All attention mechanisms are pre-installed during Docker build
