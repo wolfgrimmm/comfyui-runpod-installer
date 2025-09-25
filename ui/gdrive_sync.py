@@ -187,7 +187,7 @@ team_drive = {config_data.get('team_drive', '')}
                 cmd = ['rclone', operation, user_output, gdrive_path,
                        '--transfers', '2', '--checkers', '2',
                        '--bwlimit', '15M', '--buffer-size', '16M',
-                       '--use-mmap', '--ignore-existing',
+                       '--use-mmap',
                        '--min-age', '30s', '--exclude', '*.tmp',
                        '--exclude', '*.partial', '--exclude', '**/temp_*',
                        '--retries', '3', '--low-level-retries', '10', '--progress']
@@ -195,8 +195,8 @@ team_drive = {config_data.get('team_drive', '')}
                 # Download from Google Drive with RunPod optimizations  
                 cmd = ['rclone', operation, gdrive_path, user_output,
                        '--transfers', '2', '--checkers', '2',
-                       '--bwlimit', '30M', '--buffer-size', '16M', 
-                       '--use-mmap', '--ignore-existing',
+                       '--bwlimit', '30M', '--buffer-size', '16M',
+                       '--use-mmap',
                        '--retries', '3', '--low-level-retries', '10',
                        '--progress']
             

@@ -83,11 +83,11 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "📥 Downloading outputs..."
     # Download per-user outputs
-    if rclone lsd gdrive:ComfyUI/output/ 2>/dev/null | grep -q " "; then
-        for username in $(rclone lsd gdrive:ComfyUI/output/ 2>/dev/null | awk '{print $NF}'); do
+    if rclone lsd gdrive:ComfyUI-Output/output/ 2>/dev/null | grep -q " "; then
+        for username in $(rclone lsd gdrive:ComfyUI-Output/output/ 2>/dev/null | awk '{print $NF}'); do
             echo "  📁 Downloading $username output..."
             mkdir -p "/workspace/output/$username"
-            rclone copy "gdrive:ComfyUI/output/$username" "/workspace/output/$username" --transfers 2 --checkers 2 --bwlimit 20M --buffer-size 16M --use-mmap --ignore-existing --progress
+            rclone copy "gdrive:ComfyUI-Output/output/$username" "/workspace/output/$username" --transfers 2 --checkers 2 --bwlimit 20M --buffer-size 16M --use-mmap --ignore-existing --progress
         done
     fi
 fi

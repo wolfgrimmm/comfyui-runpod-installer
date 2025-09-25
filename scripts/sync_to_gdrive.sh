@@ -41,7 +41,7 @@ for user_dir in /workspace/output/*/; do
     if [ -d "$user_dir" ]; then
         username=$(basename "$user_dir")
         echo "  📁 Syncing $username..."
-        rclone sync "$user_dir" "gdrive:ComfyUI/output/$username" $RCLONE_FLAGS
+        rclone sync "$user_dir" "gdrive:ComfyUI-Output/output/$username" $RCLONE_FLAGS
     fi
 done
 
@@ -52,11 +52,11 @@ if [ -d "/workspace/workflows" ]; then
         if [ -d "$user_dir" ]; then
             username=$(basename "$user_dir")
             echo "  📁 Syncing $username workflows..."
-            rclone sync "$user_dir" "gdrive:ComfyUI/workflows/$username" --transfers 4 --buffer-size 8M --progress
+            rclone sync "$user_dir" "gdrive:ComfyUI-Output/workflows/$username" --transfers 4 --buffer-size 8M --progress
         fi
     done
 elif [ -d "/workspace/ComfyUI/user/default/workflows" ]; then
-    rclone sync /workspace/ComfyUI/user/default/workflows gdrive:ComfyUI/workflows --transfers 4 --buffer-size 8M --progress
+    rclone sync /workspace/ComfyUI/user/default/workflows gdrive:ComfyUI-Output/workflows --transfers 4 --buffer-size 8M --progress
 fi
 
 echo "📤 Syncing input images to Google Drive..."
@@ -65,7 +65,7 @@ for user_dir in /workspace/input/*/; do
     if [ -d "$user_dir" ]; then
         username=$(basename "$user_dir")
         echo "  📁 Syncing $username inputs..."
-        rclone sync "$user_dir" "gdrive:ComfyUI/input/$username" $RCLONE_FLAGS
+        rclone sync "$user_dir" "gdrive:ComfyUI-Output/input/$username" $RCLONE_FLAGS
     fi
 done
 

@@ -51,6 +51,7 @@ type = drive
 scope = drive
 service_account_file = /root/.config/rclone/service_account.json
 team_drive =
+root_folder_id = 0ABFT2ECfnjL3Uk9PVA
 EOF
 
         # Try to detect shared drive
@@ -91,6 +92,7 @@ type = drive
 scope = drive
 service_account_file = /root/.config/rclone/service_account.json
 team_drive =
+root_folder_id = 0ABFT2ECfnjL3Uk9PVA
 EOF
 
         # Try to detect shared drive
@@ -163,6 +165,7 @@ type = drive
 scope = drive
 service_account_file = /root/.config/rclone/service_account.json
 team_drive =
+root_folder_id = 0ABFT2ECfnjL3Uk9PVA
 EOF
 
         # Try to detect shared drive
@@ -231,6 +234,7 @@ type = drive
 scope = drive
 service_account_file = /root/.config/rclone/service_account.json
 team_drive =
+root_folder_id = 0ABFT2ECfnjL3Uk9PVA
 EOF
 
         # Try to detect shared drive

@@ -69,6 +69,7 @@ type = drive
 scope = drive
 service_account_file = /root/.config/rclone/service_account.json
 team_drive =
+root_folder_id = 0ABFT2ECfnjL3Uk9PVA
 EOF
 
     # Auto-detect shared drive
@@ -101,6 +102,7 @@ type = drive
 scope = drive
 service_account_file = /root/.config/rclone/service_account.json
 team_drive =
+root_folder_id = 0ABFT2ECfnjL3Uk9PVA
 EOF
 
     # Auto-detect shared drive
@@ -139,9 +141,14 @@ if ! is_sync_running; then
 while true; do
     sleep 60
     if [ -d /workspace/output ]; then
-        rclone copy /workspace/output gdrive:ComfyUI-Output/output \
-            --exclude "*.tmp" --exclude "*.partial" \
-            --min-age 30s --ignore-existing --transfers 2 2>&1
+        for user_dir in /workspace/output/*/; do
+            if [ -d "$user_dir" ]; then
+                username=$(basename "$user_dir")
+                rclone copy "$user_dir" "gdrive:ComfyUI-Output/output/$username" \
+                    --exclude "*.tmp" --exclude "*.partial" \
+                    --min-age 30s --transfers 2 2>&1
+            fi
+        done
     fi
 done
 SYNC
