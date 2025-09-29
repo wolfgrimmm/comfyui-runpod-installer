@@ -33,23 +33,34 @@ if [ -d "$VIEWER_DIR" ]; then
     rm -rf "$VIEWER_DIR"
 fi
 
-# Check if we should use extended version (with our local copy)
-if [ -d "/app/comfyviewer-extended" ]; then
-    echo "📥 Using ComfyViewer Extended (local version with video support)..." | tee -a $LOG_FILE
-    cp -r /app/comfyviewer-extended /app/comfyviewer >> $LOG_FILE 2>&1
-else
-    # Clone ComfyViewer Extended from GitHub (when we have it hosted)
-    echo "📥 Cloning ComfyViewer repository..." | tee -a $LOG_FILE
-    cd /app
-    # For now, clone original and copy our extensions
-    git clone https://github.com/christian-saldana/ComfyViewer.git comfyviewer >> $LOG_FILE 2>&1
+# Clone the original ComfyViewer first
+echo "📥 Cloning ComfyViewer repository..." | tee -a $LOG_FILE
+cd /app
 
-    # Apply our extended components if available
-    if [ -d "/app/scripts/../comfyviewer-extended" ]; then
-        echo "🔧 Applying extended components..." | tee -a $LOG_FILE
-        cp -r /app/scripts/../comfyviewer-extended/src/* "$VIEWER_DIR/src/" 2>/dev/null || true
-        cp /app/scripts/../comfyviewer-extended/package.json "$VIEWER_DIR/package.json" 2>/dev/null || true
+# Clone the base ComfyViewer
+if ! git clone https://github.com/christian-saldana/ComfyViewer.git comfyviewer >> $LOG_FILE 2>&1; then
+    echo "❌ Failed to clone ComfyViewer repository" | tee -a $LOG_FILE
+    exit 1
+fi
+
+# Check if we should apply extended version components
+if [ -d "/app/comfyviewer-extended" ]; then
+    echo "🔧 Applying ComfyViewer Extended components (video support & downloads)..." | tee -a $LOG_FILE
+
+    # Copy extended components over the base installation
+    if [ -d "/app/comfyviewer-extended/src" ]; then
+        echo "   Copying extended source components..." | tee -a $LOG_FILE
+        cp -r /app/comfyviewer-extended/src/* "$VIEWER_DIR/src/" >> $LOG_FILE 2>&1 || true
     fi
+
+    # Use extended package.json if available (for additional dependencies)
+    if [ -f "/app/comfyviewer-extended/package.json" ]; then
+        echo "   Merging extended package.json..." | tee -a $LOG_FILE
+        # Just copy for now - in production would merge properly
+        cp /app/comfyviewer-extended/package.json "$VIEWER_DIR/package.json" >> $LOG_FILE 2>&1 || true
+    fi
+
+    echo "✅ Extended components applied" | tee -a $LOG_FILE
 fi
 
 cd "$VIEWER_DIR"

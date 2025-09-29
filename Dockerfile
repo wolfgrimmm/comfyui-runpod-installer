@@ -1298,6 +1298,56 @@ EOF
 
 RUN chmod +x /app/start_comfyui.sh
 
+# Pre-install ComfyViewer for permanent installation
+RUN apt-get update && apt-get install -y nodejs npm && \
+    cd /app && \
+    git clone https://github.com/christian-saldana/ComfyViewer.git comfyviewer && \
+    cd comfyviewer && \
+    npm install && \
+    npm run build && \
+    echo "✅ ComfyViewer pre-installed in image" && \
+    # Create start/stop scripts
+    cat > /app/start_comfyviewer.sh << 'EOF'
+#!/bin/bash
+VIEWER_DIR="/app/comfyviewer"
+PORT="${COMFYVIEWER_PORT:-3001}"
+if [ ! -d "$VIEWER_DIR" ]; then
+    echo "❌ ComfyViewer not installed"
+    exit 1
+fi
+if [ -f /tmp/comfyviewer.pid ]; then
+    PID=$(cat /tmp/comfyviewer.pid)
+    if kill -0 $PID 2>/dev/null; then
+        echo "ComfyViewer already running (PID: $PID)"
+        exit 0
+    fi
+fi
+cd "$VIEWER_DIR"
+echo "Starting ComfyViewer on port $PORT..."
+NEXT_PUBLIC_COMFYUI_FOLDER="/workspace/output" \
+PORT=$PORT \
+nohup npm start > /tmp/comfyviewer.log 2>&1 &
+echo $! > /tmp/comfyviewer.pid
+echo "✅ ComfyViewer started on port $PORT"
+EOF
+    chmod +x /app/start_comfyviewer.sh && \
+    cat > /app/stop_comfyviewer.sh << 'EOF'
+#!/bin/bash
+if [ -f /tmp/comfyviewer.pid ]; then
+    PID=$(cat /tmp/comfyviewer.pid)
+    if kill -0 $PID 2>/dev/null; then
+        kill $PID
+        rm /tmp/comfyviewer.pid
+        echo "✅ ComfyViewer stopped"
+    else
+        echo "Process not found"
+    fi
+else
+    echo "ComfyViewer not running"
+fi
+EOF
+    chmod +x /app/stop_comfyviewer.sh
+
 # Environment
 ENV PYTHONUNBUFFERED=1
 ENV HF_HOME=/workspace
