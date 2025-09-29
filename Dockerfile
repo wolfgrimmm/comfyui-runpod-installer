@@ -1298,16 +1298,16 @@ EOF
 
 RUN chmod +x /app/start_comfyui.sh
 
-# Pre-install ComfyViewer for permanent installation
-RUN apt-get update && apt-get install -y nodejs npm && \
-    cd /app && \
-    git clone https://github.com/christian-saldana/ComfyViewer.git comfyviewer && \
-    cd comfyviewer && \
-    npm install && \
-    npm run build && \
-    echo "✅ ComfyViewer pre-installed in image"
+# Pre-install ComfyViewer for permanent installation (optional - comment out if build fails)
+# RUN apt-get update && apt-get install -y nodejs npm && \
+#     cd /app && \
+#     git clone https://github.com/christian-saldana/ComfyViewer.git comfyviewer && \
+#     cd comfyviewer && \
+#     npm install && \
+#     npm run build && \
+#     echo "✅ ComfyViewer pre-installed in image"
 
-# Create ComfyViewer start script
+# Create ComfyViewer start script (for when it's installed later)
 RUN cat > /app/start_comfyviewer.sh << 'EOFSTART'
 #!/bin/bash
 VIEWER_DIR="/app/comfyviewer"
