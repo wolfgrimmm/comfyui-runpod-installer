@@ -941,16 +941,13 @@
         <!-- ComfyViewer Panel -->
         <section class="section" id="viewerSection">
             <div class="section-header">
-                <h2>Image Viewer</h2>
+                <h2>ComfyViewer</h2>
                 <div class="status" id="viewerStatus">
                     <span class="status-dot inactive" id="viewerStatusDot"></span>
-                    <span id="viewerStatusText">Not Installed</span>
+                    <span id="viewerStatusText">Checking...</span>
                 </div>
             </div>
             <div class="section-content">
-                <p class="description">
-                    Browse and search your AI-generated images with rich metadata, workflow visualization, and advanced filtering.
-                </p>
                 <div class="viewer-controls" id="viewerControls">
                     <!-- Will be populated dynamically based on status -->
                 </div>
@@ -1649,11 +1646,8 @@
                     statusText.textContent = 'Not Installed';
                     controls.innerHTML = `
                         <button class="btn btn-primary" onclick="installViewer()" id="installViewerBtn">
-                            Install ComfyViewer
+                            Install
                         </button>
-                        <p style="margin-top: 8px; font-size: 12px; opacity: 0.7;">
-                            Installation takes 3-5 minutes and requires ~300MB disk space
-                        </p>
                     `;
                     info.style.display = 'none';
                 } else if (data.running) {
@@ -1662,10 +1656,10 @@
                     controls.innerHTML = `
                         <div class="actions-grid">
                             <button class="btn btn-primary" onclick="openViewer()">
-                                Open Viewer
+                                Open
                             </button>
                             <button class="btn btn-secondary" onclick="stopViewer()">
-                                Stop Viewer
+                                Stop
                             </button>
                         </div>
                     `;
@@ -1676,7 +1670,7 @@
                     statusText.textContent = 'Stopped';
                     controls.innerHTML = `
                         <button class="btn btn-primary" onclick="startViewer()">
-                            Start Viewer
+                            Start
                         </button>
                     `;
                     info.style.display = 'block';

@@ -33,7 +33,7 @@ if [ -d "$VIEWER_DIR" ]; then
     rm -rf "$VIEWER_DIR"
 fi
 
-# Clone the original ComfyViewer
+# Clone the original ComfyViewer (base version only - stable and works)
 echo "📥 Cloning ComfyViewer repository..." | tee -a $LOG_FILE
 cd /app
 
@@ -43,26 +43,8 @@ if ! git clone https://github.com/christian-saldana/ComfyViewer.git comfyviewer 
     exit 1
 fi
 
-# Apply extended components for video support (but keep base package.json)
-if [ -d "/app/comfyviewer-extended" ]; then
-    echo "🎬 Adding video support components..." | tee -a $LOG_FILE
-
-    # Copy extended source components (VideoPlayer, BulkDownloader, etc.)
-    if [ -d "/app/comfyviewer-extended/src" ]; then
-        echo "   Copying video player and download components..." | tee -a $LOG_FILE
-        cp -r /app/comfyviewer-extended/src/components/* "$VIEWER_DIR/src/components/" 2>/dev/null || true
-        cp -r /app/comfyviewer-extended/src/lib/* "$VIEWER_DIR/src/lib/" 2>/dev/null || true
-    fi
-
-    # DO NOT copy the broken package.json - just add missing dependencies manually
-    echo "   Adding video dependencies..." | tee -a $LOG_FILE
-    cd "$VIEWER_DIR"
-
-    # Add video-related dependencies that are missing
-    npm install --save file-saver jszip >> $LOG_FILE 2>&1 || true
-
-    echo "✅ Video support components added" | tee -a $LOG_FILE
-fi
+# Skip extended components - they have dependency conflicts
+# Base ComfyViewer works perfectly fine for viewing images
 
 cd "$VIEWER_DIR"
 
