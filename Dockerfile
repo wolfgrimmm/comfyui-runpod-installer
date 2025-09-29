@@ -1305,9 +1305,10 @@ RUN apt-get update && apt-get install -y nodejs npm && \
     cd comfyviewer && \
     npm install && \
     npm run build && \
-    echo "✅ ComfyViewer pre-installed in image" && \
-    # Create start/stop scripts
-    cat > /app/start_comfyviewer.sh << 'EOF'
+    echo "✅ ComfyViewer pre-installed in image"
+
+# Create ComfyViewer start script
+RUN cat > /app/start_comfyviewer.sh << 'EOFSTART'
 #!/bin/bash
 VIEWER_DIR="/app/comfyviewer"
 PORT="${COMFYVIEWER_PORT:-3001}"
@@ -1329,9 +1330,12 @@ PORT=$PORT \
 nohup npm start > /tmp/comfyviewer.log 2>&1 &
 echo $! > /tmp/comfyviewer.pid
 echo "✅ ComfyViewer started on port $PORT"
-EOF
-    chmod +x /app/start_comfyviewer.sh && \
-    cat > /app/stop_comfyviewer.sh << 'EOF'
+EOFSTART
+
+RUN chmod +x /app/start_comfyviewer.sh
+
+# Create ComfyViewer stop script
+RUN cat > /app/stop_comfyviewer.sh << 'EOFSTOP'
 #!/bin/bash
 if [ -f /tmp/comfyviewer.pid ]; then
     PID=$(cat /tmp/comfyviewer.pid)
@@ -1345,8 +1349,9 @@ if [ -f /tmp/comfyviewer.pid ]; then
 else
     echo "ComfyViewer not running"
 fi
-EOF
-    chmod +x /app/stop_comfyviewer.sh
+EOFSTOP
+
+RUN chmod +x /app/stop_comfyviewer.sh
 
 # Environment
 ENV PYTHONUNBUFFERED=1

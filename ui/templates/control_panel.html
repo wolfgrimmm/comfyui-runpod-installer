@@ -1311,14 +1311,26 @@
                     // EventSource will be tried after initial connection is stable
                     let pollingStarted = true;
 
+                    // Disable EventSource initially to avoid HTML errors
+                    useEventSource = false;
+
                     // Start polling immediately (every 2 seconds during startup)
                     checkInterval = setInterval(async () => {
                         checkAttempts++;
 
-                        // Try EventSource after 10 seconds if not already started
-                        if (checkAttempts === 5 && useEventSource && !eventSource && !eventSourceClosed) {
-                            console.log('Attempting to start EventSource for progress monitoring');
-                            startEventSource();
+                        // Only try EventSource after 20 seconds and if backend is responding
+                        if (checkAttempts === 10 && !eventSource && !eventSourceClosed) {
+                            // First check if the backend is ready
+                            try {
+                                const testResponse = await fetch('/api/status');
+                                if (testResponse.ok) {
+                                    console.log('Backend ready, attempting EventSource connection');
+                                    useEventSource = true;
+                                    startEventSource();
+                                }
+                            } catch (e) {
+                                console.log('Backend not ready yet, skipping EventSource');
+                            }
                         }
 
                         // Keep status indicator visible during checks
