@@ -1358,6 +1358,12 @@
                             if (statusData.running && statusData.ready) {
                                 clearInterval(checkInterval);
 
+                                // Close EventSource if still open
+                                if (eventSource && !eventSourceClosed) {
+                                    eventSource.close();
+                                    eventSourceClosed = true;
+                                }
+
                                 // Update status to show ready
                                 statusDot.className = 'status-dot';
                                 statusText.textContent = `Active • ${username}`;
@@ -1366,6 +1372,10 @@
                                 if (document.getElementById('loadingOverlay') && document.getElementById('loadingOverlay').classList.contains('active')) {
                                     showLoading(false);
                                 }
+
+                                // Re-enable and update the button
+                                primaryBtn.disabled = false;
+                                primaryBtn.textContent = 'Launch ComfyUI';
 
                                 // Hide Launch button and show action buttons
                                 primaryBtn.style.display = 'none';

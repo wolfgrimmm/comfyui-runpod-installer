@@ -33,7 +33,7 @@ if [ -d "$VIEWER_DIR" ]; then
     rm -rf "$VIEWER_DIR"
 fi
 
-# Clone the original ComfyViewer first
+# Clone the original ComfyViewer
 echo "📥 Cloning ComfyViewer repository..." | tee -a $LOG_FILE
 cd /app
 
@@ -43,24 +43,25 @@ if ! git clone https://github.com/christian-saldana/ComfyViewer.git comfyviewer 
     exit 1
 fi
 
-# Check if we should apply extended version components
+# Apply extended components for video support (but keep base package.json)
 if [ -d "/app/comfyviewer-extended" ]; then
-    echo "🔧 Applying ComfyViewer Extended components (video support & downloads)..." | tee -a $LOG_FILE
+    echo "🎬 Adding video support components..." | tee -a $LOG_FILE
 
-    # Copy extended components over the base installation
+    # Copy extended source components (VideoPlayer, BulkDownloader, etc.)
     if [ -d "/app/comfyviewer-extended/src" ]; then
-        echo "   Copying extended source components..." | tee -a $LOG_FILE
-        cp -r /app/comfyviewer-extended/src/* "$VIEWER_DIR/src/" >> $LOG_FILE 2>&1 || true
+        echo "   Copying video player and download components..." | tee -a $LOG_FILE
+        cp -r /app/comfyviewer-extended/src/components/* "$VIEWER_DIR/src/components/" 2>/dev/null || true
+        cp -r /app/comfyviewer-extended/src/lib/* "$VIEWER_DIR/src/lib/" 2>/dev/null || true
     fi
 
-    # Use extended package.json if available (for additional dependencies)
-    if [ -f "/app/comfyviewer-extended/package.json" ]; then
-        echo "   Merging extended package.json..." | tee -a $LOG_FILE
-        # Just copy for now - in production would merge properly
-        cp /app/comfyviewer-extended/package.json "$VIEWER_DIR/package.json" >> $LOG_FILE 2>&1 || true
-    fi
+    # DO NOT copy the broken package.json - just add missing dependencies manually
+    echo "   Adding video dependencies..." | tee -a $LOG_FILE
+    cd "$VIEWER_DIR"
 
-    echo "✅ Extended components applied" | tee -a $LOG_FILE
+    # Add video-related dependencies that are missing
+    npm install --save file-saver jszip >> $LOG_FILE 2>&1 || true
+
+    echo "✅ Video support components added" | tee -a $LOG_FILE
 fi
 
 cd "$VIEWER_DIR"
