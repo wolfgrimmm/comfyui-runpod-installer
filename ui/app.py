@@ -966,31 +966,31 @@ def startup_stream():
                     print(f"Error getting startup progress: {e}")
                     progress = {"stage": "error", "message": "Error reading progress", "percent": 0}
 
-            # Only send if changed
-            if progress != last_progress:
-                try:
-                    data = json.dumps(progress)
-                    yield f"data: {data}\n\n"
-                    last_progress = progress
-                except (TypeError, ValueError) as e:
-                    print(f"Error serializing progress to JSON: {e}, progress: {progress}")
-                    # Send a safe fallback message
-                    safe_progress = {"stage": "unknown", "message": "Processing...", "percent": 0}
-                    yield f"data: {json.dumps(safe_progress)}\n\n"
+                # Only send if changed
+                if progress != last_progress:
+                    try:
+                        data = json.dumps(progress)
+                        yield f"data: {data}\n\n"
+                        last_progress = progress
+                    except (TypeError, ValueError) as e:
+                        print(f"Error serializing progress to JSON: {e}, progress: {progress}")
+                        # Send a safe fallback message
+                        safe_progress = {"stage": "unknown", "message": "Processing...", "percent": 0}
+                        yield f"data: {json.dumps(safe_progress)}\n\n"
 
-            # Stop streaming once ready or failed
-            if progress.get('stage') in ['ready', 'failed']:
-                # Send final state and close
-                break
+                # Stop streaming once ready or failed
+                if progress.get('stage') in ['ready', 'failed']:
+                    # Send final state and close
+                    break
 
-            # Also stop if ComfyUI is no longer starting but only after 10 seconds
-            if iterations > 20 and (not manager.comfyui_process or manager.comfyui_process.poll() is not None):
-                # Process died, send failure
-                failure_progress = {"stage": "failed", "message": "ComfyUI process terminated", "percent": 0}
-                yield f"data: {json.dumps(failure_progress)}\n\n"
-                break
+                # Also stop if ComfyUI is no longer starting but only after 10 seconds
+                if iterations > 20 and (not manager.comfyui_process or manager.comfyui_process.poll() is not None):
+                    # Process died, send failure
+                    failure_progress = {"stage": "failed", "message": "ComfyUI process terminated", "percent": 0}
+                    yield f"data: {json.dumps(failure_progress)}\n\n"
+                    break
 
-            time.sleep(0.5)  # Check every 500ms
+                time.sleep(0.5)  # Check every 500ms
 
             # If we hit max iterations, send timeout
             if iterations >= max_iterations:
