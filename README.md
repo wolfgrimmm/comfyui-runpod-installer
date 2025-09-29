@@ -6,6 +6,7 @@
 
 - **⚡ Ultra-Fast Setup** - 5-minute deployment with pre-compiled wheels
 - **🎨 Model Manager** - Download models directly from HuggingFace with 2-5x faster speeds
+- **🖼️ ComfyViewer** - Browse and search your generated images with metadata (NEW!)
 - **🧠 GPU Auto-Optimization** - Automatic attention mechanism selection:
   - H100/H200: Flash Attention 3 (Hopper optimized)
   - RTX 5090/B200: Sage Attention 2.2.0 (Blackwell optimized)
@@ -39,7 +40,7 @@ docker push yourusername/comfyui-runpod:latest
 - **Container Disk:** 20-50 GB
 - **Volume Mount:** `/workspace`
 - **Volume Size:** 50-100 GB (for models)
-- **Exposed Ports:** `7777,8188,8888`
+- **Exposed Ports:** `7777,8188,8888,3001`
 - **Recommended GPU:** RTX 3090 minimum (24GB+ VRAM preferred)
 
 ### 3. Access Your Services
@@ -48,6 +49,7 @@ After pod starts:
 - **Control Panel:** `https://[pod-id]-7777.proxy.runpod.net`
 - **ComfyUI:** `https://[pod-id]-8188.proxy.runpod.net`
 - **JupyterLab:** `https://[pod-id]-8888.proxy.runpod.net`
+- **ComfyViewer:** `https://[pod-id]-3001.proxy.runpod.net` (after installation)
 
 ## 🎨 Model Manager
 
@@ -59,6 +61,30 @@ Access the Model Manager through the Control Panel to:
 - **Delete** unwanted models to save space
 
 Supports all model types: FLUX, SDXL, LoRA, ControlNet, VAE, CLIP, and more.
+
+## 🖼️ ComfyViewer (Optional)
+
+A modern web-based image viewer for browsing your AI-generated images with rich metadata.
+
+### Features
+- **100% Local** - All processing happens in your browser using IndexedDB
+- **Rich Metadata** - View prompts, seeds, samplers, models, and full workflows
+- **Advanced Search** - Filter by any metadata field (prompt keywords, models, etc.)
+- **Fast Navigation** - Arrow keys support for quick browsing
+- **Workflow View** - See the complete ComfyUI workflow for each image
+
+### Installation & Usage
+1. Click **"Install ComfyViewer"** in the Control Panel
+2. Installation takes 3-5 minutes (one-time setup)
+3. Click **"Start Viewer"** when ready
+4. Access at `https://[pod-id]-3001.proxy.runpod.net`
+5. Select your output folder to browse images
+
+### Technical Details
+- Built with Next.js, TypeScript, and Tailwind CSS
+- Requires ~300MB disk space, ~200MB RAM when running
+- Can be stopped when not needed to save resources
+- Port 3001 (doesn't conflict with other services)
 
 ## ☁️ Google Drive Integration (Optional)
 

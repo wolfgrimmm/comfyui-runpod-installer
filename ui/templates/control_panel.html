@@ -887,9 +887,42 @@
         </div>
         
         
+        <!-- ComfyViewer Panel -->
+        <section class="section" id="viewerSection">
+            <div class="section-header">
+                <h2>🎨 Image Viewer</h2>
+                <span class="viewer-status" id="viewerStatus">
+                    <span class="status-dot inactive" id="viewerStatusDot"></span>
+                    <span id="viewerStatusText">Not Installed</span>
+                </span>
+            </div>
+            <div class="section-content">
+                <p class="description">
+                    Browse and search your AI-generated images with rich metadata, workflow visualization, and advanced filtering.
+                </p>
+                <div class="viewer-controls" id="viewerControls">
+                    <!-- Will be populated dynamically based on status -->
+                </div>
+                <div class="viewer-info" id="viewerInfo" style="display: none; margin-top: 16px;">
+                    <div class="info-item">
+                        <span class="info-label">Port:</span>
+                        <span class="info-value">3001</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value" id="viewerRunStatus">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Memory:</span>
+                        <span class="info-value" id="viewerMemory">-</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Google Drive Sync Panel -->
         {% include 'gdrive_panel.html' %}
-        
+
         </div>
     </div>
     
@@ -1431,6 +1464,146 @@
         function openModelManager() {
             window.open('/models', '_blank');
         }
+
+        // ComfyViewer Functions
+        let viewerCheckInterval = null;
+
+        async function updateViewerStatus() {
+            try {
+                const response = await fetch('/api/viewer/status');
+                const data = await response.json();
+
+                const statusDot = document.getElementById('viewerStatusDot');
+                const statusText = document.getElementById('viewerStatusText');
+                const controls = document.getElementById('viewerControls');
+                const info = document.getElementById('viewerInfo');
+
+                if (!data.installed) {
+                    statusDot.className = 'status-dot inactive';
+                    statusText.textContent = 'Not Installed';
+                    controls.innerHTML = `
+                        <button class="btn btn-primary" onclick="installViewer()" id="installViewerBtn">
+                            Install ComfyViewer
+                        </button>
+                        <p style="margin-top: 8px; font-size: 12px; opacity: 0.7;">
+                            Installation takes 3-5 minutes and requires ~300MB disk space
+                        </p>
+                    `;
+                    info.style.display = 'none';
+                } else if (data.running) {
+                    statusDot.className = 'status-dot';
+                    statusText.textContent = 'Running';
+                    controls.innerHTML = `
+                        <div class="actions-grid">
+                            <button class="btn btn-primary" onclick="openViewer()">
+                                Open Viewer
+                            </button>
+                            <button class="btn btn-secondary" onclick="stopViewer()">
+                                Stop Viewer
+                            </button>
+                        </div>
+                    `;
+                    info.style.display = 'block';
+                    document.getElementById('viewerRunStatus').textContent = 'Running';
+                } else {
+                    statusDot.className = 'status-dot inactive';
+                    statusText.textContent = 'Stopped';
+                    controls.innerHTML = `
+                        <button class="btn btn-primary" onclick="startViewer()">
+                            Start Viewer
+                        </button>
+                    `;
+                    info.style.display = 'block';
+                    document.getElementById('viewerRunStatus').textContent = 'Stopped';
+                }
+
+                return data;
+            } catch (error) {
+                console.error('Failed to check viewer status:', error);
+                return { installed: false, running: false };
+            }
+        }
+
+        async function installViewer() {
+            const btn = document.getElementById('installViewerBtn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Installing...';
+
+            try {
+                showToast('Starting installation... This will take 3-5 minutes', 'info');
+
+                const response = await fetch('/api/viewer/install', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('ComfyViewer installed successfully!', 'success');
+                    await updateViewerStatus();
+                } else {
+                    showToast(data.message || 'Installation failed', 'error');
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            } catch (error) {
+                showToast('Installation error: ' + error.message, 'error');
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function startViewer() {
+            try {
+                const response = await fetch('/api/viewer/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('ComfyViewer started successfully', 'success');
+                    setTimeout(() => updateViewerStatus(), 2000);
+                } else {
+                    showToast(data.message || 'Failed to start viewer', 'error');
+                }
+            } catch (error) {
+                showToast('Error starting viewer: ' + error.message, 'error');
+            }
+        }
+
+        async function stopViewer() {
+            try {
+                const response = await fetch('/api/viewer/stop', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('ComfyViewer stopped', 'success');
+                    setTimeout(() => updateViewerStatus(), 1000);
+                } else {
+                    showToast(data.message || 'Failed to stop viewer', 'error');
+                }
+            } catch (error) {
+                showToast('Error stopping viewer: ' + error.message, 'error');
+            }
+        }
+
+        function openViewer() {
+            const url = getRunPodUrl(3001);
+            window.open(url, '_blank');
+        }
+
+        // Initialize viewer status on load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateViewerStatus();
+        });
 
         // Make functions globally accessible for onclick handlers
         window.startComfyUI = startComfyUI;
