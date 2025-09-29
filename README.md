@@ -62,16 +62,18 @@ Access the Model Manager through the Control Panel to:
 
 Supports all model types: FLUX, SDXL, LoRA, ControlNet, VAE, CLIP, and more.
 
-## 🖼️ ComfyViewer (Optional)
+## 🖼️ ComfyViewer Extended (Optional)
 
-A modern web-based image viewer for browsing your AI-generated images with rich metadata.
+An enhanced media viewer for browsing AI-generated images AND videos with rich metadata, playback controls, and download capabilities.
 
 ### Features
+- **🎬 Video Support** - Play MP4, WebM, GIF animations with custom controls
+- **📥 Bulk Downloads** - Download single files or entire collections as ZIP
 - **100% Local** - All processing happens in your browser using IndexedDB
 - **Rich Metadata** - View prompts, seeds, samplers, models, and full workflows
-- **Advanced Search** - Filter by any metadata field (prompt keywords, models, etc.)
-- **Fast Navigation** - Arrow keys support for quick browsing
-- **Workflow View** - See the complete ComfyUI workflow for each image
+- **Advanced Search** - Filter by media type, size, duration, or any metadata field
+- **Frame Navigation** - Step through videos frame-by-frame for analysis
+- **Workflow View** - See the complete ComfyUI workflow for each file
 
 ### Installation & Usage
 1. Click **"Install ComfyViewer"** in the Control Panel

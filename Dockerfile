@@ -40,6 +40,7 @@ RUN mkdir -p /app
 COPY scripts /app/scripts
 COPY config /app/config
 COPY ui /app/ui
+COPY comfyviewer-extended /app/comfyviewer-extended
 RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
 RUN chmod +x /app/scripts/init_sync.sh 2>/dev/null || true
 
