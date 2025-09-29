@@ -472,17 +472,17 @@ class ComfyUIManager:
                         print(f"✅ ComfyUI fully initialized after {i+1} seconds")
                         self.start_time = time.time()
                         # Save start time to file
-                    with open(START_TIME_FILE, 'w') as f:
-                        f.write(str(self.start_time))
+                        with open(START_TIME_FILE, 'w') as f:
+                            f.write(str(self.start_time))
 
-                    # Log session start
-                    self.session_start = self.start_time
-                    self.log_session_start(username)
+                        # Log session start
+                        self.session_start = self.start_time
+                        self.log_session_start(username)
 
-                    # Ensure progress shows ready
-                    self.startup_progress = {"stage": "ready", "message": "ComfyUI is ready!", "percent": 100}
+                        # Ensure progress shows ready
+                        self.startup_progress = {"stage": "ready", "message": "ComfyUI is ready!", "percent": 100}
 
-                    return True, "ComfyUI started successfully"
+                        return True, "ComfyUI started successfully"
 
                 # If no activity for 5 minutes, assume stuck
                 if time.time() - last_activity_time > 300:
@@ -955,14 +955,24 @@ def startup_stream():
         while iterations < max_iterations:
             iterations += 1
 
-            # Get current progress
-            progress = manager.startup_progress.copy()
+            # Get current progress safely
+            try:
+                progress = manager.startup_progress.copy() if hasattr(manager, 'startup_progress') else {"stage": "idle", "message": "", "percent": 0}
+            except Exception as e:
+                print(f"Error getting startup progress: {e}")
+                progress = {"stage": "error", "message": "Error reading progress", "percent": 0}
 
             # Only send if changed
             if progress != last_progress:
-                data = json.dumps(progress)
-                yield f"data: {data}\n\n"
-                last_progress = progress
+                try:
+                    data = json.dumps(progress)
+                    yield f"data: {data}\n\n"
+                    last_progress = progress
+                except (TypeError, ValueError) as e:
+                    print(f"Error serializing progress to JSON: {e}, progress: {progress}")
+                    # Send a safe fallback message
+                    safe_progress = {"stage": "unknown", "message": "Processing...", "percent": 0}
+                    yield f"data: {json.dumps(safe_progress)}\n\n"
 
             # Stop streaming once ready or failed
             if progress.get('stage') in ['ready', 'failed', 'idle']:

@@ -168,4 +168,107 @@ When adding new fixes:
 
 ---
 
-Last Updated: 2025-09-25
+### 2025-09-26: Google Drive Sync Path Mismatch
+
+**Problem:** Google Drive sync stopped working - files were not being uploaded to Drive despite logs showing no errors. Sync had been working but suddenly stopped at random moment.
+
+**Root Cause:** Path mismatch between components:
+- Python code used: `gdrive:ComfyUI-Output/output/{username}`
+- Shell scripts used: `gdrive:ComfyUI/output/{username}`
+- The `--ignore-existing` flag prevented updating existing files
+
+**Solution:** Standardized all paths and removed blocking flags:
+
+1. **Fixed path consistency** - All scripts now use `ComfyUI-Output`:
+```bash
+# scripts/sync_to_gdrive.sh, sync_from_gdrive.sh
+# Changed from: gdrive:ComfyUI/output/$username
+# To: gdrive:ComfyUI-Output/output/$username
+```
+
+2. **Removed --ignore-existing flag** in gdrive_sync.py to allow file updates
+
+3. **Fixed emergency sync** in ensure_sync.sh to properly handle per-user folders:
+```bash
+for user_dir in /workspace/output/*/; do
+    if [ -d "$user_dir" ]; then
+        username=$(basename "$user_dir")
+        rclone copy "$user_dir" "gdrive:ComfyUI-Output/output/$username" \
+            --exclude "*.tmp" --exclude "*.partial" \
+            --min-age 30s --transfers 2 2>&1
+    fi
+done
+```
+
+4. **Added root_folder_id** for performance optimization
+
+**Manual Fix for Running Pods:**
+```bash
+# Test the correct path structure
+rclone lsd gdrive:ComfyUI-Output/
+
+# Manually sync with corrected paths
+username="serhii"  # or your username
+rclone sync /workspace/output/$username gdrive:ComfyUI-Output/output/$username \
+  --transfers 2 --min-age 30s --exclude "*.tmp" --exclude "*.partial" \
+  --progress
+```
+
+**Status:** ⏳ Implemented - awaiting user confirmation
+
+---
+
+### 2025-09-26: ComfyUI Status Indicator UI Improvements
+
+**Problem:** During ComfyUI initialization (~97 seconds), the loading overlay would disappear on error but status would incorrectly show "Active • username" with green dot. Users had to reload page to see correct status.
+
+**Solution:** Replaced blocking loading overlay with inline status indicator updates:
+
+1. **Added CSS classes** for different states:
+- `.status-dot.initializing` - Orange dot with pulse
+- `.status-dot.error` - Red dot
+- `.status-dot.starting` - Grey dot
+
+2. **Modified JavaScript** to update status indicator directly instead of showing modal
+3. **Improved EventSource error handling** - doesn't assume failure on timeout
+4. **Added robust status checking function** with automatic recovery
+
+**Status:** ⏳ Implemented - awaiting user confirmation
+
+---
+
+### 2025-09-29: JSON Parsing Error During ComfyUI Startup
+
+**Problem:** ComfyUI control panel fails with JSON parsing error during startup. After 2-3 minutes and page reload, ComfyUI eventually starts successfully.
+
+**Root Cause:** Multiple issues in startup monitoring:
+1. Missing try-catch around JSON.parse() in JavaScript EventSource handler
+2. Critical indentation error in app.py:475 causing premature file write with undefined `self.start_time`
+3. No error handling for potentially malformed progress data from server
+
+**Solution:** Added comprehensive error handling:
+
+1. **Fixed JavaScript JSON parsing** in control_panel.html:
+```javascript
+eventSource.onmessage = (event) => {
+    let progress;
+    try {
+        progress = JSON.parse(event.data);
+    } catch (e) {
+        console.error('Failed to parse progress data:', e, 'Raw data:', event.data);
+        return; // Skip this update if JSON is invalid
+    }
+```
+
+2. **Fixed indentation error** in app.py:475-476 - file write was not inside the if block
+
+3. **Added server-side safety** for progress serialization with fallback values
+
+**Manual Fix for Running Pods:**
+Update the control panel HTML and Python files with the fixes above, or restart the pod with the updated image.
+
+**Status:** ✅ Fixed - awaiting user confirmation
+
+---
+
+Last Updated: 2025-09-29

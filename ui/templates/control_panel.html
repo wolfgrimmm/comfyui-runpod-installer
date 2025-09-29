@@ -1085,7 +1085,13 @@
                     let eventSourceClosed = false;
 
                     eventSource.onmessage = (event) => {
-                        const progress = JSON.parse(event.data);
+                        let progress;
+                        try {
+                            progress = JSON.parse(event.data);
+                        } catch (e) {
+                            console.error('Failed to parse progress data:', e, 'Raw data:', event.data);
+                            return; // Skip this update if JSON is invalid
+                        }
 
                         // Update status indicator instead of loading overlay
                         const statusDot = document.getElementById('statusDot');
