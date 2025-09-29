@@ -948,19 +948,23 @@ def get_status():
 def startup_stream():
     """Stream startup progress via Server-Sent Events"""
     def generate():
-        last_progress = None
-        max_iterations = 1200  # 10 minutes max (1200 * 0.5s)
-        iterations = 0
+        try:
+            # Send initial connection message to verify SSE is working
+            yield f"data: {json.dumps({'stage': 'connecting', 'message': 'Monitoring startup...', 'percent': 0})}\n\n"
 
-        while iterations < max_iterations:
-            iterations += 1
+            last_progress = None
+            max_iterations = 1200  # 10 minutes max (1200 * 0.5s)
+            iterations = 0
 
-            # Get current progress safely
-            try:
-                progress = manager.startup_progress.copy() if hasattr(manager, 'startup_progress') else {"stage": "idle", "message": "", "percent": 0}
-            except Exception as e:
-                print(f"Error getting startup progress: {e}")
-                progress = {"stage": "error", "message": "Error reading progress", "percent": 0}
+            while iterations < max_iterations:
+                iterations += 1
+
+                # Get current progress safely
+                try:
+                    progress = manager.startup_progress.copy() if hasattr(manager, 'startup_progress') else {"stage": "initializing", "message": "Starting ComfyUI...", "percent": 5}
+                except Exception as e:
+                    print(f"Error getting startup progress: {e}")
+                    progress = {"stage": "error", "message": "Error reading progress", "percent": 0}
 
             # Only send if changed
             if progress != last_progress:
@@ -975,12 +979,12 @@ def startup_stream():
                     yield f"data: {json.dumps(safe_progress)}\n\n"
 
             # Stop streaming once ready or failed
-            if progress.get('stage') in ['ready', 'failed', 'idle']:
+            if progress.get('stage') in ['ready', 'failed']:
                 # Send final state and close
                 break
 
-            # Also stop if ComfyUI is no longer starting
-            if not manager.comfyui_process or manager.comfyui_process.poll() is not None:
+            # Also stop if ComfyUI is no longer starting but only after 10 seconds
+            if iterations > 20 and (not manager.comfyui_process or manager.comfyui_process.poll() is not None):
                 # Process died, send failure
                 failure_progress = {"stage": "failed", "message": "ComfyUI process terminated", "percent": 0}
                 yield f"data: {json.dumps(failure_progress)}\n\n"
@@ -988,12 +992,28 @@ def startup_stream():
 
             time.sleep(0.5)  # Check every 500ms
 
-        # If we hit max iterations, send timeout
-        if iterations >= max_iterations:
-            timeout_progress = {"stage": "failed", "message": "Startup monitoring timeout", "percent": 0}
-            yield f"data: {json.dumps(timeout_progress)}\n\n"
+            # If we hit max iterations, send timeout
+            if iterations >= max_iterations:
+                timeout_progress = {"stage": "failed", "message": "Startup monitoring timeout", "percent": 0}
+                yield f"data: {json.dumps(timeout_progress)}\n\n"
 
-    return Response(generate(), mimetype='text/event-stream')
+        except Exception as e:
+            # If any error occurs in the generator, send error as JSON
+            print(f"Error in startup stream generator: {e}")
+            error_progress = {"stage": "error", "message": f"Stream error: {str(e)}", "percent": 0}
+            yield f"data: {json.dumps(error_progress)}\n\n"
+
+    try:
+        response = Response(generate(), mimetype='text/event-stream')
+        response.headers['Cache-Control'] = 'no-cache'
+        response.headers['X-Accel-Buffering'] = 'no'
+        response.headers['Connection'] = 'keep-alive'
+        response.headers['Content-Type'] = 'text/event-stream'
+        return response
+    except Exception as e:
+        # If Response creation fails, return a JSON error instead of HTML
+        print(f"Failed to create SSE response: {e}")
+        return jsonify({"error": "Failed to create event stream", "message": str(e)}), 500
 
 @app.route('/api/add_user', methods=['POST'])
 def add_user():

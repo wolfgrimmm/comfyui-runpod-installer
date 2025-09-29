@@ -1164,18 +1164,73 @@
                     // Change button text but keep disabled
                     primaryBtn.textContent = 'Initializing...';
                     
-                    // Start real-time progress monitoring
-                    const eventSource = new EventSource('/api/startup-stream');
+                    // Start real-time progress monitoring with error handling
+                    let eventSource = null;
                     let eventSourceClosed = false;
+                    let useEventSource = true;
 
-                    eventSource.onmessage = (event) => {
-                        let progress;
-                        try {
-                            progress = JSON.parse(event.data);
-                        } catch (e) {
-                            console.error('Failed to parse progress data:', e, 'Raw data:', event.data);
-                            return; // Skip this update if JSON is invalid
+                    // Function to start EventSource with proper error handling
+                    function startEventSource() {
+                        // Skip EventSource entirely if it's not supported or unreliable
+                        if (!window.EventSource || !useEventSource) {
+                            console.log('EventSource not available, using polling only');
+                            return;
                         }
+
+                        try {
+                            eventSource = new EventSource('/api/startup-stream');
+                            let connectionTimeout = setTimeout(() => {
+                                // If no message in 5 seconds, assume EventSource is broken
+                                if (eventSource && !eventSourceClosed) {
+                                    console.log('EventSource timeout - falling back to polling');
+                                    eventSource.close();
+                                    eventSourceClosed = true;
+                                    useEventSource = false;
+                                }
+                            }, 5000);
+
+                            eventSource.onopen = () => {
+                                console.log('EventSource connected');
+                                clearTimeout(connectionTimeout);
+                            };
+
+                            eventSource.onmessage = (event) => {
+                                clearTimeout(connectionTimeout);
+                                // Reset timeout for next message
+                                connectionTimeout = setTimeout(() => {
+                                    if (eventSource && !eventSourceClosed) {
+                                        console.log('EventSource message timeout');
+                                        eventSource.close();
+                                        eventSourceClosed = true;
+                                        useEventSource = false;
+                                    }
+                                }, 10000);
+
+                                let progress;
+
+                                // Check if we got HTML instead of JSON (error page)
+                                if (event.data.startsWith('<!DOCTYPE') || event.data.startsWith('<html') || event.data.includes('</html>')) {
+                                    console.error('Received HTML instead of JSON - server error');
+                                    clearTimeout(connectionTimeout);
+                                    eventSource.close();
+                                    eventSourceClosed = true;
+                                    useEventSource = false;
+                                    return;
+                                }
+
+                                try {
+                                    progress = JSON.parse(event.data);
+                                } catch (e) {
+                                    console.error('Failed to parse progress data:', e, 'Raw data:', event.data);
+                                    // If we get invalid JSON, disable EventSource
+                                    if (event.data && event.data.length > 0) {
+                                        clearTimeout(connectionTimeout);
+                                        eventSource.close();
+                                        eventSourceClosed = true;
+                                        useEventSource = false;
+                                    }
+                                    return;
+                                }
 
                         // Update status indicator instead of loading overlay
                         const statusDot = document.getElementById('statusDot');
@@ -1229,26 +1284,60 @@
                         }
                     };
 
-                    eventSource.onerror = () => {
-                        if (!eventSourceClosed) {
-                            eventSource.close();
-                            eventSourceClosed = true;
+                            eventSource.onerror = (error) => {
+                                clearTimeout(connectionTimeout);
+                                if (!eventSourceClosed) {
+                                    console.error('EventSource error - disabling and using polling');
+                                    eventSource.close();
+                                    eventSourceClosed = true;
+                                    useEventSource = false;
 
-                            // Don't assume failure - EventSource timeout doesn't mean ComfyUI failed
-                            // The checkInterval will verify the actual status
-                            console.log('EventSource closed (timeout or error), falling back to status polling');
-
-                            // Update status to show we're still checking
-                            const statusDot = document.getElementById('statusDot');
-                            const statusText = document.getElementById('statusText');
-                            statusDot.className = 'status-dot initializing';
-                            statusText.textContent = 'Initializing • Checking status...';
+                                    // Keep status visible and show we're still checking
+                                    const statusDot = document.getElementById('statusDot');
+                                    const statusText = document.getElementById('statusText');
+                                    if (statusDot && statusText) {
+                                        statusDot.className = 'status-dot initializing';
+                                        statusText.textContent = 'Initializing • Starting ComfyUI...';
+                                    }
+                                }
+                            };
+                        } catch (error) {
+                            console.error('Failed to create EventSource:', error);
+                            useEventSource = false;
                         }
-                    };
+                    }
 
-                    // Also check status periodically as backup
+                    // Start with polling as primary method (reliable)
+                    // EventSource will be tried after initial connection is stable
+                    let pollingStarted = true;
+
+                    // Start polling immediately (every 2 seconds during startup)
                     checkInterval = setInterval(async () => {
                         checkAttempts++;
+
+                        // Try EventSource after 10 seconds if not already started
+                        if (checkAttempts === 5 && useEventSource && !eventSource && !eventSourceClosed) {
+                            console.log('Attempting to start EventSource for progress monitoring');
+                            startEventSource();
+                        }
+
+                        // Keep status indicator visible during checks
+                        const statusDot = document.getElementById('statusDot');
+                        const statusText = document.getElementById('statusText');
+
+                        // Don't hide status while checking
+                        if (!statusDot || !statusText) {
+                            console.error('Status elements not found');
+                            return;
+                        }
+
+                        // Update status to show progress if still initializing
+                        if (checkAttempts > 0 && checkAttempts % 5 === 0 && statusDot.className.includes('initializing')) {
+                            const elapsed = Math.floor(checkAttempts * 2); // 2 seconds per check
+                            if (!eventSource || eventSourceClosed) {
+                                statusText.textContent = `Initializing • Loading ComfyUI (${elapsed}s)...`;
+                            }
+                        }
 
                         try {
                             const statusResponse = await fetch('/api/status');
@@ -1257,11 +1346,15 @@
                             if (statusData.running && statusData.ready) {
                                 clearInterval(checkInterval);
 
+                                // Update status to show ready
+                                statusDot.className = 'status-dot';
+                                statusText.textContent = `Active • ${username}`;
+
                                 // Hide loading overlay if it's shown
-                                if (document.getElementById('loadingOverlay').classList.contains('active')) {
+                                if (document.getElementById('loadingOverlay') && document.getElementById('loadingOverlay').classList.contains('active')) {
                                     showLoading(false);
                                 }
-                                
+
                                 // Hide Launch button and show action buttons
                                 primaryBtn.style.display = 'none';
                                 
