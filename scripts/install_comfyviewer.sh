@@ -21,16 +21,30 @@ if [ -d "$VIEWER_DIR" ] && [ -f "$VIEWER_DIR/.next/BUILD_ID" ]; then
     exit 0
 fi
 
-# Check for Node.js
-if ! command -v node &> /dev/null; then
-    echo "📦 Installing Node.js..." | tee -a $LOG_FILE
-    apt-get update >> $LOG_FILE 2>&1
-    apt-get install -y nodejs npm >> $LOG_FILE 2>&1
+# Check for Node.js and ensure it's version 20+
+NODE_VERSION=$(node --version 2>/dev/null | cut -d'v' -f2 | cut -d'.' -f1 || echo "0")
 
-    # If still not found, try NodeSource repository
+if [ "$NODE_VERSION" -lt 20 ]; then
+    echo "📦 Installing Node.js 20..." | tee -a $LOG_FILE
+
+    # Remove old Node.js if present
+    apt-get remove -y nodejs npm 2>/dev/null || true
+
+    # Install NodeSource repository for Node 20
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >> $LOG_FILE 2>&1
+    apt-get install -y nodejs >> $LOG_FILE 2>&1
+
+    # Verify installation
     if ! command -v node &> /dev/null; then
-        curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >> $LOG_FILE 2>&1
-        apt-get install -y nodejs >> $LOG_FILE 2>&1
+        echo "❌ Failed to install Node.js" | tee -a $LOG_FILE
+        exit 1
+    fi
+
+    NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
+    if [ "$NODE_VERSION" -lt 20 ]; then
+        echo "❌ Node.js version too old: $(node --version)" | tee -a $LOG_FILE
+        echo "   ComfyViewer requires Node.js 20+" | tee -a $LOG_FILE
+        exit 1
     fi
 fi
 
@@ -57,9 +71,22 @@ fi
 
 cd "$VIEWER_DIR"
 
-# Install dependencies
+# Verify we have a valid Next.js project
+if [ ! -f "package.json" ]; then
+    echo "❌ Invalid ComfyViewer installation - missing package.json" | tee -a $LOG_FILE
+    exit 1
+fi
+
+# Install dependencies with legacy peer deps to avoid conflicts
 echo "📦 Installing dependencies (this may take 2-3 minutes)..." | tee -a $LOG_FILE
-npm install >> $LOG_FILE 2>&1
+npm install --legacy-peer-deps >> $LOG_FILE 2>&1
+
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to install dependencies" | tee -a $LOG_FILE
+    echo "Checking last 50 lines of log:" | tee -a $LOG_FILE
+    tail -50 $LOG_FILE
+    exit 1
+fi
 
 # Create custom configuration for RunPod
 echo "🔧 Configuring for RunPod environment..." | tee -a $LOG_FILE

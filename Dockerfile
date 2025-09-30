@@ -40,7 +40,8 @@ RUN mkdir -p /app
 COPY scripts /app/scripts
 COPY config /app/config
 COPY ui /app/ui
-COPY comfyviewer-extended /app/comfyviewer-extended
+# NOTE: comfyviewer-extended is NOT copied - it has dependency conflicts
+# Base ComfyViewer is installed at runtime and works perfectly
 RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
 RUN chmod +x /app/scripts/init_sync.sh 2>/dev/null || true
 
@@ -133,7 +134,7 @@ elif [ ! -f "/workspace/venv/.cuda129_upgraded" ]; then
     source /workspace/venv/bin/activate
     # Check if PyTorch has correct CUDA version
     CUDA_VER=$(python -c "import torch; print(torch.version.cuda)" 2>/dev/null || echo "none")
-    if [[ "$CUDA_VER" != "12.4" ]]; then
+    if [[ "$CUDA_VER" != "12.9" ]]; then
         echo "⚠️ Venv has old CUDA version ($CUDA_VER), upgrading to CUDA 12.9 compatible packages..."
         NEED_INSTALL=1
     else
@@ -905,6 +906,8 @@ print(f'PyTorch CUDA Version: {torch.version.cuda}')
 if not torch.cuda.is_available() and torch.version.cuda:
     print('Note: CUDA not detected during build - this is normal')
     print('GPU will be available when container runs on RunPod')
+else:
+    print(f'PyTorch built with CUDA: {torch.version.cuda is not None}')
 " 2>/dev/null || echo "PyTorch CUDA check skipped"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -919,6 +922,42 @@ set -e
 
 echo "🚀 Starting RunPod Services..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# CRITICAL: Verify GPU is accessible before starting services
+echo "🔍 Verifying GPU access..."
+if ! nvidia-smi > /dev/null 2>&1; then
+    echo "❌ FATAL: nvidia-smi failed - GPU not accessible"
+    echo ""
+    echo "This usually means:"
+    echo "  1. No GPU allocated to this pod"
+    echo "  2. GPU drivers not mounted in container"
+    echo "  3. Pod needs to be restarted"
+    echo ""
+    echo "Please check RunPod dashboard and ensure:"
+    echo "  - Pod has a GPU tier selected (not CPU-only)"
+    echo "  - Pod is running on a GPU node"
+    echo ""
+    exit 1
+fi
+
+# Show GPU info
+nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader || echo "Warning: GPU info query failed"
+
+# Verify PyTorch can see CUDA
+echo "🔍 Verifying PyTorch CUDA access..."
+python3 -c "import torch; assert torch.cuda.is_available(), 'PyTorch cannot access CUDA'; print(f'✅ GPU detected: {torch.cuda.get_device_name(0)}')" || {
+    echo "❌ FATAL: PyTorch cannot access CUDA"
+    echo ""
+    echo "GPU hardware is visible but PyTorch cannot use it."
+    echo "This usually means:"
+    echo "  1. PyTorch not built with CUDA support"
+    echo "  2. CUDA version mismatch"
+    echo "  3. Driver compatibility issue"
+    echo ""
+    echo "Attempting to show more details..."
+    python3 -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA built: {torch.version.cuda}'); print(f'CUDA available: {torch.cuda.is_available()}')"
+    exit 1
+}
 
 # IMPORTANT: Clean environment first - remove any pre-existing venv
 if [ -n "$VIRTUAL_ENV" ]; then
@@ -1184,6 +1223,34 @@ cd /workspace/ComfyUI
 
 # Display which attention mechanism is being used
 echo "🎆 Attention Mechanism: $COMFYUI_ATTENTION_MECHANISM"
+
+# CRITICAL: Verify CUDA is accessible before starting ComfyUI
+echo "🔍 Verifying CUDA availability..."
+python -c "
+import torch
+import sys
+
+if not torch.cuda.is_available():
+    print('❌ ERROR: CUDA not available to PyTorch!')
+    print(f'   PyTorch version: {torch.__version__}')
+    print(f'   CUDA built version: {torch.version.cuda}')
+    print('')
+    print('This will cause ComfyUI to crash at startup.')
+    print('Possible causes:')
+    print('1. GPU not allocated to pod')
+    print('2. GPU drivers not mounted in container')
+    print('3. PyTorch installed without CUDA support')
+    sys.exit(1)
+
+print(f'✅ CUDA is available')
+print(f'   GPU: {torch.cuda.get_device_name(0)}')
+print(f'   VRAM: {torch.cuda.get_device_properties(0).total_memory / (1024**3):.1f} GB')
+print(f'   CUDA Version: {torch.version.cuda}')
+" || {
+    echo "❌ CUDA verification failed!"
+    echo "ComfyUI cannot start without GPU access"
+    exit 1
+}
 
 # Disable torch inductor/Triton compilation to prevent errors on newer GPUs
 # This won't affect Sage Attention which has its own optimized kernels
