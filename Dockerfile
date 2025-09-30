@@ -40,8 +40,7 @@ RUN mkdir -p /app
 COPY scripts /app/scripts
 COPY config /app/config
 COPY ui /app/ui
-# NOTE: comfyviewer-extended is NOT copied - it has dependency conflicts
-# Base ComfyViewer is installed at runtime and works perfectly
+# NOTE: ComfyViewer removed - users can install ComfyUI-Gallery custom node instead
 RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
 RUN chmod +x /app/scripts/init_sync.sh 2>/dev/null || true
 
@@ -1372,66 +1371,15 @@ EOF
 
 RUN chmod +x /app/start_comfyui.sh
 
-# ComfyViewer installation moved to runtime to avoid build issues
-# It will be installed on first use via the control panel
-# Note: Node.js and npm installation for ComfyViewer
-RUN apt-get update && apt-get install -y nodejs npm && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    echo "✅ Node.js and npm installed for ComfyViewer"
-
-# Create ComfyViewer start script (for when it's installed later)
-RUN cat > /app/start_comfyviewer.sh << 'EOFSTART'
-#!/bin/bash
-VIEWER_DIR="/app/comfyviewer"
-PORT="${COMFYVIEWER_PORT:-3001}"
-if [ ! -d "$VIEWER_DIR" ]; then
-    echo "❌ ComfyViewer not installed"
-    exit 1
-fi
-if [ -f /tmp/comfyviewer.pid ]; then
-    PID=$(cat /tmp/comfyviewer.pid)
-    if kill -0 $PID 2>/dev/null; then
-        echo "ComfyViewer already running (PID: $PID)"
-        exit 0
-    fi
-fi
-cd "$VIEWER_DIR"
-echo "Starting ComfyViewer on port $PORT..."
-NEXT_PUBLIC_COMFYUI_FOLDER="/workspace/output" \
-PORT=$PORT \
-nohup npm start > /tmp/comfyviewer.log 2>&1 &
-echo $! > /tmp/comfyviewer.pid
-echo "✅ ComfyViewer started on port $PORT"
-EOFSTART
-
-RUN chmod +x /app/start_comfyviewer.sh
-
-# Create ComfyViewer stop script
-RUN cat > /app/stop_comfyviewer.sh << 'EOFSTOP'
-#!/bin/bash
-if [ -f /tmp/comfyviewer.pid ]; then
-    PID=$(cat /tmp/comfyviewer.pid)
-    if kill -0 $PID 2>/dev/null; then
-        kill $PID
-        rm /tmp/comfyviewer.pid
-        echo "✅ ComfyViewer stopped"
-    else
-        echo "Process not found"
-    fi
-else
-    echo "ComfyViewer not running"
-fi
-EOFSTOP
-
-RUN chmod +x /app/stop_comfyviewer.sh
+# ComfyViewer removed - users can install ComfyUI-Gallery custom node from ComfyUI Manager
+# ComfyUI-Gallery provides a better integrated gallery experience directly in ComfyUI
 
 # Environment
 ENV PYTHONUNBUFFERED=1
 ENV HF_HOME=/workspace
 
 # Ports
-EXPOSE 7777 8188 8888 3001
+EXPOSE 7777 8188 8888
 
 WORKDIR /workspace
 
