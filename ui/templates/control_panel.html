@@ -1187,12 +1187,14 @@
                         if (progress.stage === 'importing' || progress.stage === 'loading_nodes') {
                             statusDot.className = 'status-dot initializing';
                             statusText.textContent = `Initializing • ${progress.message || 'Loading nodes...'}`;
+                            primaryBtn.textContent = progress.message || 'Loading custom nodes...';
                             if (document.getElementById('loadingSubtext')) {
                                 document.getElementById('loadingSubtext').textContent = 'Loading custom nodes...';
                             }
                         } else if (progress.stage === 'starting_server') {
                             statusDot.className = 'status-dot initializing';
                             statusText.textContent = 'Initializing • Starting server...';
+                            primaryBtn.textContent = 'Starting server...';
                             if (document.getElementById('loadingSubtext')) {
                                 document.getElementById('loadingSubtext').textContent = 'Starting web server...';
                             }
@@ -1217,11 +1219,13 @@
                         } else if (progress.stage === 'initializing') {
                             statusDot.className = 'status-dot starting';
                             statusText.textContent = `Starting • ${progress.message || 'Initializing...'}`;
+                            primaryBtn.textContent = progress.message || 'Initializing...';
                         } else {
                             // Generic progress update
                             statusDot.className = 'status-dot initializing';
                             const percentText = progress.percent > 0 ? ` (${progress.percent}%)` : '';
                             statusText.textContent = `Initializing • ${progress.message || 'Loading...'}${percentText}`;
+                            primaryBtn.textContent = progress.message || `Loading... ${percentText}`;
                         }
                     };
 
