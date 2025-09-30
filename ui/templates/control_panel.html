@@ -1117,6 +1117,27 @@
                 }
             } catch (error) {
                 console.error('Status check error:', error);
+
+                // Check if this is a JSON parse error during startup
+                const isJsonError = error.message && (
+                    error.message.includes('JSON') ||
+                    error.message.includes('Unexpected token') ||
+                    error.message.includes('SyntaxError')
+                );
+
+                // If ComfyUI is starting up and we get a JSON error, retry gracefully
+                if (isJsonError && updateUI) {
+                    const statusDot = document.getElementById('statusDot');
+                    const statusText = document.getElementById('statusText');
+                    statusDot.className = 'status-dot initializing';
+                    statusText.textContent = 'Initializing • Loading custom nodes...';
+
+                    // Retry after 3 seconds with exponential backoff
+                    setTimeout(() => checkComfyUIStatus(true), 3000);
+                    return { running: true, ready: false, initializing: true };
+                }
+
+                // For other errors, show error state
                 const statusDot = document.getElementById('statusDot');
                 const statusText = document.getElementById('statusText');
                 statusDot.className = 'status-dot error';
