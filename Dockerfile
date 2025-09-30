@@ -897,8 +897,15 @@ else
     echo "⚠️ nvcc not found in PATH"
 fi
 
-# Check PyTorch CUDA availability
-python3 -c "import torch; print(f'PyTorch CUDA Available: {torch.cuda.is_available()}'); print(f'PyTorch CUDA Version: {torch.version.cuda}')" 2>/dev/null || echo "PyTorch CUDA check skipped"
+# Check PyTorch CUDA availability (may show False in build stage - normal behavior)
+python3 -c "
+import torch
+print(f'PyTorch CUDA Available: {torch.cuda.is_available()}')
+print(f'PyTorch CUDA Version: {torch.version.cuda}')
+if not torch.cuda.is_available() and torch.version.cuda:
+    print('Note: CUDA not detected during build - this is normal')
+    print('GPU will be available when container runs on RunPod')
+" 2>/dev/null || echo "PyTorch CUDA check skipped"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 EOF
