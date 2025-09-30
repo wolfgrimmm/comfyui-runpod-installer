@@ -9,6 +9,9 @@ VIEWER_DIR="/app/comfyviewer"
 WORKSPACE_DIR="/workspace"
 LOG_FILE="/workspace/comfyviewer_install.log"
 
+# Create log directory if it doesn't exist
+mkdir -p /workspace
+
 echo "🎨 Installing ComfyViewer..." | tee -a $LOG_FILE
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a $LOG_FILE
 
@@ -21,8 +24,14 @@ fi
 # Check for Node.js
 if ! command -v node &> /dev/null; then
     echo "📦 Installing Node.js..." | tee -a $LOG_FILE
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >> $LOG_FILE 2>&1
-    apt-get install -y nodejs >> $LOG_FILE 2>&1
+    apt-get update >> $LOG_FILE 2>&1
+    apt-get install -y nodejs npm >> $LOG_FILE 2>&1
+
+    # If still not found, try NodeSource repository
+    if ! command -v node &> /dev/null; then
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >> $LOG_FILE 2>&1
+        apt-get install -y nodejs >> $LOG_FILE 2>&1
+    fi
 fi
 
 echo "Node.js version: $(node --version)" | tee -a $LOG_FILE
