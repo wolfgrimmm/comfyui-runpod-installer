@@ -355,12 +355,17 @@ class ComfyUIManager:
             attention_mechanism = env_vars.get("COMFYUI_ATTENTION_MECHANISM", "")
             base_cmd = "source /workspace/venv/bin/activate && cd /workspace/ComfyUI && python main.py --listen 0.0.0.0 --port 8188"
 
-            # Add attention-specific flags if needed
+            # Add attention-specific flags
             if attention_mechanism == "sage":
-                # Sage doesn't need special flags, it's detected automatically
-                base_cmd += " 2>&1 | tee /tmp/comfyui_start.log"
-            else:
-                base_cmd += " 2>&1 | tee /tmp/comfyui_start.log"
+                base_cmd += " --use-sage-attention"
+            elif attention_mechanism == "flash2" or attention_mechanism == "flash3":
+                base_cmd += " --use-flash-attention"
+            elif attention_mechanism == "xformers":
+                # xformers is enabled by default, no flag needed
+                pass
+
+            # Add logging
+            base_cmd += " 2>&1 | tee /tmp/comfyui_start.log"
 
             cmd = ["/bin/bash", "-c", base_cmd]
 
