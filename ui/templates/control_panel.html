@@ -920,6 +920,7 @@
     <script>
         let checkInterval = null;
         let checkAttempts = 0;
+        let initializationStartTime = null;
 
         // Consolidated function to update UI when ComfyUI is running
         function updateUIForRunningState(username) {
@@ -928,6 +929,9 @@
             const usernameSelect = document.getElementById('username');
             const statusDot = document.getElementById('statusDot');
             const statusText = document.getElementById('statusText');
+
+            // Clear initialization timer since we're now active
+            initializationStartTime = null;
 
             // Update status
             if (statusDot && statusText) {
@@ -1119,11 +1123,14 @@
             primaryBtn.disabled = true;
             primaryBtn.textContent = 'Starting...';
 
-            // Update status indicator instead of showing loading overlay
+            // Update status indicator and start timer
             const statusDot = document.getElementById('statusDot');
             const statusText = document.getElementById('statusText');
             statusDot.className = 'status-dot starting';
             statusText.textContent = 'Starting ComfyUI...';
+
+            // Start initialization timer
+            initializationStartTime = Date.now();
 
             // Optionally show loading overlay (make it less intrusive)
             // showLoading(true, 'Starting ComfyUI...', 'Initializing workspace');
@@ -1533,6 +1540,15 @@
         setInterval(async () => {
             try {
                 const response = await fetch('/api/status');
+
+                // Validate response is JSON before parsing
+                const contentType = response.headers.get('content-type');
+                if (!response.ok || !contentType || !contentType.includes('application/json')) {
+                    // Server returned HTML error page or other non-JSON response
+                    // This happens during Flask restarts - don't show error, just skip this check
+                    return;
+                }
+
                 const data = await response.json();
 
                 // Update UI if status changed
@@ -1544,16 +1560,30 @@
                     const username = data.current_user || 'User';
                     updateUIForRunningState(username);
 
+                    // Clear initialization timer
+                    initializationStartTime = null;
+
                     // Update start time if we just started
                     if (data.start_time && !startTime) {
                         startTime = data.start_time * 1000;
                         updateUptime();
                     }
                 } else if (data.running && !data.ready) {
-                    // Running but not ready yet
+                    // Running but not ready yet - show elapsed time
                     if (statusDot && statusText) {
+                        // Start timer if not already started
+                        if (!initializationStartTime) {
+                            initializationStartTime = Date.now();
+                        }
+
+                        // Calculate elapsed time
+                        const elapsed = Math.floor((Date.now() - initializationStartTime) / 1000);
+                        const minutes = Math.floor(elapsed / 60);
+                        const seconds = elapsed % 60;
+                        const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+
                         statusDot.className = 'status-dot initializing';
-                        statusText.textContent = 'Initializing • ComfyUI starting...';
+                        statusText.textContent = `Initializing • ${timeStr} elapsed`;
                     }
                 } else {
                     // Not running
@@ -1562,9 +1592,14 @@
                         statusText.textContent = 'System Inactive';
                     }
                     startTime = null;
+                    initializationStartTime = null;
                 }
             } catch (error) {
-                console.error('Status check failed:', error);
+                // Silently ignore JSON parse errors during startup/restart
+                // Only log if it's not a parse error
+                if (!error.message || !error.message.includes('JSON')) {
+                    console.error('Status check failed:', error);
+                }
             }
         }, 5000);
         
