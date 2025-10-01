@@ -921,6 +921,63 @@
         let checkInterval = null;
         let checkAttempts = 0;
 
+        // Consolidated function to update UI when ComfyUI is running
+        function updateUIForRunningState(username) {
+            const primaryBtn = document.getElementById('primaryBtn');
+            const actionsGrid = document.getElementById('actionsGrid');
+            const usernameSelect = document.getElementById('username');
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+
+            // Update status
+            if (statusDot && statusText) {
+                statusDot.className = 'status-dot';
+                statusText.textContent = `Active • ${username}`;
+            }
+
+            // Hide Launch button
+            if (primaryBtn && primaryBtn.style.display !== 'none') {
+                primaryBtn.style.display = 'none';
+                primaryBtn.disabled = false;
+                primaryBtn.textContent = 'Launch ComfyUI';
+            }
+
+            // Create action buttons if they don't exist
+            if (actionsGrid) {
+                if (!document.getElementById('openBtn')) {
+                    const openBtn = document.createElement('button');
+                    openBtn.className = 'btn btn-primary';
+                    openBtn.id = 'openBtn';
+                    openBtn.textContent = 'Open ComfyUI';
+                    openBtn.onclick = openComfyUI;
+                    actionsGrid.appendChild(openBtn);
+                }
+
+                if (!document.getElementById('restartBtn')) {
+                    const restartBtn = document.createElement('button');
+                    restartBtn.className = 'btn btn-secondary';
+                    restartBtn.id = 'restartBtn';
+                    restartBtn.textContent = 'Restart';
+                    restartBtn.onclick = restartService;
+                    actionsGrid.appendChild(restartBtn);
+                }
+
+                if (!document.getElementById('stopBtn')) {
+                    const stopBtn = document.createElement('button');
+                    stopBtn.className = 'btn btn-secondary';
+                    stopBtn.id = 'stopBtn';
+                    stopBtn.textContent = 'Stop';
+                    stopBtn.onclick = stopComfyUI;
+                    actionsGrid.appendChild(stopBtn);
+                }
+            }
+
+            // Disable user selection when running
+            if (usernameSelect) {
+                usernameSelect.disabled = true;
+            }
+        }
+
         // Enable/disable Launch button based on user selection
         document.addEventListener('DOMContentLoaded', () => {
             const usernameSelect = document.getElementById('username');
@@ -1002,27 +1059,9 @@
                 const statusText = document.getElementById('statusText');
 
                 if (data.running && data.ready) {
-                    // ComfyUI is fully ready
-                    statusDot.className = 'status-dot';
-                    statusText.textContent = data.current_user ? `Active • ${data.current_user}` : 'Active';
-
-                    // Update UI elements if needed
-                    const primaryBtn = document.getElementById('primaryBtn');
-                    if (primaryBtn && primaryBtn.style.display !== 'none') {
-                        primaryBtn.style.display = 'none';
-
-                        // Ensure action buttons are shown
-                        const actionsGrid = document.getElementById('actionsGrid');
-                        if (!document.getElementById('openBtn')) {
-                            const openBtn = document.createElement('button');
-                            openBtn.className = 'btn btn-primary';
-                            openBtn.id = 'openBtn';
-                            openBtn.textContent = 'Open ComfyUI';
-                            openBtn.onclick = openComfyUI;
-                            actionsGrid.appendChild(openBtn);
-                        }
-                    }
-
+                    // ComfyUI is fully ready - update UI immediately
+                    const username = data.current_user || 'User';
+                    updateUIForRunningState(username);
                     return data;
                 } else if (data.running && !data.ready) {
                     // ComfyUI is running but not ready yet
@@ -1309,67 +1348,16 @@
                                     eventSourceClosed = true;
                                 }
 
-                                // Update status to show ready
-                                statusDot.className = 'status-dot';
-                                statusText.textContent = `Active • ${username}`;
-
                                 // Hide loading overlay if it's shown
                                 if (document.getElementById('loadingOverlay') && document.getElementById('loadingOverlay').classList.contains('active')) {
                                     showLoading(false);
                                 }
 
-                                // Re-enable and update the button
-                                primaryBtn.disabled = false;
-                                primaryBtn.textContent = 'Launch ComfyUI';
+                                // Use consolidated function to update UI
+                                updateUIForRunningState(username);
 
-                                // Hide Launch button and show action buttons
-                                primaryBtn.style.display = 'none';
-                                
-                                const actionsGrid = document.getElementById('actionsGrid');
-                                
-                                // Create Open button if it doesn't exist
-                                if (!document.getElementById('openBtn')) {
-                                    const openBtn = document.createElement('button');
-                                    openBtn.className = 'btn btn-primary';
-                                    openBtn.id = 'openBtn';
-                                    openBtn.textContent = 'Open ComfyUI';
-                                    openBtn.onclick = openComfyUI;
-                                    actionsGrid.appendChild(openBtn);
-                                }
-                                
-                                // Create secondary buttons if they don't exist
-                                if (!document.getElementById('restartBtn')) {
-                                    const restartBtn = document.createElement('button');
-                                    restartBtn.className = 'btn btn-secondary';
-                                    restartBtn.id = 'restartBtn';
-                                    restartBtn.textContent = 'Restart';
-                                    restartBtn.onclick = restartService;
-                                    actionsGrid.appendChild(restartBtn);
-                                }
-                                
-                                if (!document.getElementById('stopBtn')) {
-                                    const stopBtn = document.createElement('button');
-                                    stopBtn.className = 'btn btn-secondary';
-                                    stopBtn.id = 'stopBtn';
-                                    stopBtn.textContent = 'Stop';
-                                    stopBtn.onclick = stopComfyUI;
-                                    actionsGrid.appendChild(stopBtn);
-                                }
-                                
-                                // Update status
-                                const statusDot = document.getElementById('statusDot');
-                                const statusText = document.getElementById('statusText');
-                                statusDot.className = 'status-dot';
-                                statusText.textContent = `Active • ${username}`;
-                                
-                                // Disable user selection when running
-                                const usernameSelect = document.getElementById('username');
-                                if (usernameSelect) {
-                                    usernameSelect.disabled = true;
-                                }
-                                
                                 showToast('ComfyUI is ready! Click "Open ComfyUI" to access it.', 'success');
-                                
+
                                 // Update start time for uptime tracking
                                 if (statusData.start_time) {
                                     startTime = statusData.start_time * 1000;
@@ -1546,22 +1534,33 @@
             try {
                 const response = await fetch('/api/status');
                 const data = await response.json();
-                
+
                 // Update UI if status changed
                 const statusDot = document.getElementById('statusDot');
                 const statusText = document.getElementById('statusText');
-                
-                if (data.running) {
-                    statusDot.className = 'status-dot';
-                    statusText.textContent = data.current_user ? `Active • ${data.current_user}` : 'System Active';
+
+                if (data.running && data.ready) {
+                    // ComfyUI is running and ready - update UI
+                    const username = data.current_user || 'User';
+                    updateUIForRunningState(username);
+
                     // Update start time if we just started
                     if (data.start_time && !startTime) {
                         startTime = data.start_time * 1000;
                         updateUptime();
                     }
+                } else if (data.running && !data.ready) {
+                    // Running but not ready yet
+                    if (statusDot && statusText) {
+                        statusDot.className = 'status-dot initializing';
+                        statusText.textContent = 'Initializing • ComfyUI starting...';
+                    }
                 } else {
-                    statusDot.className = 'status-dot inactive';
-                    statusText.textContent = 'System Inactive';
+                    // Not running
+                    if (statusDot && statusText) {
+                        statusDot.className = 'status-dot inactive';
+                        statusText.textContent = 'System Inactive';
+                    }
                     startTime = null;
                 }
             } catch (error) {
