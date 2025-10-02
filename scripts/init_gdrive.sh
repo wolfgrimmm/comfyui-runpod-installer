@@ -93,13 +93,13 @@ EOF
         
         # Create folder structure
         echo "📁 Creating folder structure..."
-        rclone mkdir gdrive:ComfyUI-Output/outputs
+        rclone mkdir gdrive:ComfyUI-Output/output
         rclone mkdir gdrive:ComfyUI-Output/models
         rclone mkdir gdrive:ComfyUI-Output/workflows
-        
+
         # Create user folders
         for user in serhii marcin vlad ksenija max ivan; do
-            rclone mkdir gdrive:ComfyUI-Output/outputs/$user
+            rclone mkdir gdrive:ComfyUI-Output/output/$user
         done
         
         # Mark as configured

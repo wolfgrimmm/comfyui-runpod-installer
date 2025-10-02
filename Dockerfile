@@ -36,14 +36,6 @@ ENV CUDA_VERSION="12.9"
 # Create app directory
 RUN mkdir -p /app
 
-# Copy application files
-COPY scripts /app/scripts
-COPY config /app/config
-COPY ui /app/ui
-# NOTE: ComfyViewer removed - users can install ComfyUI-Gallery custom node instead
-RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
-RUN chmod +x /app/scripts/init_sync.sh 2>/dev/null || true
-
 # Create init script that sets up venv if needed
 RUN cat > /app/init.sh << 'EOF'
 #!/bin/bash
@@ -1370,6 +1362,14 @@ start_comfyui_with_fallback
 EOF
 
 RUN chmod +x /app/start_comfyui.sh
+
+# Copy application files (done last for better caching - changes to these don't invalidate earlier layers)
+COPY scripts /app/scripts
+COPY config /app/config
+COPY ui /app/ui
+# NOTE: ComfyViewer removed - users can install ComfyUI-Gallery custom node instead
+RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
+RUN chmod +x /app/scripts/init_sync.sh 2>/dev/null || true
 
 # ComfyViewer removed - users can install ComfyUI-Gallery custom node from ComfyUI Manager
 # ComfyUI-Gallery provides a better integrated gallery experience directly in ComfyUI
