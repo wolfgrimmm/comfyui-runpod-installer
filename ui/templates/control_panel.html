@@ -921,6 +921,7 @@
         let checkInterval = null;
         let checkAttempts = 0;
         let initializationStartTime = null;
+        let counterInterval = null;
 
         // Consolidated function to update UI when ComfyUI is running
         function updateUIForRunningState(username) {
@@ -930,8 +931,12 @@
             const statusDot = document.getElementById('statusDot');
             const statusText = document.getElementById('statusText');
 
-            // Clear initialization timer since we're now active
+            // Clear initialization timer and counter since we're now active
             initializationStartTime = null;
+            if (counterInterval) {
+                clearInterval(counterInterval);
+                counterInterval = null;
+            }
 
             // Update status
             if (statusDot && statusText) {
@@ -1082,8 +1087,6 @@
                     return data;
                 }
             } catch (error) {
-                console.error('Status check error:', error);
-
                 // Check if this is a JSON parse error during startup
                 const isJsonError = error.message && (
                     error.message.includes('JSON') ||
@@ -1091,23 +1094,26 @@
                     error.message.includes('SyntaxError')
                 );
 
-                // If ComfyUI is starting up and we get a JSON error, retry gracefully
-                if (isJsonError && updateUI) {
-                    const statusDot = document.getElementById('statusDot');
-                    const statusText = document.getElementById('statusText');
-                    statusDot.className = 'status-dot initializing';
-                    statusText.textContent = 'Initializing • Loading custom nodes...';
-
-                    // Retry after 3 seconds with exponential backoff
-                    setTimeout(() => checkComfyUIStatus(true), 3000);
+                // Silently handle JSON errors during startup (they're expected)
+                if (isJsonError) {
+                    // Don't log or show errors - this is normal during ComfyUI initialization
+                    if (updateUI) {
+                        // If we're actively checking during startup, retry gracefully
+                        setTimeout(() => checkComfyUIStatus(true), 3000);
+                    }
                     return { running: true, ready: false, initializing: true };
                 }
 
-                // For other errors, show error state
-                const statusDot = document.getElementById('statusDot');
-                const statusText = document.getElementById('statusText');
-                statusDot.className = 'status-dot error';
-                statusText.textContent = 'Error • Cannot check status';
+                // Only log non-JSON errors
+                console.error('Status check error:', error);
+
+                // For other errors, show error state only if we're updating UI
+                if (updateUI) {
+                    const statusDot = document.getElementById('statusDot');
+                    const statusText = document.getElementById('statusText');
+                    statusDot.className = 'status-dot error';
+                    statusText.textContent = 'Error • Cannot check status';
+                }
                 return { running: false, ready: false, error: error.message };
             }
         }
@@ -1131,6 +1137,23 @@
 
             // Start initialization timer
             initializationStartTime = Date.now();
+
+            // Start counter update interval (every 1 second for smooth updates)
+            counterInterval = setInterval(() => {
+                if (initializationStartTime) {
+                    const elapsed = Math.floor((Date.now() - initializationStartTime) / 1000);
+                    const minutes = Math.floor(elapsed / 60);
+                    const seconds = elapsed % 60;
+                    const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+
+                    const statusText = document.getElementById('statusText');
+                    const statusDot = document.getElementById('statusDot');
+                    if (statusText && statusDot) {
+                        statusDot.className = 'status-dot initializing';
+                        statusText.textContent = `Initializing • ${timeStr} elapsed`;
+                    }
+                }
+            }, 1000);
 
             // Optionally show loading overlay (make it less intrusive)
             // showLoading(true, 'Starting ComfyUI...', 'Initializing workspace');
@@ -1208,7 +1231,7 @@
                                 try {
                                     progress = JSON.parse(event.data);
                                 } catch (e) {
-                                    console.error('Failed to parse progress data:', e, 'Raw data:', event.data);
+                                    // Silently handle JSON parse errors (common during startup)
                                     // If we get invalid JSON, disable EventSource
                                     if (event.data && event.data.length > 0) {
                                         clearTimeout(connectionTimeout);
@@ -1538,6 +1561,12 @@
         
         // Check status periodically
         setInterval(async () => {
+            // Skip status checks if we're actively initializing (counter is running)
+            // This prevents overwriting the initialization status
+            if (initializationStartTime && counterInterval) {
+                return;
+            }
+
             try {
                 const response = await fetch('/api/status');
 
@@ -1595,9 +1624,15 @@
                     initializationStartTime = null;
                 }
             } catch (error) {
-                // Silently ignore JSON parse errors during startup/restart
-                // Only log if it's not a parse error
-                if (!error.message || !error.message.includes('JSON')) {
+                // Silently ignore JSON parse errors and unexpected token errors during startup/restart
+                const isJsonError = error.message && (
+                    error.message.includes('JSON') ||
+                    error.message.includes('Unexpected token') ||
+                    error.message.includes('SyntaxError')
+                );
+
+                // Only log non-JSON errors
+                if (!isJsonError) {
                     console.error('Status check failed:', error);
                 }
             }
