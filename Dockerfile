@@ -97,32 +97,61 @@ if [ -f "/workspace/.config/rclone/rclone.conf" ] && [ ! -f "/root/.config/rclon
 fi
 
 # Fix missing Shared Drive ID in rclone config (critical for Service Accounts)
-if [ -f "/root/.config/rclone/rclone.conf" ] && [ -f "/root/.config/rclone/service_account.json" ]; then
-    # Check if team_drive is empty in the config
-    if grep -q "^team_drive = *$" /root/.config/rclone/rclone.conf 2>/dev/null; then
-        echo "🔍 Shared Drive ID missing in config, detecting..."
+# Regenerate config completely to ensure it's always correct
+if [ -f "/root/.config/rclone/service_account.json" ]; then
+    echo "🔍 Checking Google Drive configuration..."
 
-        # Try to detect Shared Drive ID
-        SHARED_DRIVE_ID=$(rclone backend drives gdrive: 2>/dev/null | grep -oP '"id":\s*"\K[^"]+' | head -1)
+    # Detect Shared Drive ID first (need basic config for this)
+    if [ ! -f "/root/.config/rclone/rclone.conf" ]; then
+        # Create minimal config for detection
+        mkdir -p /root/.config/rclone
+        cat > /root/.config/rclone/rclone.conf << 'EOF'
+[gdrive]
+type = drive
+scope = drive
+service_account_file = /root/.config/rclone/service_account.json
+team_drive =
 
-        if [ -n "$SHARED_DRIVE_ID" ]; then
-            echo "✅ Found Shared Drive ID: $SHARED_DRIVE_ID"
+EOF
+    fi
 
-            # Update the config file with the Shared Drive ID
-            sed -i "s/^team_drive = *$/team_drive = $SHARED_DRIVE_ID/" /root/.config/rclone/rclone.conf
+    # Try to detect Shared Drive ID
+    SHARED_DRIVE_ID=$(rclone backend drives gdrive: 2>/dev/null | grep -oP '"id":\s*"\K[^"]+' | head -1)
 
-            # Also update workspace backup
-            if [ -f "/workspace/.config/rclone/rclone.conf" ]; then
-                sed -i "s/^team_drive = *$/team_drive = $SHARED_DRIVE_ID/" /workspace/.config/rclone/rclone.conf
-            else
-                mkdir -p /workspace/.config/rclone
-                cp /root/.config/rclone/rclone.conf /workspace/.config/rclone/
+    if [ -n "$SHARED_DRIVE_ID" ]; then
+        echo "✅ Found Shared Drive ID: $SHARED_DRIVE_ID"
+
+        # Regenerate complete config with correct team_drive
+        cat > /root/.config/rclone/rclone.conf << EOF
+[gdrive]
+type = drive
+scope = drive
+service_account_file = /root/.config/rclone/service_account.json
+team_drive = $SHARED_DRIVE_ID
+
+EOF
+
+        # Copy to workspace for persistence
+        mkdir -p /workspace/.config/rclone
+        cp /root/.config/rclone/rclone.conf /workspace/.config/rclone/rclone.conf
+
+        echo "✅ Shared Drive configuration updated"
+
+        # Test the configuration
+        if rclone lsd gdrive:ComfyUI-Output/ 2>/dev/null | grep -q "output"; then
+            echo "✅ Google Drive connection verified"
+
+            # Run initial sync if sync script exists
+            if [ -f "/app/scripts/sync_to_gdrive.sh" ]; then
+                echo "🔄 Running initial sync to Google Drive..."
+                bash /app/scripts/sync_to_gdrive.sh &
+                echo "✅ Background sync started"
             fi
-
-            echo "✅ Shared Drive ID configured"
         else
-            echo "⚠️  No Shared Drive found - using regular Drive (may have quota issues)"
+            echo "⚠️  Google Drive connection test failed"
         fi
+    else
+        echo "⚠️  No Shared Drive found - using regular Drive (may have quota issues)"
     fi
 fi
 
