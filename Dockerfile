@@ -105,14 +105,9 @@ if [ -f "/root/.config/rclone/service_account.json" ]; then
     if [ ! -f "/root/.config/rclone/rclone.conf" ]; then
         # Create minimal config for detection
         mkdir -p /root/.config/rclone
-        cat > /root/.config/rclone/rclone.conf << 'EOF'
-[gdrive]
-type = drive
-scope = drive
-service_account_file = /root/.config/rclone/service_account.json
-team_drive =
-
-EOF
+        printf '%s\n' '[gdrive]' 'type = drive' 'scope = drive' \
+            'service_account_file = /root/.config/rclone/service_account.json' \
+            'team_drive =' '' > /root/.config/rclone/rclone.conf
     fi
 
     # Try to detect Shared Drive ID
@@ -122,14 +117,9 @@ EOF
         echo "✅ Found Shared Drive ID: $SHARED_DRIVE_ID"
 
         # Regenerate complete config with correct team_drive
-        cat > /root/.config/rclone/rclone.conf << EOF
-[gdrive]
-type = drive
-scope = drive
-service_account_file = /root/.config/rclone/service_account.json
-team_drive = $SHARED_DRIVE_ID
-
-EOF
+        printf '%s\n' '[gdrive]' 'type = drive' 'scope = drive' \
+            'service_account_file = /root/.config/rclone/service_account.json' \
+            "team_drive = \$SHARED_DRIVE_ID" '' > /root/.config/rclone/rclone.conf
 
         # Copy to workspace for persistence
         mkdir -p /workspace/.config/rclone
