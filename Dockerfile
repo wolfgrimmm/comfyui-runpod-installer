@@ -96,6 +96,36 @@ if [ -f "/workspace/.config/rclone/rclone.conf" ] && [ ! -f "/root/.config/rclon
     echo "✅ Rclone config restored from workspace"
 fi
 
+# Fix missing Shared Drive ID in rclone config (critical for Service Accounts)
+if [ -f "/root/.config/rclone/rclone.conf" ] && [ -f "/root/.config/rclone/service_account.json" ]; then
+    # Check if team_drive is empty in the config
+    if grep -q "^team_drive = *$" /root/.config/rclone/rclone.conf 2>/dev/null; then
+        echo "🔍 Shared Drive ID missing in config, detecting..."
+
+        # Try to detect Shared Drive ID
+        SHARED_DRIVE_ID=$(rclone backend drives gdrive: 2>/dev/null | grep -oP '"id":\s*"\K[^"]+' | head -1)
+
+        if [ -n "$SHARED_DRIVE_ID" ]; then
+            echo "✅ Found Shared Drive ID: $SHARED_DRIVE_ID"
+
+            # Update the config file with the Shared Drive ID
+            sed -i "s/^team_drive = *$/team_drive = $SHARED_DRIVE_ID/" /root/.config/rclone/rclone.conf
+
+            # Also update workspace backup
+            if [ -f "/workspace/.config/rclone/rclone.conf" ]; then
+                sed -i "s/^team_drive = *$/team_drive = $SHARED_DRIVE_ID/" /workspace/.config/rclone/rclone.conf
+            else
+                mkdir -p /workspace/.config/rclone
+                cp /root/.config/rclone/rclone.conf /workspace/.config/rclone/
+            fi
+
+            echo "✅ Shared Drive ID configured"
+        else
+            echo "⚠️  No Shared Drive found - using regular Drive (may have quota issues)"
+        fi
+    fi
+fi
+
 # Configure git (only if not done)
 if ! git config --global --get user.email > /dev/null 2>&1; then
     git config --global --add safe.directory '*'
