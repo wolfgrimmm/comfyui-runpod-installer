@@ -4,11 +4,12 @@ FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 WORKDIR /
 
-# Install system dependencies including Python build tools and rclone
+# Install system dependencies including Python build tools, rclone, and ffmpeg
 RUN apt-get update && apt-get install -y \
     git wget curl psmisc lsof unzip \
     python3.11-dev python3.11-venv python3-pip \
     build-essential software-properties-common \
+    ffmpeg \
     && curl -O https://downloads.rclone.org/rclone-current-linux-amd64.deb \
     && dpkg -i rclone-current-linux-amd64.deb \
     && rm rclone-current-linux-amd64.deb \
@@ -1048,6 +1049,12 @@ elif [ -f "/app/scripts/init_sync.sh" ]; then
     fi
 else
     echo "⚠️ Sync initialization scripts not found"
+fi
+
+# Start sync monitor to restart sync if it dies
+if [ -f "/app/scripts/monitor_sync.sh" ]; then
+    echo "👁️ Starting sync monitor..."
+    /app/scripts/monitor_sync.sh > /tmp/sync_monitor.log 2>&1 &
 fi
 
 # Start Control Panel UI

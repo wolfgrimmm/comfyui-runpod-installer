@@ -68,8 +68,8 @@ if ! is_rclone_working && [ -n "$GOOGLE_SERVICE_ACCOUNT" ]; then
 type = drive
 scope = drive
 service_account_file = /root/.config/rclone/service_account.json
-team_drive =
-root_folder_id = 0ABFT2ECfnjL3Uk9PVA
+team_drive = 0ABFT2ECfnjL3Uk9PVA
+
 EOF
 
     # Auto-detect shared drive
@@ -101,8 +101,8 @@ if ! is_rclone_working && [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
 type = drive
 scope = drive
 service_account_file = /root/.config/rclone/service_account.json
-team_drive =
-root_folder_id = 0ABFT2ECfnjL3Uk9PVA
+team_drive = 0ABFT2ECfnjL3Uk9PVA
+
 EOF
 
     # Auto-detect shared drive
@@ -131,36 +131,69 @@ fi
 if ! is_sync_running; then
     echo "[ENSURE SYNC] Starting sync loop..."
 
-    # Use the permanent sync script if it exists
-    if [ -f "/workspace/.permanent_sync/sync_loop.sh" ]; then
-        /workspace/.permanent_sync/sync_loop.sh > /tmp/sync.log 2>&1 &
-    else
-        # Create a simple sync loop
-        cat > /tmp/emergency_sync.sh << 'SYNC'
+    # Create the sync script if it doesn't exist
+    if [ ! -f "/workspace/.permanent_sync/sync_loop.sh" ]; then
+        echo "[ENSURE SYNC] Creating sync_loop.sh..."
+        mkdir -p /workspace/.permanent_sync
+
+        cat > /workspace/.permanent_sync/sync_loop.sh << 'SYNC_SCRIPT'
 #!/bin/bash
+
+echo "[SYNC] Starting permanent sync loop..."
+
 while true; do
-    sleep 60
-    if [ -d /workspace/output ]; then
-        for user_dir in /workspace/output/*/; do
-            if [ -d "$user_dir" ]; then
-                username=$(basename "$user_dir")
-                rclone copy "$user_dir" "gdrive:ComfyUI-Output/output/$username" \
-                    --exclude "*.tmp" --exclude "*.partial" \
-                    --min-age 30s --transfers 2 2>&1
-            fi
-        done
-    fi
-done
-SYNC
-        chmod +x /tmp/emergency_sync.sh
-        /tmp/emergency_sync.sh > /tmp/sync.log 2>&1 &
+    # Ensure rclone is configured
+    if ! rclone lsd gdrive: >/dev/null 2>&1; then
+        echo "[SYNC] Rclone not working, attempting to restore..."
+
+        if [ -f /workspace/.permanent_sync/service_account.json ]; then
+            mkdir -p /root/.config/rclone
+            cp /workspace/.permanent_sync/service_account.json /root/.config/rclone/service_account.json
+            cp /workspace/.permanent_sync/rclone.conf /root/.config/rclone/rclone.conf 2>/dev/null || true
+        fi
+
+        if ! rclone lsd gdrive: >/dev/null 2>&1; then
+            echo "[SYNC] Still not working, waiting..."
+            sleep 60
+            continue
+        fi
     fi
 
+    # Perform the sync
+    if [ -d "/workspace/output" ]; then
+        FILE_COUNT=$(find /workspace/output -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) 2>/dev/null | wc -l)
+        if [ "$FILE_COUNT" -gt 0 ]; then
+            rclone copy "/workspace/output" "gdrive:ComfyUI-Output/output" \
+                --exclude "*.tmp" --exclude "*.partial" \
+                --min-age 30s --ignore-existing \
+                --transfers 2 --checkers 2 \
+                --no-update-modtime >> /tmp/rclone_sync.log 2>&1
+        fi
+    fi
+
+    # Sync input and workflows
+    [ -d "/workspace/input" ] && \
+        rclone copy "/workspace/input" "gdrive:ComfyUI-Output/input" \
+            --transfers 2 --ignore-existing --no-update-modtime >/dev/null 2>&1
+
+    [ -d "/workspace/workflows" ] && \
+        rclone copy "/workspace/workflows" "gdrive:ComfyUI-Output/workflows" \
+            --transfers 2 --no-update-modtime >/dev/null 2>&1
+
+    sleep 60
+done
+SYNC_SCRIPT
+        chmod +x /workspace/.permanent_sync/sync_loop.sh
+    fi
+
+    # Start the sync loop
+    /workspace/.permanent_sync/sync_loop.sh > /tmp/sync.log 2>&1 &
     SYNC_PID=$!
     sleep 2
 
     if kill -0 $SYNC_PID 2>/dev/null; then
         echo "[ENSURE SYNC] ✅ Sync started (PID: $SYNC_PID)"
+        echo $SYNC_PID > /workspace/.permanent_sync/sync.pid
     else
         echo "[ENSURE SYNC] ❌ Failed to start sync"
         exit 1
