@@ -1371,11 +1371,19 @@
 
                             if (statusData.running && statusData.ready) {
                                 clearInterval(checkInterval);
+                                checkInterval = null;
 
                                 // Close EventSource if still open
                                 if (eventSource && !eventSourceClosed) {
                                     eventSource.close();
                                     eventSourceClosed = true;
+                                }
+
+                                // Clear initialization timer and counter
+                                initializationStartTime = null;
+                                if (counterInterval) {
+                                    clearInterval(counterInterval);
+                                    counterInterval = null;
                                 }
 
                                 // Hide loading overlay if it's shown
@@ -1561,12 +1569,6 @@
         
         // Check status periodically
         setInterval(async () => {
-            // Skip status checks if we're actively initializing (counter is running)
-            // This prevents overwriting the initialization status
-            if (initializationStartTime && counterInterval) {
-                return;
-            }
-
             try {
                 const response = await fetch('/api/status');
 
@@ -1585,12 +1587,18 @@
                 const statusText = document.getElementById('statusText');
 
                 if (data.running && data.ready) {
-                    // ComfyUI is running and ready - update UI
+                    // ComfyUI is running and ready - update UI immediately
                     const username = data.current_user || 'User';
-                    updateUIForRunningState(username);
 
-                    // Clear initialization timer
+                    // Clear ALL initialization timers first
                     initializationStartTime = null;
+                    if (counterInterval) {
+                        clearInterval(counterInterval);
+                        counterInterval = null;
+                    }
+
+                    // Update UI
+                    updateUIForRunningState(username);
 
                     // Update start time if we just started
                     if (data.start_time && !startTime) {
@@ -1598,8 +1606,9 @@
                         updateUptime();
                     }
                 } else if (data.running && !data.ready) {
-                    // Running but not ready yet - show elapsed time
-                    if (statusDot && statusText) {
+                    // Running but not ready yet - only update if not already initializing
+                    // This prevents overwriting the detailed progress messages
+                    if (!counterInterval && statusDot && statusText) {
                         // Start timer if not already started
                         if (!initializationStartTime) {
                             initializationStartTime = Date.now();
@@ -1622,6 +1631,10 @@
                     }
                     startTime = null;
                     initializationStartTime = null;
+                    if (counterInterval) {
+                        clearInterval(counterInterval);
+                        counterInterval = null;
+                    }
                 }
             } catch (error) {
                 // Silently ignore JSON parse errors and unexpected token errors during startup/restart
@@ -1636,7 +1649,7 @@
                     console.error('Status check failed:', error);
                 }
             }
-        }, 5000);
+        }, 3000);
         
         // Store current user globally for Google Drive sync
         window.currentUser = {% if current_user %}'{{ current_user }}'{% else %}null{% endif %};
