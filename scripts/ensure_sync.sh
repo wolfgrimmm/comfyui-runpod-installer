@@ -63,23 +63,29 @@ if ! is_rclone_working && [ -n "$GOOGLE_SERVICE_ACCOUNT" ]; then
     echo "$GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
     chmod 600 /root/.config/rclone/service_account.json
 
+    # Create initial config without team_drive to enable auto-detection
     cat > /root/.config/rclone/rclone.conf << 'EOF'
 [gdrive]
 type = drive
 scope = drive
 service_account_file = /root/.config/rclone/service_account.json
-team_drive = 0ABFT2ECfnjL3Uk9PVA
+team_drive =
 
 EOF
 
-    # Auto-detect shared drive
+    # Auto-detect shared drive (this runs every time)
+    echo "[ENSURE SYNC] Auto-detecting Shared Drive..."
     DRIVES_JSON=$(rclone backend drives gdrive: 2>/dev/null || echo "[]")
     if [ "$DRIVES_JSON" != "[]" ] && [ -n "$DRIVES_JSON" ]; then
         TEAM_DRIVE_ID=$(echo "$DRIVES_JSON" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
         if [ -n "$TEAM_DRIVE_ID" ]; then
-            echo "[ENSURE SYNC] Found shared drive: $TEAM_DRIVE_ID"
+            echo "[ENSURE SYNC] Found Shared Drive: $TEAM_DRIVE_ID"
             sed -i "s/team_drive =$/team_drive = $TEAM_DRIVE_ID/" /root/.config/rclone/rclone.conf
+        else
+            echo "[ENSURE SYNC] Warning: Could not extract Shared Drive ID"
         fi
+    else
+        echo "[ENSURE SYNC] Warning: No Shared Drives found"
     fi
 
     # Save for next time
@@ -96,23 +102,29 @@ if ! is_rclone_working && [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
     echo "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
     chmod 600 /root/.config/rclone/service_account.json
 
+    # Create initial config without team_drive to enable auto-detection
     cat > /root/.config/rclone/rclone.conf << 'EOF'
 [gdrive]
 type = drive
 scope = drive
 service_account_file = /root/.config/rclone/service_account.json
-team_drive = 0ABFT2ECfnjL3Uk9PVA
+team_drive =
 
 EOF
 
-    # Auto-detect shared drive
+    # Auto-detect shared drive (this runs every time)
+    echo "[ENSURE SYNC] Auto-detecting Shared Drive..."
     DRIVES_JSON=$(rclone backend drives gdrive: 2>/dev/null || echo "[]")
     if [ "$DRIVES_JSON" != "[]" ] && [ -n "$DRIVES_JSON" ]; then
         TEAM_DRIVE_ID=$(echo "$DRIVES_JSON" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
         if [ -n "$TEAM_DRIVE_ID" ]; then
-            echo "[ENSURE SYNC] Found shared drive: $TEAM_DRIVE_ID"
+            echo "[ENSURE SYNC] Found Shared Drive: $TEAM_DRIVE_ID"
             sed -i "s/team_drive =$/team_drive = $TEAM_DRIVE_ID/" /root/.config/rclone/rclone.conf
+        else
+            echo "[ENSURE SYNC] Warning: Could not extract Shared Drive ID"
         fi
+    else
+        echo "[ENSURE SYNC] Warning: No Shared Drives found"
     fi
 
     # Save for next time
