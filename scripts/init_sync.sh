@@ -261,11 +261,10 @@ EOF
         if [ "$FILE_COUNT" -gt 0 ]; then
             echo "[SYNC] Syncing $FILE_COUNT files to Google Drive..."
 
-            rclone copy "/workspace/output" "gdrive:ComfyUI-Output/output" \
+            rclone sync "/workspace/output" "gdrive:ComfyUI-Output/output" \
                 --exclude "*.tmp" \
                 --exclude "*.partial" \
                 --min-age 30s \
-                --ignore-existing \
                 --transfers 2 \
                 --checkers 2 \
                 --no-update-modtime >> /tmp/rclone_sync.log 2>&1

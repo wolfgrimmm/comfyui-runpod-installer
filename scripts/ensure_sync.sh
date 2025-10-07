@@ -175,9 +175,9 @@ while true; do
     if [ -d "/workspace/output" ]; then
         FILE_COUNT=$(find /workspace/output -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) 2>/dev/null | wc -l)
         if [ "$FILE_COUNT" -gt 0 ]; then
-            rclone copy "/workspace/output" "gdrive:ComfyUI-Output/output" \
+            rclone sync "/workspace/output" "gdrive:ComfyUI-Output/output" \
                 --exclude "*.tmp" --exclude "*.partial" \
-                --min-age 30s --ignore-existing \
+                --min-age 30s \
                 --transfers 2 --checkers 2 \
                 --no-update-modtime >> /tmp/rclone_sync.log 2>&1
         fi

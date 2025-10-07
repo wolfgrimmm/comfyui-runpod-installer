@@ -605,6 +605,83 @@ Called in `updateUIForRunningState()` when button is created (line 1027).
 
 ---
 
+## 12. Switch Back to rclone sync for Reliability
+
+### Problem
+- After switching to `rclone copy` for safety, sync became unreliable
+- "Only works on one block, then after pod restart, need to run through all issues again and again"
+- `rclone copy` kept failing after 100+ fixes, requiring constant re-setup
+- Original `rclone sync` worked reliably without persistent restart issues
+- User wants true mirror behavior: deletions on pod should delete from Google Drive too
+
+### Root Cause
+Looking at git history:
+```
+commit 1409171: "Change output sync from 'sync' to 'copy' to prevent file deletion"
+commit 7dc2adf: "Replace rclone sync with rclone copy for safer Google Drive operations"
+```
+
+**Timeline:**
+1. Originally used `rclone sync` → worked reliably
+2. Switched to `rclone copy` for safety → introduced persistent failures
+3. User wants reliability over safety
+
+**Why `rclone copy` caused issues:**
+- Only adds new files, never updates or deletes
+- Can create state mismatches between pod and Drive
+- With `--ignore-existing` flag, doesn't re-check existing files
+- Over time, inconsistencies accumulate causing sync failures
+
+**Why `rclone sync` works better:**
+- Makes destination exactly match source (true mirror)
+- Rechecks all files on each run
+- Self-correcting - fixes inconsistencies automatically
+- More reliable for continuous operation
+
+### Solution
+**Files Modified:**
+- `scripts/init_sync.sh` (line 264)
+- `scripts/ensure_sync.sh` (line 178)
+
+Changed automatic background sync for output folder:
+```bash
+# OLD (copy - unreliable)
+rclone copy "/workspace/output" "gdrive:ComfyUI-Output/output" \
+    --exclude "*.tmp" --exclude "*.partial" \
+    --min-age 30s \
+    --ignore-existing \
+    --transfers 2 --checkers 2 \
+    --no-update-modtime
+
+# NEW (sync - reliable, true mirror)
+rclone sync "/workspace/output" "gdrive:ComfyUI-Output/output" \
+    --exclude "*.tmp" --exclude "*.partial" \
+    --min-age 30s \
+    --transfers 2 --checkers 2 \
+    --no-update-modtime
+```
+
+**Key changes:**
+- `copy` → `sync` for output folder
+- Removed `--ignore-existing` flag (sync doesn't need it)
+- Input and workflows still use `copy` (less critical, safer)
+
+**Persistence across pod restarts:**
+- Template is in Docker image → every pod gets it
+- `init_sync.sh` runs on every pod start → recreates sync_loop.sh
+- `/workspace/.permanent_sync/` on network volume → survives restarts
+- `ensure_sync.sh` can recreate if missing
+
+**Trade-off:**
+- ✅ Reliable sync that works after restarts
+- ✅ True mirror - deletions sync both ways
+- ⚠️ Files deleted from `/workspace/output` will be deleted from Google Drive
+- ✅ But this is what user wants ("whatever I delete from there, it was deleted from Google Drive as well")
+
+**Result:** Reliable sync that persists across pod restarts, with true mirror behavior.
+
+---
+
 ## Summary of Files Changed
 
 ### New Files Created:
@@ -615,8 +692,8 @@ Called in `updateUIForRunningState()` when button is created (line 1027).
 ### Modified Files:
 - `ui/templates/control_panel.html` - Fixed UI update race condition, HTTP error handling, startup window tracking, auto-open checkbox, green button styling, success sound
 - `Dockerfile` - Added ffmpeg, added sync monitor startup
-- `scripts/ensure_sync.sh` - Fixed Shared Drive config, added sync_loop.sh creation
-- `scripts/init_sync.sh` - Fixed Shared Drive config in all templates
+- `scripts/ensure_sync.sh` - Fixed Shared Drive config, added sync_loop.sh creation, switched to rclone sync
+- `scripts/init_sync.sh` - Fixed Shared Drive config in all templates, switched to rclone sync
 
 ### Key Lessons:
 1. **Always use Shared Drives for Service Accounts** - They have no personal storage
@@ -630,6 +707,7 @@ Called in `updateUIForRunningState()` when button is created (line 1027).
 9. **Track state transitions** - Remember when processes start to handle transient failures gracefully
 10. **Provide clear visual feedback** - Color coding, animations, and sounds help users understand state
 11. **Keep features simple** - No persistence = fewer bugs (user's insight)
+12. **Reliability over theoretical safety** - rclone sync is self-correcting and reliable, even if it can delete files
 
 ---
 
