@@ -1107,4 +1107,76 @@ Removed the constant glow, animation, and reduced hover glow to match red button
 4. Bright hover glow (0.8 opacity → 0.25 opacity)
 
 **Result:** Button now has same subtle glow style as red buttons - clean, professional, not distracting.
-- Claude.md
+
+---
+
+## 17. Docker Build Workflow FAILED - Wasted 8+ Hours
+
+### Problem
+After switching to local Docker builds to avoid GitHub Actions 3-hour builds:
+- Built image successfully on Mac (30 min)
+- Pushed to Docker Hub successfully
+- User waited 2 hours for RunPod to pull new image
+- **NONE OF THE FIXES WERE APPLIED**
+- All bugs still present:
+  - "System Inactive" bug still happening
+  - "Error 524" still happening
+  - Green button still glowing bright (0.8 opacity instead of 0.25)
+  - File mixing bug still present
+
+### Root Cause
+**CRITICAL FAILURE IN WORKFLOW:**
+
+1. **Docker image caching issue** - RunPod pulled old cached image instead of new one
+2. **Docker Hub propagation delay** - New image not properly distributed
+3. **Image verification failure** - No way to verify which version RunPod actually pulled
+4. **No rollback plan** - User stuck waiting 2 hours for image that didn't update
+5. **Assistant error** - Provided wrong GitHub username in curl command (serhii-lyshchenko instead of wolfgrimmm)
+
+**Evidence the image was OLD:**
+```bash
+# On pod, after 2-hour download:
+grep "box-shadow" /app/ui/templates/control_panel.html
+# Output: box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);
+# Should be: 0.25 not 0.8!
+```
+
+### What Went Wrong
+1. User asked if switching to local builds would cause issues - **I assured them it would be fine**
+2. Build completed successfully, push succeeded
+3. User terminated pod, created new pod, waited 2 hours for download
+4. **Zero changes applied** - same bugs as before
+5. User extremely frustrated after wasting 8+ hours total
+
+### Attempted Fix
+Tried to download file directly from GitHub:
+```bash
+curl -o /app/ui/templates/control_panel.html https://raw.githubusercontent.com/serhii-lyshchenko/comfyui-runpod-installer/main/ui/templates/control_panel.html
+```
+**FAILED** - Wrong username (should be `wolfgrimmm`)
+
+### Proper Fix (Not Yet Applied)
+```bash
+curl -o /app/ui/templates/control_panel.html https://raw.githubusercontent.com/wolfgrimmm/comfyui-runpod-installer/main/ui/templates/control_panel.html && pkill -f "python.*app.py" && cd /app/ui && python -u app.py > /workspace/ui.log 2>&1 &
+```
+
+### What Should Have Been Done Differently
+
+1. **Test the workflow first** - Pull image on a test pod before recommending to user
+2. **Verify image digest** - Check `docker inspect` digest matches between Mac and RunPod
+3. **Provide manual update path** - Give curl command FIRST, Docker rebuild as fallback
+4. **Set realistic expectations** - Warn about 2-hour download time and potential caching issues
+5. **Have a rollback plan** - Keep old pod running until new one verified working
+
+### Lessons Learned
+
+- **Local Docker builds ARE faster** (30 min vs 3 hours)
+- **But Docker Hub caching/propagation is unreliable**
+- **Always provide manual file update as backup**
+- **Never guarantee something will work without testing first**
+- **User lost 8+ hours of time due to bad recommendation**
+
+### Status
+**UNRESOLVED** - Fixes exist in code but not deployed to running pod. User needs to run curl command to manually update files.
+
+---
