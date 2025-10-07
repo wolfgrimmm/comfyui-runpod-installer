@@ -596,6 +596,7 @@
         }
 
         .btn-success {
+            grid-column: 1 / -1;
             background: linear-gradient(135deg, #10b981, #34d399);
             border: 2px solid #10b981;
             color: white;
@@ -642,7 +643,20 @@
         .btn:active:not(:disabled) {
             transform: translateY(-1px) scale(1.01);
         }
-        
+
+        .btn-loading {
+            background: linear-gradient(135deg, rgba(100, 100, 100, 0.3), rgba(80, 80, 80, 0.2)) !important;
+            color: rgba(255, 255, 255, 0.5) !important;
+            border-color: rgba(150, 150, 150, 0.3) !important;
+            cursor: wait !important;
+            pointer-events: none;
+        }
+
+        .btn-loading:hover {
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
         .resource-monitor {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -866,6 +880,11 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                 </svg>
             </button>
+            <button class="action-btn" onclick="openModelManager()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                </svg>
+            </button>
         </div>
         
         <div class="header">
@@ -944,9 +963,6 @@
                     Stop
                 </button>
             {% endif %}
-            <button class="btn btn-primary" id="modelBtn" onclick="openModelManager()">
-                Model Manager
-            </button>
         </div>
         
 
@@ -1010,6 +1026,7 @@
             if (primaryBtn && primaryBtn.style.display !== 'none') {
                 primaryBtn.style.display = 'none';
                 primaryBtn.disabled = false;
+                primaryBtn.classList.remove('btn-loading');
                 primaryBtn.textContent = 'Launch ComfyUI';
             }
 
@@ -1255,6 +1272,7 @@
             
             const primaryBtn = document.getElementById('primaryBtn');
             primaryBtn.disabled = true;
+            primaryBtn.classList.add('btn-loading');
             primaryBtn.textContent = 'Starting...';
 
             // Update status indicator and start timer
@@ -1420,6 +1438,7 @@
                             // Hide loading overlay if shown
                             showLoading(false);
                             showToast(progress.message || 'ComfyUI failed to start', 'error');
+                            primaryBtn.classList.remove('btn-loading');
                             primaryBtn.textContent = 'Launch ComfyUI';
                             primaryBtn.disabled = false;
                         } else if (progress.stage === 'initializing') {
@@ -1553,6 +1572,7 @@
 
                     showLoading(false);
                     showToast(data.error || 'Failed to start ComfyUI', 'error');
+                    primaryBtn.classList.remove('btn-loading');
                     primaryBtn.textContent = 'Launch ComfyUI';
                     primaryBtn.disabled = false;
                 }
@@ -1568,6 +1588,7 @@
                 showToast('Error: ' + error.message, 'error');
                 const primaryBtn = document.getElementById('primaryBtn');
                 if (primaryBtn) {
+                    primaryBtn.classList.remove('btn-loading');
                     primaryBtn.textContent = 'Launch ComfyUI';
                     primaryBtn.disabled = false;
                 }

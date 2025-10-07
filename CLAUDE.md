@@ -682,6 +682,92 @@ rclone sync "/workspace/output" "gdrive:ComfyUI-Output/output" \
 
 ---
 
+## 13. UI Layout Improvements: Model Manager Icon, Loading State, Button Scaling
+
+### Problem
+User reported 3 UI issues based on screenshot:
+1. **Large MODEL MANAGER button** - Takes up full width at top of actions grid, too prominent
+2. **Launch button needs loading state** - Should show gray tint while ComfyUI is initializing
+3. **Open ComfyUI button scaling wrong** - Button appears improperly sized in grid layout
+
+### User Requirements
+- Move Model Manager to top-left corner as small icon (like JupyterLab/Docs icons)
+- Use SVG illustration icons, not emojis (matching existing icon style)
+- Gray out Launch button during loading
+- Fix Open ComfyUI button to scale properly in grid
+
+### Solution
+**Files Modified:** `ui/templates/control_panel.html`
+
+#### 1. Added Model Manager Icon to Quick Actions
+Moved to `.quick-actions` section with other utility buttons (lines 869-873):
+```html
+<button class="action-btn" onclick="openModelManager()">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+    </svg>
+</button>
+```
+- Uses cube/package SVG icon (represents models)
+- Same styling as JupyterLab and Docs buttons
+- Small, subtle, always visible in top-left
+
+#### 2. Removed Large Model Manager Button
+Deleted from actions grid (previously at line 947-949):
+```html
+<!-- REMOVED -->
+<button class="btn btn-primary" id="modelBtn" onclick="openModelManager()">
+    Model Manager
+</button>
+```
+
+#### 3. Added Gray Loading State for Launch Button
+CSS for loading state (lines 646-657):
+```css
+.btn-loading {
+    background: linear-gradient(135deg, rgba(100, 100, 100, 0.3), rgba(80, 80, 80, 0.2)) !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    border-color: rgba(150, 150, 150, 0.3) !important;
+    cursor: wait !important;
+    pointer-events: none;
+}
+
+.btn-loading:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+```
+
+JavaScript to apply/remove class (lines 1273, 1028, 1440, 1574, 1590):
+```javascript
+// When starting
+primaryBtn.classList.add('btn-loading');
+
+// When ready/error/cancelled
+primaryBtn.classList.remove('btn-loading');
+```
+
+#### 4. Fixed Open ComfyUI Button Scaling
+Added `grid-column: 1 / -1` to `.btn-success` (line 599):
+```css
+.btn-success {
+    grid-column: 1 / -1;  /* Span full width like Launch button */
+    background: linear-gradient(135deg, #10b981, #34d399);
+    /* ... */
+}
+```
+
+**Why it was broken:**
+- `.btn-primary` had `grid-column: 1 / -1` (full width)
+- `.btn-success` didn't have this property
+- Caused green button to only span 1 column in 2-column grid
+- Now both buttons span full width properly
+
+**Result:** Cleaner UI with Model Manager as subtle icon, visual loading feedback, and proper button sizing.
+
+---
+
 ## Summary of Files Changed
 
 ### New Files Created:
@@ -690,7 +776,7 @@ rclone sync "/workspace/output" "gdrive:ComfyUI-Output/output" \
 - `scripts/update_ui_fix.sh` - Script to update UI on running pods
 
 ### Modified Files:
-- `ui/templates/control_panel.html` - Fixed UI update race condition, HTTP error handling, startup window tracking, auto-open checkbox, green button styling, success sound
+- `ui/templates/control_panel.html` - Fixed UI update race condition, HTTP error handling, startup window tracking, auto-open checkbox, green button styling, success sound, Model Manager icon, loading state, button scaling
 - `Dockerfile` - Added ffmpeg, added sync monitor startup
 - `scripts/ensure_sync.sh` - Fixed Shared Drive config, added sync_loop.sh creation, switched to rclone sync
 - `scripts/init_sync.sh` - Fixed Shared Drive config in all templates, switched to rclone sync
