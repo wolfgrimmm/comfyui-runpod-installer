@@ -1,15 +1,17 @@
 name: Docker Build and Push
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'Dockerfile'
-      - 'scripts/**'
-      - 'ui/**'
-      - 'config/**'
-      - '.github/workflows/build.yml'
+  # Disabled auto-build on push - build locally instead (faster: 30min vs 3hrs)
+  # To manually trigger a build, go to Actions tab and click "Run workflow"
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'Dockerfile'
+  #     - 'scripts/**'
+  #     - 'ui/**'
+  #     - 'config/**'
+  #     - '.github/workflows/build.yml'
   workflow_dispatch:
     inputs:
       force_rebuild:
