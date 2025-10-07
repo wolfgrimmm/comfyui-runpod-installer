@@ -236,6 +236,375 @@ fi
 
 ---
 
+## 7. Shared Drive ID Auto-Detection Not Working on Pod Restart
+
+### Problem
+- Hardcoded wrong Shared Drive ID in scripts
+- Auto-detection code existed but was bypassed
+- After pod restart, sync would fail with quota errors again
+- ID `0ABFT2ECfnjL3Uk9PVA` was wrong, correct is `0AGZhU5X0GM32Uk9PVA`
+
+### Root Cause
+- Scripts had hardcoded `team_drive = 0ABFT2ECfnjL3Uk9PVA` in config template
+- Auto-detection tried to replace `team_drive =` but value was already set
+- The `sed` pattern `s/team_drive =$/` only matches empty values
+- Auto-detection would run but fail to update the wrong ID
+
+### Solution
+**Files Modified:**
+- `scripts/ensure_sync.sh` - Use empty `team_drive =` then auto-detect
+- `scripts/init_sync.sh` - Use empty `team_drive =` then auto-detect
+
+**Before (WRONG):**
+```bash
+cat > /root/.config/rclone/rclone.conf << 'EOF'
+team_drive = 0ABFT2ECfnjL3Uk9PVA  # Hardcoded wrong ID
+EOF
+
+# Auto-detect (but sed won't match because value already set)
+sed -i "s/team_drive =$/team_drive = $TEAM_DRIVE_ID/"
+```
+
+**After (CORRECT):**
+```bash
+cat > /root/.config/rclone/rclone.conf << 'EOF'
+team_drive =  # Empty, ready for auto-detection
+EOF
+
+# Auto-detect (sed will match and fill in correct ID)
+TEAM_DRIVE_ID=$(rclone backend drives gdrive: 2>/dev/null | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
+sed -i "s/team_drive =$/team_drive = $TEAM_DRIVE_ID/"
+```
+
+**Result:** Shared Drive ID is auto-detected correctly on every pod restart.
+
+---
+
+## 8. Symlink Already Exists Error on ComfyUI Start
+
+### Problem
+- ComfyUI fails to start with error: `FileExistsError: [Errno 17] File exists: '/workspace/workflows/serhii' -> '/workspace/ComfyUI/user/workflows'`
+- Happens when trying to start ComfyUI after pod restart
+- Control panel shows error 500
+
+### Root Cause
+- `app.py` tries to create symlink without checking if it exists first
+- Symlink from previous session still exists
+- `os.symlink()` fails if target already exists
+
+### Solution
+**Quick Fix (Manual):**
+```bash
+rm -rf /workspace/ComfyUI/user/workflows
+# Then restart ComfyUI from control panel
+```
+
+**Root Issue:**
+The code already handles symlinks (line 253-254) but the error still occurs. This suggests:
+1. The path exists but is not detected as a symlink or directory
+2. Possible file (not dir/symlink) at that location
+3. Race condition between removal and creation
+
+**Better Fix:** Add force removal before symlink creation
+```python
+# ui/app.py line 263-265
+# Remove any existing file/symlink/dir with -rf to be safe
+import subprocess
+subprocess.run(['rm', '-rf', comfy_input], check=False)
+subprocess.run(['rm', '-rf', comfy_output], check=False)
+subprocess.run(['rm', '-rf', comfy_workflows], check=False)
+
+os.symlink(user_input, comfy_input)
+os.symlink(user_output, comfy_output)
+os.symlink(user_workflows, comfy_workflows)
+```
+
+**Status:** Quick fix provided, permanent fix needed in app.py
+
+---
+
+## 9. Backend Errors (524 Timeout) Not Shown to User
+
+### Problem
+- When backend times out or fails (HTTP 524, 500, etc.), user gets no error message
+- Button stays stuck on "Starting..." forever with no feedback
+- User doesn't know if ComfyUI is actually starting or if backend is down
+- Initial report was about "Unexpected token" errors, but real issue is errors being HIDDEN
+
+### Root Cause
+- Issue was actually that errors from `/api/start` endpoint were NOT being shown
+- When backend times out (HTTP 524) or returns error, user gets no feedback
+- Original attempt to silence JSON errors was too aggressive
+- Need to distinguish between:
+  - Real errors from start command → MUST show to user
+  - Expected errors from background status checks → can be silent
+
+### Solution
+**Files Modified:** `ui/templates/control_panel.html`
+
+**1. Check response validity BEFORE parsing JSON** (lines 1170-1174):
+```javascript
+const response = await fetch('/api/start', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username: username})
+});
+
+// Check if response is valid BEFORE trying to parse JSON
+// This catches HTTP errors (524, 500, etc.) before JSON parsing
+if (!response.ok) {
+    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+}
+
+const data = await response.json();
+```
+
+**2. Always show errors from start request** (lines 1432-1447):
+```javascript
+} catch (error) {
+    // Don't silently ignore errors from the start request - show them to user
+    // (Silent handling is only for background status checks, not the initial start command)
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    statusDot.className = 'status-dot error';
+    statusText.textContent = `Error • ${error.message}`;
+
+    showLoading(false);
+    showToast('Error: ' + error.message, 'error');
+    // ... [reset button state]
+}
+```
+
+**Why this works:**
+- HTTP errors (524, 500) → caught by `!response.ok` → shown with clear message
+- HTML error pages → caught by JSON parse → shown with clear message
+- Background status checks still have silent error handling (separate code paths)
+- User gets immediate feedback when start command fails
+
+**Result:** Real errors are shown to user, no more silent failures when backend is down.
+
+---
+
+## 10. Status Shows "System Inactive" During Initialization
+
+### Problem
+- Control panel status indicator shows "System Inactive" during ComfyUI startup
+- Happens even though ComfyUI is actively initializing in the background
+- Status flickers between "Initializing" and "System Inactive"
+- Initialization countdown timer starts but then dies after a few seconds
+- Confusing for users - looks like ComfyUI failed when it's actually loading fine
+
+### Root Cause
+- Periodic status check (every 3 seconds) calls `/api/status` endpoint
+- During startup, endpoint sometimes:
+  - Returns errors (Flask not ready yet)
+  - Returns `data.running = false` (race condition - ComfyUI process starting but not detected yet)
+  - Returns HTML instead of JSON (causes parse errors)
+- When this happens, the periodic check immediately sets status to "System Inactive" (line 1644-1649)
+- **The check didn't remember that we JUST started ComfyUI** - it treated temporary API failures as "not running"
+- No concept of "startup window" - expected time for ComfyUI to initialize
+
+### Solution
+**Files Modified:** `ui/templates/control_panel.html`
+
+1. **Added startup tracking variable** (line 925):
+```javascript
+let lastStartTime = null;  // Track when ComfyUI was last started
+```
+
+2. **Set tracking when starting ComfyUI** (line 1173-1174):
+```javascript
+if (data.success) {
+    // Track when we started ComfyUI to prevent premature "System Inactive" status
+    lastStartTime = Date.now();
+    // ...
+}
+```
+
+3. **Updated periodic check to respect startup window** (lines 1644-1669):
+```javascript
+} else {
+    // Not running - but check if we recently started ComfyUI
+    const STARTUP_WINDOW = 5 * 60 * 1000; // 5 minutes in milliseconds
+    const withinStartupWindow = lastStartTime && (Date.now() - lastStartTime < STARTUP_WINDOW);
+
+    if (withinStartupWindow) {
+        // We recently started ComfyUI - keep showing "Initializing" even if API says not running
+        // This prevents premature "System Inactive" during normal startup delays
+        if (statusDot && statusText) {
+            const elapsed = Math.floor((Date.now() - lastStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+
+            statusDot.className = 'status-dot initializing';
+            statusText.textContent = `Initializing • ${timeStr} elapsed`;
+        }
+    } else {
+        // Not within startup window - actually inactive
+        if (statusDot && statusText) {
+            statusDot.className = 'status-dot inactive';
+            statusText.textContent = 'System Inactive';
+        }
+        // Clear tracking variables since we're actually inactive
+        lastStartTime = null;
+    }
+}
+```
+
+4. **Clear tracking when ComfyUI is ready** (line 1613):
+```javascript
+// Clear ALL initialization timers and tracking first
+initializationStartTime = null;
+lastStartTime = null;  // ComfyUI is ready, no longer need startup window
+```
+
+**How it works:**
+- When user clicks "Launch ComfyUI", we record `lastStartTime`
+- For the next 5 minutes, even if status API fails or returns "not running", we keep showing "Initializing"
+- After 5 minutes without successful startup, we accept that it's actually inactive
+- Once ComfyUI is fully ready, we clear `lastStartTime`
+
+**Result:** Initialization countdown continues reliably, no premature "System Inactive" status.
+
+---
+
+## 11. UX Improvements: Auto-Open, Green Button, and Success Sound
+
+### Problem
+- After ComfyUI finishes initializing, user needs to manually click "Open ComfyUI" button
+- "Open ComfyUI" button looks the same as other buttons - not clear that ComfyUI is actually ready
+- No audio feedback when initialization completes - user might not notice if tab is in background
+
+### User Requirements
+- Checkbox to auto-open ComfyUI when ready (simple, no persistence to avoid complexity/bugs)
+- Green "Open ComfyUI" button matching the animated status dot color
+- Simple beep/ding sound when ComfyUI is ready
+- Sound only plays if tab is active (no background notifications)
+
+### Solution
+**Files Modified:** `ui/templates/control_panel.html`
+
+#### 1. Auto-Open Checkbox
+Added checkbox between username dropdown and action buttons (lines 870-875):
+```html
+<div class="auto-open-section">
+    <label class="checkbox-label">
+        <input type="checkbox" id="autoOpenCheckbox" class="checkbox-input">
+        <span class="checkbox-text">Auto-open ComfyUI when ready</span>
+    </label>
+</div>
+```
+
+CSS styling (lines 434-464):
+```css
+.auto-open-section {
+    margin: 20px 0;
+    padding: 16px 0;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.checkbox-input {
+    width: 20px;
+    height: 20px;
+    accent-color: #10b981; /* Same green as status dot */
+}
+```
+
+Auto-open logic in `updateUIForRunningState()` (lines 1029-1036):
+```javascript
+// Auto-open if checkbox is checked
+const autoOpenCheckbox = document.getElementById('autoOpenCheckbox');
+if (autoOpenCheckbox && autoOpenCheckbox.checked) {
+    // Small delay to let user see the success state
+    setTimeout(() => {
+        openComfyUI();
+    }, 500);
+}
+```
+
+#### 2. Green Button Styling
+Added `.btn-success` class with status dot colors (lines 598-619):
+```css
+.btn-success {
+    background: linear-gradient(135deg, #10b981, #34d399);
+    border: 2px solid #10b981;
+    color: white;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+    animation: successPulse 2s infinite;
+}
+
+.btn-success:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);
+    background: linear-gradient(135deg, #34d399, #10b981);
+}
+
+@keyframes successPulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.6); }
+    50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.8); }
+}
+```
+
+Applied to both static and dynamic buttons:
+- Static: `{% if running %}` template (line 937)
+- Dynamic: Created in `updateUIForRunningState()` (line 1020)
+
+#### 3. Success Sound Notification
+Added `playSuccessSound()` function using Web Audio API (lines 1201-1247):
+```javascript
+function playSuccessSound() {
+    try {
+        // Only play if tab is active
+        if (document.hidden) return;
+
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        // First tone: C5 (523.25 Hz)
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.frequency.value = 523.25;
+        oscillator.type = 'sine';
+
+        // Fade in/out
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
+        gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.2);
+
+        // Second tone: E5 (659.25 Hz) after 100ms
+        setTimeout(() => {
+            // Similar setup for second tone
+        }, 100);
+    } catch (error) {
+        // Silently fail if audio not supported
+        console.log('Audio not available:', error);
+    }
+}
+```
+
+Called in `updateUIForRunningState()` when button is created (line 1027).
+
+### Why This Works
+- **Auto-open**: Simple checkbox state, no localStorage (reduces bugs), 500ms delay lets user see success
+- **Green button**: Matches status dot (visual consistency), pulsing animation draws attention
+- **Sound**: Two-tone (C5→E5) pleasant notification, only plays if tab active, gracefully fails if unsupported
+- **User control**: Checkbox is opt-in, sound is automatic but subtle, respects tab visibility
+
+**Result:** Much better UX - users know immediately when ComfyUI is ready, can auto-open if desired, clear visual feedback.
+
+---
+
 ## Summary of Files Changed
 
 ### New Files Created:
@@ -244,7 +613,7 @@ fi
 - `scripts/update_ui_fix.sh` - Script to update UI on running pods
 
 ### Modified Files:
-- `ui/templates/control_panel.html` - Fixed UI update race condition
+- `ui/templates/control_panel.html` - Fixed UI update race condition, HTTP error handling, startup window tracking, auto-open checkbox, green button styling, success sound
 - `Dockerfile` - Added ffmpeg, added sync monitor startup
 - `scripts/ensure_sync.sh` - Fixed Shared Drive config, added sync_loop.sh creation
 - `scripts/init_sync.sh` - Fixed Shared Drive config in all templates
@@ -256,6 +625,11 @@ fi
 4. **Include system dependencies in Docker image** - Not in ephemeral pods
 5. **Auto-detect Shared Drive ID** - Don't hardcode IDs that might be wrong
 6. **Create scripts if missing** - Don't assume they exist
+7. **Check response.ok before parsing JSON** - Catch HTTP errors before parse errors
+8. **Distinguish error sources** - Silence background errors, but always show command errors
+9. **Track state transitions** - Remember when processes start to handle transient failures gracefully
+10. **Provide clear visual feedback** - Color coding, animations, and sounds help users understand state
+11. **Keep features simple** - No persistence = fewer bugs (user's insight)
 
 ---
 
@@ -296,3 +670,4 @@ rclone backend drives gdrive:
 cat /root/.config/rclone/rclone.conf
 # Should show: team_drive = 0AGZhU5X0GM32Uk9PVA
 ```
+- Claude.md

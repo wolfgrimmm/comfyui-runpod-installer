@@ -430,7 +430,39 @@
         select:has(option:disabled:checked) {
             color: rgba(255, 255, 255, 0.4);
         }
-        
+
+        .auto-open-section {
+            margin: 20px 0;
+            padding: 16px 0;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #10b981;
+            border: 2px solid var(--glass-border);
+            border-radius: 4px;
+        }
+
+        .checkbox-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .checkbox-label:hover .checkbox-text {
+            color: var(--text-primary);
+        }
+
         .add-user-section {
             display: flex;
             gap: 10px;
@@ -562,7 +594,30 @@
             background: linear-gradient(135deg, rgba(231, 51, 29, 0.3), rgba(231, 51, 29, 0.2));
             border-color: var(--primary);
         }
-        
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #34d399);
+            border: 2px solid #10b981;
+            color: white;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+            animation: successPulse 2s infinite;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);
+            background: linear-gradient(135deg, #34d399, #10b981);
+        }
+
+        @keyframes successPulse {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);
+            }
+        }
+
         .btn-secondary {
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
@@ -866,14 +921,20 @@
                 </select>
             </div>
         </div>
-        
-        
+
+        <div class="auto-open-section">
+            <label class="checkbox-label">
+                <input type="checkbox" id="autoOpenCheckbox" class="checkbox-input">
+                <span class="checkbox-text">Auto-open ComfyUI when ready</span>
+            </label>
+        </div>
+
         <div class="actions-grid" id="actionsGrid">
             <button class="btn btn-primary" id="primaryBtn" onclick="startComfyUI()" {% if running %}style="display: none;"{% elif not current_user %}disabled{% endif %}>
                 Launch ComfyUI
             </button>
             {% if running %}
-                <button class="btn btn-primary" id="openBtn" onclick="openComfyUI()">
+                <button class="btn btn-success" id="openBtn" onclick="openComfyUI()">
                     Open ComfyUI
                 </button>
                 <button class="btn btn-secondary" id="restartBtn" onclick="restartService()">
@@ -922,6 +983,7 @@
         let checkAttempts = 0;
         let initializationStartTime = null;
         let counterInterval = null;
+        let lastStartTime = null;  // Track when ComfyUI was last started
 
         // Consolidated function to update UI when ComfyUI is running
         function updateUIForRunningState(username) {
@@ -955,11 +1017,29 @@
             if (actionsGrid) {
                 if (!document.getElementById('openBtn')) {
                     const openBtn = document.createElement('button');
-                    openBtn.className = 'btn btn-primary';
+                    openBtn.className = 'btn btn-success';  // Green button with glow
                     openBtn.id = 'openBtn';
                     openBtn.textContent = 'Open ComfyUI';
                     openBtn.onclick = openComfyUI;
                     actionsGrid.appendChild(openBtn);
+
+                    // Play success sound
+                    playSuccessSound();
+
+                    // Auto-open if checkbox is checked
+                    const autoOpenCheckbox = document.getElementById('autoOpenCheckbox');
+                    if (autoOpenCheckbox && autoOpenCheckbox.checked) {
+                        // Small delay to let user see the success state
+                        setTimeout(() => {
+                            openComfyUI();
+                        }, 500);
+                    }
+                } else {
+                    // Button already exists, just update its class to green
+                    const existingBtn = document.getElementById('openBtn');
+                    if (existingBtn && !existingBtn.className.includes('btn-success')) {
+                        existingBtn.className = 'btn btn-success';
+                    }
                 }
 
                 if (!document.getElementById('restartBtn')) {
@@ -1118,6 +1198,54 @@
             }
         }
 
+        // Play success sound when ComfyUI is ready
+        function playSuccessSound() {
+            try {
+                // Only play if tab is active
+                if (document.hidden) return;
+
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                // Two-tone notification sound
+                oscillator.frequency.value = 523.25; // C5 note
+                oscillator.type = 'sine';
+
+                // Fade in and out
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
+                gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+
+                // Play second tone
+                setTimeout(() => {
+                    const osc2 = audioContext.createOscillator();
+                    const gain2 = audioContext.createGain();
+                    osc2.connect(gain2);
+                    gain2.connect(audioContext.destination);
+
+                    osc2.frequency.value = 659.25; // E5 note
+                    osc2.type = 'sine';
+
+                    gain2.gain.setValueAtTime(0, audioContext.currentTime);
+                    gain2.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
+                    gain2.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.15);
+
+                    osc2.start(audioContext.currentTime);
+                    osc2.stop(audioContext.currentTime + 0.15);
+                }, 100);
+            } catch (error) {
+                // Silently fail if audio not supported
+                console.log('Audio not available:', error);
+            }
+        }
+
         async function startComfyUI() {
             const username = document.getElementById('username').value;
             if (!username || username === '') {
@@ -1165,12 +1293,21 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({username: username})
                 });
-                
+
+                // Check if response is valid BEFORE trying to parse JSON
+                // This catches HTTP errors (524, 500, etc.) before JSON parsing
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+
                 const data = await response.json();
                 
                 if (data.success) {
+                    // Track when we started ComfyUI to prevent premature "System Inactive" status
+                    lastStartTime = Date.now();
+
                     showToast('ComfyUI process started! Waiting for full initialization...', 'success');
-                    
+
                     // Change button text but keep disabled
                     primaryBtn.textContent = 'Initializing...';
                     
@@ -1420,7 +1557,8 @@
                     primaryBtn.disabled = false;
                 }
             } catch (error) {
-                // Update status to show error
+                // Don't silently ignore errors from the start request - show them to user
+                // (Silent handling is only for background status checks, not the initial start command)
                 const statusDot = document.getElementById('statusDot');
                 const statusText = document.getElementById('statusText');
                 statusDot.className = 'status-dot error';
@@ -1590,8 +1728,9 @@
                     // ComfyUI is running and ready - update UI immediately
                     const username = data.current_user || 'User';
 
-                    // Clear ALL initialization timers first
+                    // Clear ALL initialization timers and tracking first
                     initializationStartTime = null;
+                    lastStartTime = null;  // ComfyUI is ready, no longer need startup window
                     if (counterInterval) {
                         clearInterval(counterInterval);
                         counterInterval = null;
@@ -1624,10 +1763,30 @@
                         statusText.textContent = `Initializing • ${timeStr} elapsed`;
                     }
                 } else {
-                    // Not running
-                    if (statusDot && statusText) {
-                        statusDot.className = 'status-dot inactive';
-                        statusText.textContent = 'System Inactive';
+                    // Not running - but check if we recently started ComfyUI
+                    const STARTUP_WINDOW = 5 * 60 * 1000; // 5 minutes in milliseconds
+                    const withinStartupWindow = lastStartTime && (Date.now() - lastStartTime < STARTUP_WINDOW);
+
+                    if (withinStartupWindow) {
+                        // We recently started ComfyUI - keep showing "Initializing" even if API says not running
+                        // This prevents premature "System Inactive" during normal startup delays
+                        if (statusDot && statusText) {
+                            const elapsed = Math.floor((Date.now() - lastStartTime) / 1000);
+                            const minutes = Math.floor(elapsed / 60);
+                            const seconds = elapsed % 60;
+                            const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+
+                            statusDot.className = 'status-dot initializing';
+                            statusText.textContent = `Initializing • ${timeStr} elapsed`;
+                        }
+                    } else {
+                        // Not within startup window - actually inactive
+                        if (statusDot && statusText) {
+                            statusDot.className = 'status-dot inactive';
+                            statusText.textContent = 'System Inactive';
+                        }
+                        // Clear tracking variables since we're actually inactive
+                        lastStartTime = null;
                     }
                     startTime = null;
                     initializationStartTime = null;
