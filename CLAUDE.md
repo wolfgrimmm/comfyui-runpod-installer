@@ -834,4 +834,277 @@ rclone backend drives gdrive:
 cat /root/.config/rclone/rclone.conf
 # Should show: team_drive = 0AGZhU5X0GM32Uk9PVA
 ```
+
+---
+
+## 14. Users' Output Files Getting Mixed Together (CRITICAL SECURITY BUG)
+
+### Problem
+- **CRITICAL:** All users seeing each other's rendered files
+- Serhii had Antonia's videos in his output folder
+- Vlad had Antonia's videos in his output folder
+- Antonia had other users' images in her folder
+- Complete privacy breach - all users' work being synced to everyone's Google Drive
+
+### Root Cause
+The automatic background sync scripts were syncing **the entire `/workspace/output` directory** to a **single shared folder** on Google Drive:
+
+```bash
+# WRONG - This syncs everything to one folder
+rclone sync "/workspace/output" "gdrive:ComfyUI-Output/output"
+```
+
+This meant:
+1. User structure on pod: `/workspace/output/serhii/`, `/workspace/output/vlad/`, `/workspace/output/antonia/`
+2. But sync sent ALL of it to: `gdrive:ComfyUI-Output/output` (single folder)
+3. `rclone sync` made destination match source exactly
+4. Result: Everyone's files mixed together in one place
+5. Then when syncing DOWN, everyone got everyone else's files
+
+**Two conflicting sync systems:**
+- ❌ **Automatic sync** (in `init_sync.sh` and `ensure_sync.sh`): Synced entire `/workspace/output` to single folder
+- ✅ **Manual sync** (in `sync_to_gdrive.sh`): Correctly synced per-user folders separately
+
+The automatic sync was overriding the manual sync and mixing everything!
+
+### Solution
+**Files Modified:**
+- `scripts/init_sync.sh` (lines 258-306)
+- `scripts/ensure_sync.sh` (lines 174-211)
+
+Changed the automatic sync to iterate through each user's folder and sync them separately:
+
+**Before (WRONG):**
+```bash
+# Synced entire output folder to single location
+if [ -d "/workspace/output" ]; then
+    FILE_COUNT=$(find /workspace/output -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) 2>/dev/null | wc -l)
+    if [ "$FILE_COUNT" -gt 0 ]; then
+        rclone sync "/workspace/output" "gdrive:ComfyUI-Output/output" \
+            --exclude "*.tmp" --exclude "*.partial" \
+            --min-age 30s --transfers 2 --checkers 2 --no-update-modtime
+    fi
+fi
+```
+
+**After (CORRECT):**
+```bash
+# Sync each user folder separately to avoid mixing files
+if [ -d "/workspace/output" ]; then
+    for user_dir in /workspace/output/*/; do
+        if [ -d "$user_dir" ]; then
+            username=$(basename "$user_dir")
+            FILE_COUNT=$(find "$user_dir" -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) 2>/dev/null | wc -l)
+
+            if [ "$FILE_COUNT" -gt 0 ]; then
+                echo "[SYNC] Syncing $FILE_COUNT files for user $username..."
+
+                rclone sync "$user_dir" "gdrive:ComfyUI-Output/output/$username" \
+                    --exclude "*.tmp" --exclude "*.partial" \
+                    --min-age 30s --transfers 2 --checkers 2 --no-update-modtime
+
+                if [ $? -eq 0 ]; then
+                    echo "[SYNC] Sync completed successfully for $username"
+                fi
+            fi
+        fi
+    done
+fi
+```
+
+**Same fix applied to input and workflows:**
+```bash
+# Input folders - per user
+if [ -d "/workspace/input" ]; then
+    for user_dir in /workspace/input/*/; do
+        if [ -d "$user_dir" ]; then
+            username=$(basename "$user_dir")
+            rclone copy "$user_dir" "gdrive:ComfyUI-Output/input/$username" \
+                --transfers 2 --ignore-existing --no-update-modtime >/dev/null 2>&1
+        fi
+    done
+fi
+
+# Workflows folders - per user
+if [ -d "/workspace/workflows" ]; then
+    for user_dir in /workspace/workflows/*/; do
+        if [ -d "$user_dir" ]; then
+            username=$(basename "$user_dir")
+            rclone copy "$user_dir" "gdrive:ComfyUI-Output/workflows/$username" \
+                --transfers 2 --no-update-modtime >/dev/null 2>&1
+        fi
+    done
+fi
+```
+
+**How it works now:**
+1. Pod structure: `/workspace/output/{username}/`
+2. Sync destination: `gdrive:ComfyUI-Output/output/{username}/`
+3. Each user gets their own isolated folder on Google Drive
+4. Files never mix between users
+
+**Result:** Complete user isolation - each user only sees their own files, critical privacy bug fixed.
+
+---
+
+## 15. Status Shows "System Inactive" During ComfyUI Startup
+
+### Problem
+- After clicking "Launch ComfyUI", status immediately shows "System Inactive"
+- Initialization countdown timer starts but dies after a few seconds
+- Status flickers between "Initializing" and "System Inactive"
+- Confusing for users - looks like ComfyUI failed when it's actually loading fine
+- Happens even though ComfyUI is actively initializing in background
+
+### Root Cause
+Two status-checking functions with inconsistent behavior:
+
+1. **Periodic status check** (every 3 seconds) - Had startup window tracking:
+   ```javascript
+   // Correctly checked if we recently started ComfyUI
+   const withinStartupWindow = lastStartTime && (Date.now() - lastStartTime < STARTUP_WINDOW);
+   if (withinStartupWindow) {
+       // Keep showing "Initializing"
+   }
+   ```
+
+2. **checkComfyUIStatus()** function - Did NOT have startup window tracking:
+   ```javascript
+   } else {
+       // ComfyUI is not running
+       statusDot.className = 'status-dot inactive';
+       statusText.textContent = 'System Inactive';  // ❌ Immediate "inactive"!
+       return data;
+   }
+   ```
+
+When `checkComfyUIStatus()` ran during startup (before ComfyUI HTTP server was ready), it would:
+- Get "not running" response from API
+- Immediately set status to "System Inactive"
+- Ignore the fact that we JUST started ComfyUI seconds ago
+
+This created confusing flickering as the two functions fought each other.
+
+### Solution
+**Files Modified:** `ui/templates/control_panel.html` (lines 1180-1200)
+
+Made `checkComfyUIStatus()` respect the startup window, just like the periodic check:
+
+**Before (WRONG):**
+```javascript
+} else {
+    // ComfyUI is not running
+    statusDot.className = 'status-dot inactive';
+    statusText.textContent = 'System Inactive';
+    return data;
+}
+```
+
+**After (CORRECT):**
+```javascript
+} else {
+    // ComfyUI is not running - but check if we recently started it
+    const STARTUP_WINDOW = 5 * 60 * 1000; // 5 minutes
+    const withinStartupWindow = lastStartTime && (Date.now() - lastStartTime < STARTUP_WINDOW);
+
+    if (withinStartupWindow) {
+        // Recently started - keep showing initializing
+        const elapsed = Math.floor((Date.now() - lastStartTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+
+        statusDot.className = 'status-dot initializing';
+        statusText.textContent = `Initializing • ${timeStr} elapsed`;
+    } else {
+        // Not within startup window - actually inactive
+        statusDot.className = 'status-dot inactive';
+        statusText.textContent = 'System Inactive';
+    }
+    return data;
+}
+```
+
+**How it works:**
+- When user clicks "Launch ComfyUI", we set `lastStartTime = Date.now()`
+- For the next 5 minutes, both functions keep showing "Initializing" with elapsed time
+- Even if API returns errors or "not running", we trust that startup is in progress
+- After 5 minutes without success, we accept it's actually inactive
+- Once ComfyUI is ready, we clear `lastStartTime` (line 1613)
+
+**Result:** No more premature "System Inactive" status - initialization countdown runs reliably until ComfyUI is ready.
+
+---
+
+## 16. Green "Open ComfyUI" Button Too Glowing
+
+### Problem
+- "Open ComfyUI" button had constant pulsing animation
+- Bright glowing effect even when not hovering
+- Too distracting compared to other buttons
+- User requested it match the subtle glow style of red buttons
+
+### Root Cause
+The success button styling included:
+1. Constant bright box-shadow (`0 0 20px rgba(16, 185, 129, 0.6)`)
+2. Pulsing animation (`animation: successPulse 2s infinite`)
+3. Very bright hover glow (`0 0 30px rgba(16, 185, 129, 0.8)` - 0.8 opacity)
+
+In contrast, red buttons had:
+1. No default glow
+2. No animation
+3. Subtle hover glow (`0 0 30px rgba(231, 51, 29, 0.25)` - only 0.25 opacity)
+
+### Solution
+**Files Modified:** `ui/templates/control_panel.html` (lines 598-609)
+
+Removed the constant glow, animation, and reduced hover glow to match red buttons:
+
+**Before (TOO BRIGHT):**
+```css
+.btn-success {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, #10b981, #34d399);
+    border: 2px solid #10b981;
+    color: white;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);  /* ❌ Constant bright glow */
+    animation: successPulse 2s infinite;            /* ❌ Pulsing animation */
+}
+
+.btn-success:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);  /* ❌ Very bright hover */
+    background: linear-gradient(135deg, #34d399, #10b981);
+}
+
+@keyframes successPulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.6); }
+    50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.8); }
+}
+```
+
+**After (SUBTLE):**
+```css
+.btn-success {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, #10b981, #34d399);
+    border: 2px solid #10b981;
+    color: white;
+    /* No default glow, no animation */
+}
+
+.btn-success:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.25);  /* ✅ Subtle hover only */
+    background: linear-gradient(135deg, #34d399, #10b981);
+}
+```
+
+**What was removed:**
+1. Default `box-shadow` on button
+2. `animation: successPulse`
+3. `@keyframes successPulse` animation definition
+4. Bright hover glow (0.8 opacity → 0.25 opacity)
+
+**Result:** Button now has same subtle glow style as red buttons - clean, professional, not distracting.
 - Claude.md
