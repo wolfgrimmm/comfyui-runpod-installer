@@ -1180,3 +1180,71 @@ curl -o /app/ui/templates/control_panel.html https://raw.githubusercontent.com/w
 **UNRESOLVED** - Fixes exist in code but not deployed to running pod. User needs to run curl command to manually update files.
 
 ---
+
+## 18. Docker Build Used Old Source Files (Rebuild Required)
+
+### Problem
+- Attempted to deploy fixes by pushing existing Docker image with dated tag (`2025-01-08`)
+- Push succeeded with new digest `sha256:ba817446...`
+- **But verification showed image still contained old unfixed code** (0.8 instead of 0.25)
+- Both `:latest` and `:2025-01-08` tags pointed to SAME old image
+
+### Root Cause
+**Local Docker build was stale:**
+- Current source code has correct fix: line 607 shows `0.25` ✅
+- Local Docker image built 2+ hours ago (before fix was applied) ❌
+- Pushing stale local image to Hub with new tag doesn't update content
+- All three images (`comfyui-runpod:latest`, `wolfgrimmm/comfyui-runpod:latest`, `wolfgrimmm/comfyui-runpod:2025-01-08`) had same ID `ba817446f823` = all contain OLD code
+
+### Evidence
+```bash
+# Source code (CORRECT):
+$ grep -n "0.25.*rgba" ui/templates/control_panel.html
+607:            box-shadow: 0 0 30px rgba(16, 185, 129, 0.25);
+
+# Local build from 2 hours ago (WRONG):
+$ docker images | grep comfyui-runpod
+comfyui-runpod              latest       ba817446f823   2 hours ago   39.3GB
+wolfgrimmm/comfyui-runpod   2025-01-08   ba817446f823   2 hours ago   39.3GB
+wolfgrimmm/comfyui-runpod   latest       ba817446f823   2 hours ago   39.3GB
+
+# All contain old code:
+$ docker run --rm comfyui-runpod:latest sh -c 'sed -n "607p" /app/ui/templates/control_panel.html'
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);  # ❌ Still 0.8!
+```
+
+### Solution
+**Files Modified:** None (build process issue, not code issue)
+
+1. **Rebuild with current source files:**
+```bash
+# Force rebuild without cache to pickup latest source
+docker build --no-cache --platform linux/amd64 -t comfyui-runpod:latest -t wolfgrimmm/comfyui-runpod:2025-01-08-v2 .
+```
+
+2. **Verify local build has fixes:**
+```bash
+docker run --rm comfyui-runpod:latest sh -c 'grep "btn-success:hover" -A 2 /app/ui/templates/control_panel.html'
+# Should show: box-shadow: 0 0 30px rgba(16, 185, 129, 0.25);
+```
+
+3. **Push verified image:**
+```bash
+docker push wolfgrimmm/comfyui-runpod:2025-01-08-v2
+```
+
+4. **Update RunPod template to use versioned tag:**
+   - Use `wolfgrimmm/comfyui-runpod:2025-01-08-v2` instead of `:latest`
+   - Versioned tags prevent cache issues
+
+### Lessons Learned
+- **Always verify local build before pushing** - Don't assume it has latest changes
+- **Check image creation timestamp** - If build is older than code changes, rebuild required
+- **Use `--no-cache` for critical fixes** - Ensures all layers rebuild with current files
+- **Tag with version numbers** - `2025-01-08-v2` is clearer than relying on `:latest`
+- **This is different from Bug #17** - That was Docker Hub cache issue, this is local build staleness
+
+### Result
+Fresh build in progress with `--no-cache` flag to ensure all fixes are included.
+
+---
