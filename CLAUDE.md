@@ -768,6 +768,171 @@ Added `grid-column: 1 / -1` to `.btn-success` (line 599):
 
 ---
 
+## 14. Three UI Bugs After Image Deployment (Bug #19)
+
+### Problem
+User reported three issues after deploying the previous Docker image:
+1. **"System Inactive" showing during initialization** - When clicking "Launch ComfyUI", status flickers to "System Inactive" for 2+ seconds instead of immediately showing "Initializing" with timer
+2. **Green button glow too strong** - The green "Launch ComfyUI" button was glowing too intensely, with pulsing animation
+3. **GitHub/Docs button unwanted** - User wanted GitHub icon button removed from top-right corner
+
+User feedback: "Fix this fucking status, like whenever I hit launch, just make sure that I fucking see initializing instead of system inactive... there is still this fucking green glowing button, bro. It's like super glowing... delete the GitHub icon button from the top right corner"
+
+### Root Causes
+
+#### 1. "System Inactive" Bug:
+**Race condition between user action and periodic status check:**
+- User clicks "Launch ComfyUI" → `startComfyUI()` function runs
+- Function starts async `/api/start` fetch request
+- **Problem:** `lastStartTime` was set AFTER fetch completed (line 1329)
+- Meanwhile, periodic status check runs every 3 seconds
+- If periodic check runs before fetch completes, `lastStartTime` is still null
+- Periodic check sees `data.running = false` and `lastStartTime = null`
+- Shows "System Inactive" even though ComfyUI is starting
+
+**Timeline:**
+```
+0s:   User clicks "Launch" → fetch starts → lastStartTime still null
+3s:   Periodic check runs → lastStartTime=null → "System Inactive"
+5s:   Fetch completes → lastStartTime set → "Initializing"
+```
+
+#### 2. Green Button Glow:
+- Base glow: `box-shadow: 0 0 20px rgba(16, 185, 129, 0.6)` - Too large spread, too high opacity
+- Hover glow: `box-shadow: 0 0 30px rgba(16, 185, 129, 0.8)` - Even larger, more intense
+- Pulsing animation (`successPulse`) made it worse
+- User wanted it to match red button intensity
+
+#### 3. GitHub Button:
+- "Docs" button in `.quick-actions` (lines 867-871) opened GitHub repo
+- User wanted it removed entirely
+
+### Solution
+**Files Modified:** `ui/templates/control_panel.html`, `fix_pod.sh`
+
+#### 1. Fixed "System Inactive" Race Condition
+**Moved `lastStartTime` assignment BEFORE fetch call (line 1312-1314):**
+```javascript
+// OLD (WRONG - after fetch):
+const data = await response.json();
+if (data.success) {
+    lastStartTime = Date.now(); // Set AFTER fetch completes
+}
+
+// NEW (CORRECT - before fetch):
+// Track when we started ComfyUI BEFORE the fetch to prevent premature "System Inactive" status
+// This ensures the periodic status check sees lastStartTime immediately
+lastStartTime = Date.now(); // Set BEFORE fetch starts
+
+try {
+    const response = await fetch('/api/start', ...);
+    const data = await response.json();
+    if (data.success) {
+        // lastStartTime already set above before fetch
+    }
+}
+```
+
+**Why this works:**
+- `lastStartTime` is now set synchronously when user clicks button
+- Periodic status check sees it immediately
+- Even if `/api/start` is slow, periodic check knows startup is in progress
+- Shows "Initializing" immediately, no flicker to "System Inactive"
+
+#### 2. Reduced Green Button Glow (lines 598-610)
+```css
+/* OLD */
+.btn-success {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+    animation: successPulse 2s infinite;
+}
+.btn-success:hover:not(:disabled) {
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);
+}
+@keyframes successPulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.6); }
+    50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.8); }
+}
+
+/* NEW */
+.btn-success {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);  /* Subtle base glow */
+    /* No pulsing animation */
+}
+.btn-success:hover:not(:disabled) {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);  /* Reduced hover glow */
+}
+```
+
+**Changes:**
+- Base glow: 20px/0.6 → 15px/0.15 (75% size, 75% less opacity)
+- Hover glow: 30px/0.8 → 20px/0.25 (33% size, 69% less opacity)
+- Removed pulsing animation entirely
+- Now matches red button intensity
+
+#### 3. Removed GitHub/Docs Button (lines 867-871, 1662-1664)
+```html
+<!-- REMOVED: -->
+<button class="action-btn" onclick="openDocs()">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477..."/>
+    </svg>
+</button>
+```
+
+```javascript
+// REMOVED:
+function openDocs() {
+    window.open('https://github.com/wolfgrimmm/comfyui-runpod-installer', '_blank');
+}
+```
+
+Only JupyterLab and Model Manager icons remain in top-right corner.
+
+#### 4. Updated fix_pod.sh for Manual Deployment
+Since NVIDIA servers were down during Docker build, created improved manual fix script:
+```bash
+#!/bin/bash
+
+echo "🔧 Applying Bug #19 fixes to control panel..."
+echo "   - Fix 'System Inactive' bug"
+echo "   - Reduce green button glow"
+echo "   - Remove GitHub/Docs button"
+echo ""
+
+curl -o /app/ui/templates/control_panel.html \
+    https://raw.githubusercontent.com/wolfgrimmm/comfyui-runpod-installer/main/ui/templates/control_panel.html \
+    && echo "✅ Downloaded latest control_panel.html" \
+    && pkill -f "python.*app.py" \
+    && echo "✅ Stopped old Flask app" \
+    && cd /app/ui \
+    && python -u app.py > /workspace/ui.log 2>&1 & \
+    echo "✅ Started new Flask app" \
+    && echo "" \
+    && echo "🎉 Fix complete! Refresh your browser to see changes."
+```
+
+**Usage on RunPod:**
+```bash
+# SSH into pod, then:
+curl -o fix_pod.sh https://raw.githubusercontent.com/wolfgrimmm/comfyui-runpod-installer/main/fix_pod.sh
+chmod +x fix_pod.sh
+./fix_pod.sh
+```
+
+### Deployment Status
+**Code Changes:** ✅ Committed and pushed to GitHub (commit `065cd32`)
+**Docker Image:** ⚠️ Not yet built (NVIDIA servers down during build attempt)
+**Manual Fix Available:** ✅ `fix_pod.sh` can be run on existing pods
+
+**Result:**
+- "Initializing" shows immediately when launching ComfyUI
+- Green button glow matches red button intensity
+- GitHub button removed from UI
+- Users can apply fixes manually via curl until Docker image is rebuilt
+
+---
+
 ## Summary of Files Changed
 
 ### New Files Created:
