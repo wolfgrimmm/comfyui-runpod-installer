@@ -255,38 +255,56 @@ EOF
         fi
     fi
 
-    # Perform the sync
+    # Perform the sync - sync each user folder separately to avoid mixing files
     if [ -d "/workspace/output" ]; then
-        FILE_COUNT=$(find /workspace/output -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) 2>/dev/null | wc -l)
-        if [ "$FILE_COUNT" -gt 0 ]; then
-            echo "[SYNC] Syncing $FILE_COUNT files to Google Drive..."
+        for user_dir in /workspace/output/*/; do
+            if [ -d "$user_dir" ]; then
+                username=$(basename "$user_dir")
+                FILE_COUNT=$(find "$user_dir" -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) 2>/dev/null | wc -l)
 
-            rclone sync "/workspace/output" "gdrive:ComfyUI-Output/output" \
-                --exclude "*.tmp" \
-                --exclude "*.partial" \
-                --min-age 30s \
-                --transfers 2 \
-                --checkers 2 \
-                --no-update-modtime >> /tmp/rclone_sync.log 2>&1
+                if [ "$FILE_COUNT" -gt 0 ]; then
+                    echo "[SYNC] Syncing $FILE_COUNT files for user $username..."
 
-            if [ $? -eq 0 ]; then
-                echo "[SYNC] Sync completed successfully"
-            else
-                ERROR_MSG=$(tail -10 /tmp/rclone_sync.log 2>/dev/null | grep -i "error\|fail" | head -3)
-                echo "[SYNC] Sync failed: $ERROR_MSG"
-                echo "[SYNC] Full log at /tmp/rclone_sync.log"
+                    rclone sync "$user_dir" "gdrive:ComfyUI-Output/output/$username" \
+                        --exclude "*.tmp" \
+                        --exclude "*.partial" \
+                        --min-age 30s \
+                        --transfers 8 \
+                        --checkers 8 \
+                        --tpslimit 10 \
+                        --no-update-modtime >> /tmp/rclone_sync.log 2>&1
+
+                    if [ $? -eq 0 ]; then
+                        echo "[SYNC] Sync completed successfully for $username"
+                    else
+                        ERROR_MSG=$(tail -10 /tmp/rclone_sync.log 2>/dev/null | grep -i "error\|fail" | head -3)
+                        echo "[SYNC] Sync failed for $username: $ERROR_MSG"
+                    fi
+                fi
             fi
-        fi
+        done
     fi
 
-    # Also sync input and workflows if they exist
-    [ -d "/workspace/input" ] && \
-        rclone copy "/workspace/input" "gdrive:ComfyUI-Output/input" \
-            --transfers 2 --ignore-existing --no-update-modtime >/dev/null 2>&1
+    # Also sync input and workflows if they exist - per user
+    if [ -d "/workspace/input" ]; then
+        for user_dir in /workspace/input/*/; do
+            if [ -d "$user_dir" ]; then
+                username=$(basename "$user_dir")
+                rclone copy "$user_dir" "gdrive:ComfyUI-Output/input/$username" \
+                    --transfers 8 --tpslimit 10 --ignore-existing --no-update-modtime >/dev/null 2>&1
+            fi
+        done
+    fi
 
-    [ -d "/workspace/workflows" ] && \
-        rclone copy "/workspace/workflows" "gdrive:ComfyUI-Output/workflows" \
-            --transfers 2 --no-update-modtime >/dev/null 2>&1
+    if [ -d "/workspace/workflows" ]; then
+        for user_dir in /workspace/workflows/*/; do
+            if [ -d "$user_dir" ]; then
+                username=$(basename "$user_dir")
+                rclone copy "$user_dir" "gdrive:ComfyUI-Output/workflows/$username" \
+                    --transfers 8 --tpslimit 10 --no-update-modtime >/dev/null 2>&1
+            fi
+        done
+    fi
 
     sleep 60
 done
