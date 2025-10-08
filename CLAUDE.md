@@ -922,14 +922,14 @@ chmod +x fix_pod.sh
 
 ### Deployment Status
 **Code Changes:** ✅ Committed and pushed to GitHub (commit `065cd32`)
-**Docker Image:** ⚠️ Not yet built (NVIDIA servers down during build attempt)
+**Docker Image:** ✅ Built and pushed to Docker Hub (`wolfgrimmm/comfyui-runpod:latest`)
 **Manual Fix Available:** ✅ `fix_pod.sh` can be run on existing pods
 
 **Result:**
 - "Initializing" shows immediately when launching ComfyUI
 - Green button glow matches red button intensity
 - GitHub button removed from UI
-- Users can apply fixes manually via curl until Docker image is rebuilt
+- Users can apply fixes manually via curl OR use new Docker image
 
 ---
 
@@ -1094,11 +1094,11 @@ Each pod writes to its own directory directly. No shared symlinks. No conflicts!
 ### Deployment
 
 **Code Changes:** ✅ Committed and pushed (commit `cb48e5d`)
-**Docker Image:** ❌ Build failed - NVIDIA servers down (connection failures)
-**Testing:** ⚠️ UNTESTED - Cannot build image until NVIDIA servers recover
+**Docker Image:** ✅ Built and pushed to Docker Hub (`wolfgrimmm/comfyui-runpod:latest`, `wolfgrimmm/comfyui-runpod:2025-01-08-v3`)
+**Testing:** ⚠️ UNTESTED - Needs real-world testing on multi-pod setup
 **Manual Fix:** Not applicable (requires code changes in app.py, can't apply via curl)
 
-**Status:** 🚧 IN DEVELOPMENT - Theory is sound (use ComfyUI's native flags), but needs real-world testing on multi-pod setup. Waiting for NVIDIA infrastructure to come back online for Docker build.
+**Status:** 🚧 READY FOR TESTING - Theory is sound (use ComfyUI's native flags), Docker image built successfully, needs multi-pod testing to confirm fix works.
 
 **Expected Result:** Each user's outputs stay in their own folder, even with multiple pods running simultaneously on shared network volume.
 
