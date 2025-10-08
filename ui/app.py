@@ -211,68 +211,38 @@ class ComfyUIManager:
         self.log_thread.start()
 
     def setup_symlinks(self, username):
-        """Setup ComfyUI symlinks to user folders"""
+        """Setup ComfyUI symlinks to user folders
+
+        NOTE: Output and input are now handled by ComfyUI's --output-directory and --input-directory flags.
+        This function only manages the workflows symlink.
+        """
         # Define paths
-        comfy_input = f"{COMFYUI_DIR}/input"
-        comfy_output = f"{COMFYUI_DIR}/output"
         comfy_workflows = f"{COMFYUI_DIR}/user/workflows"
 
         # Create user folders if they don't exist
-        user_input = f"{INPUT_BASE}/{username}"
-        user_output = f"{OUTPUT_BASE}/{username}"
         user_workflows = f"{WORKFLOWS_BASE}/{username}"
-        os.makedirs(user_input, exist_ok=True)
-        os.makedirs(user_output, exist_ok=True)
         os.makedirs(user_workflows, exist_ok=True)
-
-        # CRITICAL: Remove any existing output directory/symlink to prevent duplicates
-        if os.path.exists(comfy_output):
-            if os.path.islink(comfy_output):
-                # Remove existing symlink
-                print(f"Removing existing symlink at {comfy_output}")
-                os.unlink(comfy_output)
-            else:
-                # It's a real directory - move content and remove
-                if os.path.isdir(comfy_output) and os.listdir(comfy_output):
-                    print(f"Found real directory at {comfy_output}, moving contents...")
-                    # Move any existing files to workspace
-                    os.system(f"rsync -av {comfy_output}/ {user_output}/ 2>/dev/null || true")
-                print(f"Removing directory {comfy_output}")
-                os.system(f"rm -rf {comfy_output}")
-
-        # Handle input directory
-        if os.path.exists(comfy_input):
-            if os.path.islink(comfy_input):
-                os.unlink(comfy_input)
-            elif os.path.isdir(comfy_input) and os.listdir(comfy_input):
-                os.system(f"rsync -av {comfy_input}/ {user_input}/ 2>/dev/null || true")
-                os.system(f"rm -rf {comfy_input}")
 
         # Handle workflows directory
         if os.path.exists(comfy_workflows):
             if os.path.islink(comfy_workflows):
                 os.unlink(comfy_workflows)
             elif os.path.isdir(comfy_workflows) and os.listdir(comfy_workflows):
+                # Move existing workflows to user folder
                 os.system(f"rsync -av {comfy_workflows}/ {user_workflows}/ 2>/dev/null || true")
                 os.system(f"rm -rf {comfy_workflows}")
 
         # Ensure parent directory exists for workflows
         os.makedirs(f"{COMFYUI_DIR}/user", exist_ok=True)
 
-        # Create symlinks to user folders - ComfyUI will write through these to /workspace
-        os.symlink(user_input, comfy_input)
-        os.symlink(user_output, comfy_output)
+        # Create symlink for workflows only
         os.symlink(user_workflows, comfy_workflows)
 
-        print(f"✅ Symlinks created (ComfyUI will save through these to /workspace):")
-        print(f"  {comfy_output} -> {user_output}")
-        print(f"  {comfy_input} -> {user_input}")
+        print(f"✅ Workflows symlink created:")
         print(f"  {comfy_workflows} -> {user_workflows}")
-
-        # Verify symlinks are correct
-        if os.path.islink(comfy_output):
-            real_path = os.path.realpath(comfy_output)
-            print(f"  Verified: output symlink points to {real_path}")
+        print(f"📁 Output and input directories handled by ComfyUI flags:")
+        print(f"  --output-directory /workspace/output/{username}")
+        print(f"  --input-directory /workspace/input/{username}")
     
     def start_comfyui(self, username):
         """Start ComfyUI for specified user"""
@@ -354,6 +324,10 @@ class ComfyUIManager:
             # Build the command based on attention mechanism
             attention_mechanism = env_vars.get("COMFYUI_ATTENTION_MECHANISM", "")
             base_cmd = "source /workspace/venv/bin/activate && cd /workspace/ComfyUI && python main.py --listen 0.0.0.0 --port 8188"
+
+            # Add user-specific output and input directories (prevents output mixing on shared network volume)
+            base_cmd += f" --output-directory /workspace/output/{username}"
+            base_cmd += f" --input-directory /workspace/input/{username}"
 
             # Add attention-specific flags
             if attention_mechanism == "sage":
