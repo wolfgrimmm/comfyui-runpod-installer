@@ -1094,10 +1094,13 @@ Each pod writes to its own directory directly. No shared symlinks. No conflicts!
 ### Deployment
 
 **Code Changes:** ✅ Committed and pushed (commit `cb48e5d`)
-**Testing:** User needs to create new pod with updated image to test
-**Manual Fix:** Not applicable (requires code changes in app.py)
+**Docker Image:** ❌ Build failed - NVIDIA servers down (connection failures)
+**Testing:** ⚠️ UNTESTED - Cannot build image until NVIDIA servers recover
+**Manual Fix:** Not applicable (requires code changes in app.py, can't apply via curl)
 
-**Result:** Each user's outputs stay in their own folder, even with multiple pods running simultaneously on shared network volume.
+**Status:** 🚧 IN DEVELOPMENT - Theory is sound (use ComfyUI's native flags), but needs real-world testing on multi-pod setup. Waiting for NVIDIA infrastructure to come back online for Docker build.
+
+**Expected Result:** Each user's outputs stay in their own folder, even with multiple pods running simultaneously on shared network volume.
 
 ---
 
