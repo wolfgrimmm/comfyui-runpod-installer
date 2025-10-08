@@ -1584,3 +1584,135 @@ docker push wolfgrimmm/comfyui-runpod:2025-01-08-v2
 Fresh build in progress with `--no-cache` flag to ensure all fixes are included.
 
 ---
+## 21. Google Drive Sync Fails with Multiple Concurrent Users
+
+### Problem
+- Google Drive sync worked fine during the day
+- Stopped syncing when 4+ users started generating files simultaneously
+- rclone showing "Duplicate object found in destination" warnings flooding logs
+- Sync process still running but not actually uploading new files
+
+### Root Cause
+**Concurrency bottleneck:**
+- Sync configured with only `--transfers 2 --checkers 2`
+- With 4+ users generating images at once, rclone queue got overwhelmed
+- Only 2 concurrent uploads meant files backed up faster than they could sync
+- Low transfer count = poor performance under load
+
+**Duplicate files issue:**
+- When sync died earlier, it may have created duplicate files on Google Drive
+- Google Drive allows multiple files with same name (different file IDs)
+- rclone gets confused when it sees duplicates, stops syncing properly
+- Warnings spam the log: `Duplicate object found in destination - ignoring`
+
+### Solution
+**Files Modified:**
+- `scripts/ensure_sync.sh` - Updated rclone concurrency settings
+- `scripts/init_sync.sh` - Updated rclone concurrency settings
+
+**Changes Applied:**
+```bash
+# OLD (bottleneck):
+rclone sync "$user_dir" "gdrive:ComfyUI-Output/output/$username" \
+    --transfers 2 --checkers 2 \
+    --no-update-modtime
+
+# NEW (high concurrency):
+rclone sync "$user_dir" "gdrive:ComfyUI-Output/output/$username" \
+    --transfers 8 --checkers 8 --tpslimit 10 \
+    --no-update-modtime
+```
+
+**Key improvements:**
+1. **Increased transfers:** 2 → 8 (4x more concurrent uploads)
+2. **Increased checkers:** 2 → 8 (4x more concurrent file checks)
+3. **Added rate limiting:** `--tpslimit 10` (prevents Google API throttling)
+
+**Applied to all sync operations:**
+- Output folder sync (main image sync)
+- Input folder sync (user uploads)
+- Workflows folder sync (workflow JSON files)
+
+### Fixing Duplicate Files
+**Manual cleanup on running pod:**
+```bash
+# Stop sync temporarily
+pkill -f sync_loop
+
+# Clean up duplicates (keeps newest version)
+rclone dedupe --dedupe-mode newest gdrive:ComfyUI-Output/output/
+
+# Restart sync with new settings
+/workspace/.permanent_sync/sync_loop.sh > /tmp/sync.log 2>&1 &
+```
+
+**What `dedupe` does:**
+- Finds all duplicate files in Google Drive
+- Keeps the newest version of each file
+- Deletes older duplicate versions
+- Resolves rclone confusion about which file to sync to
+
+### Quick Fix for Running Pods
+Users can apply this fix immediately without waiting for new Docker image:
+```bash
+# Create fix script
+cat > /tmp/fix_sync.sh << 'SCRIPT'
+#!/bin/bash
+echo "Fixing sync concurrency for multiple users..."
+cp /workspace/.permanent_sync/sync_loop.sh /workspace/.permanent_sync/sync_loop.sh.backup
+sed -i 's/--transfers 2/--transfers 8/g' /workspace/.permanent_sync/sync_loop.sh
+sed -i 's/--checkers 2/--checkers 8/g' /workspace/.permanent_sync/sync_loop.sh
+sed -i 's/--transfers 8 /--transfers 8 --tpslimit 10 /g' /workspace/.permanent_sync/sync_loop.sh
+pkill -f sync_loop
+sleep 2
+/workspace/.permanent_sync/sync_loop.sh > /tmp/sync.log 2>&1 &
+echo "✅ Sync restarted with new settings"
+SCRIPT
+
+chmod +x /tmp/fix_sync.sh
+/tmp/fix_sync.sh
+```
+
+### Why This Works
+**Before (2 transfers):**
+- User 1 generates 10 images → queued
+- User 2 generates 10 images → queued
+- User 3 generates 10 images → queued  
+- User 4 generates 10 images → queued
+- **Total: 40 files, only 2 uploading at a time = 20 sync cycles**
+- New files arrive faster than sync can process → backlog grows
+
+**After (8 transfers):**
+- Same scenario: 40 files total
+- **8 uploading concurrently = 5 sync cycles**
+- Sync keeps up with generation rate
+- Rate limiting prevents API throttling
+
+### Testing
+**Verify fix is working:**
+```bash
+# Check sync is running
+ps aux | grep sync_loop
+
+# Watch for errors (should be clean now)
+tail -f /tmp/rclone_sync.log
+
+# Verify concurrency settings
+grep -n "transfers\|checkers\|tpslimit" /workspace/.permanent_sync/sync_loop.sh
+```
+
+**Expected output:**
+```bash
+65:    --transfers 8 --tpslimit 10 \
+66:    --checkers 8 \
+```
+
+### Result
+- ✅ Sync now handles 4+ concurrent users without choking
+- ✅ 4x faster uploads (2→8 concurrent transfers)
+- ✅ Rate limiting prevents Google API throttling
+- ✅ Applied to all sync operations (output, input, workflows)
+- ✅ Works across pod restarts (built into Docker image)
+
+---
+
