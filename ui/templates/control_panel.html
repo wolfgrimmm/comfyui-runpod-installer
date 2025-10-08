@@ -600,23 +600,13 @@
             background: linear-gradient(135deg, #10b981, #34d399);
             border: 2px solid #10b981;
             color: white;
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
-            animation: successPulse 2s infinite;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
         }
 
         .btn-success:hover:not(:disabled) {
             transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
             background: linear-gradient(135deg, #34d399, #10b981);
-        }
-
-        @keyframes successPulse {
-            0%, 100% {
-                box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
-            }
-            50% {
-                box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);
-            }
         }
 
         .btn-secondary {
@@ -873,11 +863,6 @@
             <button class="action-btn" onclick="openJupyterLab()">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                </svg>
-            </button>
-            <button class="action-btn" onclick="openDocs()">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                 </svg>
             </button>
             <button class="action-btn" onclick="openModelManager()">
@@ -1178,9 +1163,24 @@
                     setTimeout(() => checkComfyUIStatus(true), 2000);
                     return data;
                 } else {
-                    // ComfyUI is not running
-                    statusDot.className = 'status-dot inactive';
-                    statusText.textContent = 'System Inactive';
+                    // ComfyUI is not running - but check if we recently started it
+                    const STARTUP_WINDOW = 5 * 60 * 1000; // 5 minutes
+                    const withinStartupWindow = lastStartTime && (Date.now() - lastStartTime < STARTUP_WINDOW);
+
+                    if (withinStartupWindow) {
+                        // Recently started - keep showing initializing
+                        const elapsed = Math.floor((Date.now() - lastStartTime) / 1000);
+                        const minutes = Math.floor(elapsed / 60);
+                        const seconds = elapsed % 60;
+                        const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+
+                        statusDot.className = 'status-dot initializing';
+                        statusText.textContent = `Initializing • ${timeStr} elapsed`;
+                    } else {
+                        // Not within startup window - actually inactive
+                        statusDot.className = 'status-dot inactive';
+                        statusText.textContent = 'System Inactive';
+                    }
                     return data;
                 }
             } catch (error) {
@@ -1304,7 +1304,11 @@
             // Optionally show loading overlay (make it less intrusive)
             // showLoading(true, 'Starting ComfyUI...', 'Initializing workspace');
             checkAttempts = 0;
-            
+
+            // Track when we started ComfyUI BEFORE the fetch to prevent premature "System Inactive" status
+            // This ensures the periodic status check sees lastStartTime immediately
+            lastStartTime = Date.now();
+
             try {
                 const response = await fetch('/api/start', {
                     method: 'POST',
@@ -1319,10 +1323,9 @@
                 }
 
                 const data = await response.json();
-                
+
                 if (data.success) {
-                    // Track when we started ComfyUI to prevent premature "System Inactive" status
-                    lastStartTime = Date.now();
+                    // lastStartTime already set above before fetch
 
                     showToast('ComfyUI process started! Waiting for full initialization...', 'success');
 
@@ -1655,11 +1658,6 @@
             window.open(url, '_blank');
         }
         
-        function openDocs() {
-            window.open('https://github.com/wolfgrimmm/comfyui-runpod-installer', '_blank');
-        }
-        
-
         async function restartService() {
             if (!confirm('Restart ComfyUI? This will stop and start the service.')) return;
 
