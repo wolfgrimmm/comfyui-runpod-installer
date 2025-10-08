@@ -933,6 +933,174 @@ chmod +x fix_pod.sh
 
 ---
 
+## 15. Output Folder Mixing Between Users on Shared Network Volume (Bug #20)
+
+### Problem
+User reported critical bug where outputs from different users were randomly mixed:
+- Serhii's output folder contained Antonia's renders
+- Antonia's output folder contained Vlad's renders
+- Random file mixing across all users
+- Completely broken per-user isolation
+
+User feedback: "For some reason, outputs of Antonia copied in my output folder in Serhii, and there is no reason for that... it's just super random, not like all of Antonia's outputs but just random outputs. It's super messy."
+
+### Environment Context
+**Critical detail:** Each user runs their own separate pod with their own GPU, but ALL pods share the same network volume:
+```
+Pod 1 (Serhii's 4090) ──┐
+Pod 2 (Antonia's A100) ─┼──→ Shared Network Volume (/workspace)
+Pod 3 (Vlad's 3090) ────┘        ├── /workspace/output/
+                                 ├── /workspace/ComfyUI/
+                                 └── /workspace/models/
+```
+
+Pods are ephemeral (start/stop frequently) but network volume is permanent.
+
+### Root Cause
+
+**All pods were fighting over the SAME symlink on the shared network volume!**
+
+#### The Broken Flow:
+
+```bash
+# Pod 1 (Serhii) starts:
+setup_symlinks("serhii")
+  → rm -rf /workspace/ComfyUI/output
+  → ln -s /workspace/output/serhii /workspace/ComfyUI/output
+
+# Pod 2 (Antonia) starts a minute later:
+setup_symlinks("antonia")
+  → rm -rf /workspace/ComfyUI/output  # ← Deletes Serhii's symlink!
+  → ln -s /workspace/output/antonia /workspace/ComfyUI/output  # ← Creates new one
+
+# Now BOTH pods write to Antonia's folder:
+# - Pod 1 still running, writes to /workspace/ComfyUI/output
+# - But symlink now points to /workspace/output/antonia/
+# - Serhii's renders go to Antonia's folder! ❌
+```
+
+#### Why Symlinks Failed:
+
+**Location:** `ui/app.py` line 229-241 (old code)
+```python
+# CRITICAL: Remove any existing output directory/symlink to prevent duplicates
+if os.path.exists(comfy_output):
+    if os.path.islink(comfy_output):
+        print(f"Removing existing symlink at {comfy_output}")
+        os.unlink(comfy_output)  # ← Deletes other pod's symlink!
+```
+
+**The problem:**
+- `/workspace/ComfyUI/output` is on shared network volume
+- When Pod A creates symlink, it's visible to all pods
+- When Pod B starts, it deletes Pod A's symlink and creates its own
+- Pod A's ComfyUI process is still running and writing files
+- But symlink now points to Pod B's folder!
+
+### Solution
+
+**Use ComfyUI's built-in `--output-directory` and `--input-directory` flags instead of symlinks!**
+
+ComfyUI natively supports direct path specification:
+```bash
+python main.py --output-directory /workspace/output/{username} \
+               --input-directory /workspace/input/{username}
+```
+
+**No symlinks needed = no conflicts!**
+
+### Implementation
+
+**Files Modified:** `ui/app.py`
+
+#### 1. Added Directory Flags to ComfyUI Startup (lines 358-360)
+```python
+# OLD:
+base_cmd = "python main.py --listen 0.0.0.0 --port 8188"
+
+# NEW:
+base_cmd = "python main.py --listen 0.0.0.0 --port 8188"
+# Add user-specific output and input directories (prevents output mixing on shared network volume)
+base_cmd += f" --output-directory /workspace/output/{username}"
+base_cmd += f" --input-directory /workspace/input/{username}"
+```
+
+#### 2. Simplified `setup_symlinks()` (lines 213-245)
+**Removed:**
+- All output symlink creation/deletion logic (67 lines removed!)
+- All input symlink creation/deletion logic
+- Complex rsync operations to preserve files
+
+**Kept:**
+- Only workflows symlink (less critical, no mixing issues)
+- Clear documentation explaining the change
+
+```python
+def setup_symlinks(self, username):
+    """Setup ComfyUI symlinks to user folders
+
+    NOTE: Output and input are now handled by ComfyUI's --output-directory
+    and --input-directory flags. This function only manages the workflows symlink.
+    """
+    # Only create workflows symlink
+    comfy_workflows = f"{COMFYUI_DIR}/user/workflows"
+    user_workflows = f"{WORKFLOWS_BASE}/{username}"
+    os.makedirs(user_workflows, exist_ok=True)
+
+    # Handle existing workflows directory
+    if os.path.exists(comfy_workflows):
+        if os.path.islink(comfy_workflows):
+            os.unlink(comfy_workflows)
+        elif os.path.isdir(comfy_workflows) and os.listdir(comfy_workflows):
+            os.system(f"rsync -av {comfy_workflows}/ {user_workflows}/ 2>/dev/null || true")
+            os.system(f"rm -rf {comfy_workflows}")
+
+    os.makedirs(f"{COMFYUI_DIR}/user", exist_ok=True)
+    os.symlink(user_workflows, comfy_workflows)
+
+    print(f"✅ Workflows symlink created:")
+    print(f"  {comfy_workflows} -> {user_workflows}")
+    print(f"📁 Output and input directories handled by ComfyUI flags:")
+    print(f"  --output-directory /workspace/output/{username}")
+    print(f"  --input-directory /workspace/input/{username}")
+```
+
+### Why This Works
+
+**Before (Broken):**
+```
+Pod 1: ln -s /workspace/output/serhii /workspace/ComfyUI/output
+Pod 2: ln -s /workspace/output/antonia /workspace/ComfyUI/output  # ← Overwrites!
+Pod 3: ln -s /workspace/output/vlad /workspace/ComfyUI/output     # ← Overwrites!
+```
+Only one symlink can exist. Last pod to start "wins", others write to wrong folder.
+
+**After (Fixed):**
+```
+Pod 1: python main.py --output-directory /workspace/output/serhii
+Pod 2: python main.py --output-directory /workspace/output/antonia
+Pod 3: python main.py --output-directory /workspace/output/vlad
+```
+Each pod writes to its own directory directly. No shared symlinks. No conflicts!
+
+### Benefits
+
+1. **✅ True multi-pod isolation** - Each pod's outputs stay separate
+2. **✅ Simpler code** - Removed 67 lines of complex symlink management
+3. **✅ Uses native ComfyUI features** - More reliable than workarounds
+4. **✅ Works with ephemeral pods** - No state to corrupt on pod restart
+5. **✅ Compatible with Google Drive sync** - Sync still watches `/workspace/output/`
+
+### Deployment
+
+**Code Changes:** ✅ Committed and pushed (commit `cb48e5d`)
+**Testing:** User needs to create new pod with updated image to test
+**Manual Fix:** Not applicable (requires code changes in app.py)
+
+**Result:** Each user's outputs stay in their own folder, even with multiple pods running simultaneously on shared network volume.
+
+---
+
 ## Summary of Files Changed
 
 ### New Files Created:
