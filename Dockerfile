@@ -16,8 +16,9 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Use CUDA 12.4 from base image (matches PyTorch cu124)
-# No additional CUDA installation needed - base image has cuda12.4.1
+# Use CUDA 12.4 from base image (runtime only - just drivers)
+# PyTorch 2.8.0 cu129 brings its own CUDA 12.9 libraries in the wheel
+# No CUDA toolkit installation needed - avoids version conflicts
 ENV PATH="/usr/local/cuda-12.4/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/usr/local/cuda-12.4/lib64:${LD_LIBRARY_PATH}"
 ENV CUDA_HOME="/usr/local/cuda-12.4"
@@ -192,9 +193,11 @@ if [ "$NEED_INSTALL" = "1" ]; then
     # CivitAI integration packages
     uv pip install civitai-downloader aiofiles
 
-    # ComfyUI requirements - PyTorch 2.8.0 with CUDA 12.4
-    echo "📦 Installing PyTorch 2.8.0 with CUDA 12.4..."
-    uv pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+    # ComfyUI requirements - PyTorch 2.8.0 with CUDA 12.9
+    # Note: Using cu129 because PyTorch 2.8.0 is only available for cu129
+    # The cu129 wheel includes CUDA 12.9 libraries, no toolkit installation needed
+    echo "📦 Installing PyTorch 2.8.0 with CUDA 12.9..."
+    pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
 
     # Core ComfyUI dependencies
     uv pip install einops torchsde "kornia>=0.7.1" spandrel "safetensors>=0.4.2"
@@ -283,10 +286,10 @@ if [ "$NEED_INSTALL" = "1" ]; then
     # Jupyter
     uv pip install jupyterlab ipywidgets notebook
 
-    # Mark venv as CUDA 12.4 compatible
-    touch /workspace/venv/.cuda124_upgraded
+    # Mark venv as CUDA 12.9 compatible (PyTorch cu129)
+    touch /workspace/venv/.cuda129_upgraded
 
-    echo "✅ Virtual environment setup complete with CUDA 12.4 support"
+    echo "✅ Virtual environment setup complete with CUDA 12.9 support (PyTorch cu129)"
 fi
 
 # GPU-adaptive attention mechanism configuration
@@ -1168,14 +1171,14 @@ if [ ! -f "/workspace/ComfyUI/main.py" ]; then
         exit 1
     fi
 
-    # Install ComfyUI requirements (preserve our CUDA 12.4 compatible PyTorch)
+    # Install ComfyUI requirements (preserve our CUDA 12.9 compatible PyTorch)
     cd /workspace/ComfyUI
     if [ -f "requirements.txt" ]; then
-        # Install requirements but skip torch to keep our CUDA 12.4 version
+        # Install requirements but skip torch to keep our CUDA 12.9 version
         grep -v "^torch" requirements.txt > /tmp/comfy_req.txt || cp requirements.txt /tmp/comfy_req.txt
         pip install -r /tmp/comfy_req.txt
-        # Ensure we have the right PyTorch for CUDA 12.4
-        pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124 --upgrade
+        # Ensure we have the right PyTorch for CUDA 12.9
+        pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129 --upgrade
     fi
 fi
 
