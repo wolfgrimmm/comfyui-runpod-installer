@@ -191,6 +191,15 @@ class ComfyUIManager:
                         self.startup_progress = {"stage": "starting_server", "message": "Starting web server...", "percent": 90}
                     elif "To see the GUI go to" in line or "ComfyUI is running" in line or "Starting ComfyUI" in line:
                         self.startup_progress = {"stage": "ready", "message": "ComfyUI is ready!", "percent": 100}
+                        # Set start time and log session when we detect ready in logs
+                        if not self.start_time:
+                            self.start_time = time.time()
+                            with open(START_TIME_FILE, 'w') as f:
+                                f.write(str(self.start_time))
+                            self.session_start = self.start_time
+                            if self.current_user:
+                                self.log_session_start(self.current_user)
+                            print(f"✅ ComfyUI fully initialized")
                     elif "error" in line.lower() and "import" in line.lower():
                         # Don't fail on import errors, some nodes might be optional
                         failed_node = line.split(":")[-1].strip() if ":" in line else "unknown node"
@@ -206,6 +215,15 @@ class ComfyUIManager:
             # If we exit the loop and haven't marked as ready, check if it's actually ready
             if self.startup_progress.get('stage') != 'ready' and self.is_comfyui_ready():
                 self.startup_progress = {"stage": "ready", "message": "ComfyUI is ready!", "percent": 100}
+                # Set start time and log session
+                if not self.start_time:
+                    self.start_time = time.time()
+                    with open(START_TIME_FILE, 'w') as f:
+                        f.write(str(self.start_time))
+                    self.session_start = self.start_time
+                    if self.current_user:
+                        self.log_session_start(self.current_user)
+                    print(f"✅ ComfyUI fully initialized")
 
         self.log_thread = threading.Thread(target=read_output, daemon=True)
         self.log_thread.start()
@@ -389,115 +407,11 @@ class ComfyUIManager:
             # Start monitoring thread
             self.monitor_startup_logs()
 
-            # Wait for ComfyUI to actually start - adaptive timeout based on custom nodes
-            max_wait = 1800  # 30 minutes max for heavy custom node setups
-            readiness_check_interval = 3  # Check readiness every 3 seconds
-            last_activity_time = time.time()
-            last_progress_msg = ""
+            # Return immediately - the frontend will poll /api/status to check when ready
+            # This prevents the Flask endpoint from timing out during long initialization
+            print(f"🚀 ComfyUI process launched, returning immediately (frontend will poll for ready state)")
 
-            for i in range(max_wait):
-                time.sleep(1)
-
-                # Check if process died
-                if self.comfyui_process and self.comfyui_process.poll() is not None:
-                    # Process died - mark as failed
-                    exit_code = self.comfyui_process.poll()
-                    self.startup_progress = {"stage": "failed", "message": f"ComfyUI process terminated with code {exit_code}", "percent": 0}
-
-                    # Try to get error output
-                    stderr = ""
-                    if self.comfyui_process.stdout:
-                        try:
-                            stderr = self.comfyui_process.stdout.read().decode('utf-8', errors='ignore')
-                            print(f"❌ ComfyUI stdout/stderr:\n{stderr}")
-                        except:
-                            pass
-
-                    # Also check log file
-                    log_content = ""
-                    if os.path.exists("/tmp/comfyui_start.log"):
-                        try:
-                            with open("/tmp/comfyui_start.log", "r") as f:
-                                log_content = f.read()[-1000:]  # Last 1000 chars
-                                print(f"📋 ComfyUI log file:\n{log_content}")
-                        except:
-                            pass
-
-                    error_msg = f"ComfyUI process died with exit code {exit_code}"
-                    if stderr:
-                        error_msg += f"\nOutput: {stderr[:500]}"
-                    if log_content:
-                        error_msg += f"\nLog: {log_content[:500]}"
-
-                    return False, error_msg
-
-                # Track if progress is still changing (activity indicator)
-                current_progress_msg = self.startup_progress.get('message', '')
-                if current_progress_msg != last_progress_msg:
-                    last_activity_time = time.time()
-                    last_progress_msg = current_progress_msg
-
-                # Check readiness more frequently after initial startup phase
-                should_check_ready = (i % readiness_check_interval == 0) and i > 30
-
-                # Check startup progress - don't mark as ready too early
-                if i < 5:
-                    # Don't check readiness in first 5 seconds
-                    continue
-
-                if self.startup_progress.get('stage') == 'ready' or (should_check_ready and self.is_comfyui_ready()):
-                    # Double-check that ComfyUI is actually ready
-                    if self.is_comfyui_ready():
-                        print(f"✅ ComfyUI fully initialized after {i+1} seconds")
-                        self.start_time = time.time()
-                        # Save start time to file
-                        with open(START_TIME_FILE, 'w') as f:
-                            f.write(str(self.start_time))
-
-                        # Log session start
-                        self.session_start = self.start_time
-                        self.log_session_start(username)
-
-                        # Ensure progress shows ready
-                        self.startup_progress = {"stage": "ready", "message": "ComfyUI is ready!", "percent": 100}
-
-                        return True, "ComfyUI started successfully"
-
-                # If no activity for 5 minutes, assume stuck
-                if time.time() - last_activity_time > 300:
-                    # But still check if it's actually ready (might be loading silently)
-                    if self.is_comfyui_ready():
-                        print(f"ComfyUI ready after silent startup ({i+1} seconds)")
-                        self.start_time = time.time()
-                        with open(START_TIME_FILE, 'w') as f:
-                            f.write(str(self.start_time))
-                        self.session_start = self.start_time
-                        self.log_session_start(username)
-                        self.startup_progress = {"stage": "ready", "message": "ComfyUI is ready!", "percent": 100}
-                        return True, "ComfyUI started successfully"
-                    else:
-                        self.startup_progress = {"stage": "failed", "message": "ComfyUI startup stalled (no progress for 5 minutes)", "percent": 0}
-                        return False, "ComfyUI startup appears stuck"
-
-                # Update progress message with elapsed time if still starting
-                if i % 10 == 0 and self.startup_progress.get('stage') not in ['ready', 'failed']:
-                    elapsed_min = i // 60
-                    elapsed_sec = i % 60
-                    if elapsed_min > 0:
-                        time_str = f"{elapsed_min}m {elapsed_sec}s"
-                    else:
-                        time_str = f"{elapsed_sec}s"
-
-                    base_msg = self.startup_progress.get('message', 'Starting...').split(' (')[0]  # Remove old time
-                    self.startup_progress['message'] = f"{base_msg} ({time_str} elapsed)"
-
-                # Show progress
-                if i % 30 == 0:
-                    print(f"Waiting for ComfyUI to start... {i}s (heavy custom nodes may take 10-20 minutes)")
-
-            # Timeout - mark as failed
-            self.startup_progress = {"stage": "failed", "message": "ComfyUI startup timeout (30 minutes)", "percent": 0}
-            return False, "ComfyUI took too long to start (30 minute timeout)"
+            return True, "ComfyUI process started - initializing in background"
         except Exception as e:
             return False, f"Error starting ComfyUI: {str(e)}"
     
