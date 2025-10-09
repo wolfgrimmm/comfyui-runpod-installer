@@ -1894,3 +1894,206 @@ tail -f /workspace/ui.log
 
 ---
 
+## 23. ComfyUI Crashes on 3rd Generation - Memory Leak (Bug #23)
+
+### Problem
+User reported ComfyUI crashes during 3rd generation on workflow 2.2:
+- First 2 generations complete successfully
+- 3rd generation stops at ~43% progress
+- ComfyUI process terminates with exit code 0
+- Process keeps crashing and restarting every ~3 seconds
+- Logs show: "ComfyUI process terminated with exit code: 0" (repeated)
+- Flask API continues responding (GET /api/status 200)
+
+**Memory observations:**
+- Before clearing output folder: 93-95% RAM usage
+- After clearing output folder: 72% RAM at peak
+- Still crashes on 3rd generation even after cleanup
+- Memory grows with each generation
+
+**User question:** "Should I add this to bug list or is it just my issue?"
+
+### Root Cause Analysis
+
+**Exit code 0 = Clean shutdown, not a crash**
+- Exit code 0 means ComfyUI shut down cleanly
+- Most likely: **OOM (Out of Memory) killer** terminated the process
+- Linux kernel kills processes with highest memory usage when RAM is exhausted
+- Kernel logs it as normal termination (exit 0) from process perspective
+
+**Memory leak pattern:**
+1. Generation 1: Uses X GB RAM → Completes successfully
+2. Generation 2: Uses X + leaked memory → Completes successfully
+3. Generation 3: Uses X + 2x leaked memory → **OOM kill at 43%**
+
+**Why memory keeps growing:**
+- ComfyUI not releasing VRAM/RAM between generations
+- Tensors/models staying in GPU memory
+- Intermediate results not being freed
+- Workflow 2.2 likely has large models or high-res images
+
+### Diagnostic Steps
+
+**1. Check actual memory usage on pod:**
+```bash
+# Monitor memory during generation
+watch -n 1 'free -h && nvidia-smi'
+
+# Check if OOM killer is active
+dmesg | grep -i "killed process"
+dmesg | grep -i "out of memory"
+
+# Check ComfyUI crash logs
+tail -100 /workspace/comfyui.log
+```
+
+**2. Check what's consuming memory:**
+```bash
+# Check process memory
+ps aux --sort=-%mem | head -20
+
+# Check VRAM usage
+nvidia-smi
+
+# Check disk space (in case output folder filling up)
+df -h /workspace
+```
+
+**3. Get workflow details:**
+```bash
+# Check workflow 2.2 file size and contents
+ls -lh /workspace/workflows/*/workflow_2.2.json
+cat /workspace/workflows/*/workflow_2.2.json | jq '.nodes[] | select(.type | contains("Model"))'
+```
+
+### Potential Solutions
+
+**Solution 1: Automatic VRAM cleanup between generations**
+
+Add memory cleanup to ComfyUI execution:
+```python
+# In ComfyUI execution loop (need to find exact location)
+import torch
+import gc
+
+def cleanup_memory():
+    """Force cleanup of GPU and CPU memory"""
+    torch.cuda.empty_cache()
+    gc.collect()
+
+# Call after each generation completes
+```
+
+**Solution 2: Reduce model caching**
+
+ComfyUI caches models in VRAM by default. For sequential generations, this helps performance but causes memory leaks.
+
+Edit ComfyUI config:
+```yaml
+# In /workspace/ComfyUI/extra_model_paths.yaml or config
+model_management:
+    vram_management: "lowvram"  # or "novram" for extreme cases
+    unload_models_after_generation: true
+```
+
+**Solution 3: Restart ComfyUI after N generations**
+
+Temporary fix - auto-restart ComfyUI every 2 generations to clear memory:
+
+```python
+# In ui/app.py - track generation count
+generation_count = 0
+RESTART_AFTER_N_GENERATIONS = 2
+
+# In execution endpoint
+generation_count += 1
+if generation_count >= RESTART_AFTER_N_GENERATIONS:
+    self.stop_comfyui()
+    time.sleep(2)
+    self.start_comfyui()
+    generation_count = 0
+```
+
+**Solution 4: Increase pod memory/VRAM**
+
+Quick workaround if available:
+- Upgrade to pod with more RAM (e.g., 48GB → 80GB)
+- Use GPU with more VRAM (e.g., RTX 4090 24GB → A100 40GB)
+
+**Solution 5: Optimize workflow 2.2**
+
+Reduce memory usage in the workflow itself:
+- Lower resolution for intermediate steps
+- Use model quantization (fp16 instead of fp32)
+- Reduce batch size if using batching
+- Enable tiled VAE for large images
+
+### Testing Commands
+
+**Monitor memory during generation:**
+```bash
+# Start monitoring in separate terminal
+watch -n 1 'echo "=== RAM ===" && free -h && echo "" && echo "=== VRAM ===" && nvidia-smi --query-gpu=memory.used,memory.total --format=csv'
+
+# Then trigger 3 generations and watch memory grow
+```
+
+**Check if OOM is the cause:**
+```bash
+# Check kernel logs for OOM killer
+dmesg -T | grep -i -E "oom|killed|memory" | tail -20
+
+# Expected output if OOM:
+# [timestamp] Out of memory: Killed process 12345 (python) total-vm:45GB, anon-rss:40GB
+```
+
+**Test with memory cleanup:**
+```python
+# Create test script to manually trigger cleanup
+import torch
+import gc
+
+print("Before cleanup:")
+print(f"GPU allocated: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
+print(f"GPU reserved: {torch.cuda.memory_reserved() / 1024**3:.2f} GB")
+
+torch.cuda.empty_cache()
+gc.collect()
+
+print("After cleanup:")
+print(f"GPU allocated: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
+print(f"GPU reserved: {torch.cuda.memory_reserved() / 1024**3:.2f} GB")
+```
+
+### Immediate Workaround
+
+**User can manually restart ComfyUI between generations:**
+
+1. Complete generation 1
+2. Complete generation 2
+3. **Before generation 3:** Go to control panel → Stop ComfyUI → Wait 5s → Launch ComfyUI
+4. Now generation 3 should work
+
+This confirms memory leak hypothesis - fresh restart = fresh memory state.
+
+### Next Steps
+
+**Information needed from user:**
+1. Output from `dmesg | grep -i "killed process"` - confirm OOM
+2. Pod specs: RAM size, GPU model, VRAM size
+3. Workflow 2.2 details: resolution, models used, any batching
+4. Memory usage pattern: `watch -n 1 'free -h'` during 3 generations
+
+**Once confirmed as OOM:**
+- Implement automatic memory cleanup (Solution 1)
+- Add generation counter with auto-restart (Solution 3)
+- Document memory requirements for workflow 2.2
+
+### Status
+- **Issue severity:** High - blocks users from doing 3+ sequential generations
+- **Affects:** Users with workflow 2.2, possibly other memory-intensive workflows
+- **Workaround available:** Manual restart between generations
+- **Permanent fix:** Needs diagnostic data to confirm OOM, then implement memory cleanup
+
+---
+
