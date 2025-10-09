@@ -3,6 +3,14 @@
 # Ensure Google Drive sync is always running
 # This script can be called on every pod start to guarantee sync works
 
+# Check if sync is disabled via environment variable
+if [ "$ENABLE_SYNC" = "false" ]; then
+    echo "[SYNC] Sync disabled via ENABLE_SYNC environment variable"
+    echo "[SYNC] This pod will only save files locally to network volume"
+    echo "[SYNC] A dedicated sync pod handles Google Drive uploads"
+    exit 0
+fi
+
 echo "[ENSURE SYNC] Checking Google Drive sync status..."
 
 # Function to check if sync is running

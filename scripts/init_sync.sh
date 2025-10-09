@@ -3,6 +3,14 @@
 # Initialize Google Drive sync with bulletproof persistence
 # This runs on every pod start and ensures sync always works
 
+# Check if sync is disabled via environment variable
+if [ "$ENABLE_SYNC" = "false" ]; then
+    echo "[SYNC] Sync disabled via ENABLE_SYNC environment variable"
+    echo "[SYNC] This pod will only save files locally to network volume"
+    echo "[SYNC] A dedicated sync pod handles Google Drive uploads"
+    exit 0
+fi
+
 echo "[SYNC INIT] Starting Google Drive sync initialization..."
 
 # Function to setup rclone from any available source

@@ -1,0 +1,140 @@
+# Dedicated Sync Pod for Google Drive
+# This minimal image runs 24/7 to sync files from network volume to Google Drive
+# NO GPU needed - runs on cheap CPU pod (~$0.10/hour)
+
+FROM ubuntu:22.04
+
+LABEL maintainer="wolfgrimmm"
+LABEL description="Dedicated sync pod for ComfyUI multi-user Google Drive sync"
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install minimal dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    bash \
+    cron \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install rclone
+RUN curl https://rclone.org/install.sh | bash
+
+# Create app directory
+RUN mkdir -p /app/scripts
+
+# Copy sync scripts from main project
+COPY scripts/init_sync.sh /app/scripts/init_sync.sh
+COPY scripts/ensure_sync.sh /app/scripts/ensure_sync.sh
+
+# Make scripts executable
+RUN chmod +x /app/scripts/*.sh
+
+# Create startup script for sync pod
+RUN cat > /app/start_sync.sh << 'EOF'
+#!/bin/bash
+
+echo "========================================="
+echo "  ComfyUI Dedicated Sync Pod"
+echo "========================================="
+echo ""
+echo "This pod syncs files from network volume to Google Drive"
+echo "Network volume mount: /workspace"
+echo "Google Drive: 6th_Base_AI_Content Shared Drive"
+echo ""
+echo "Purpose:"
+echo "  - Monitors /workspace/output/* for all users"
+echo "  - Syncs to Google Drive every 60 seconds"
+echo "  - Only ONE sync process = no duplicates"
+echo "  - Scales to unlimited users"
+echo ""
+echo "========================================="
+echo ""
+
+# Enable sync (this is the dedicated sync pod)
+export ENABLE_SYNC=true
+
+# Verify network volume is mounted
+if [ ! -d "/workspace" ]; then
+    echo "ERROR: /workspace not mounted!"
+    echo "Please mount network volume to /workspace when starting this pod"
+    exit 1
+fi
+
+echo "[SYNC POD] Network volume mounted: /workspace"
+
+# Verify Google Service Account is provided
+if [ -z "$GOOGLE_SERVICE_ACCOUNT" ]; then
+    echo "ERROR: GOOGLE_SERVICE_ACCOUNT environment variable not set!"
+    echo "Please provide Google Service Account JSON in pod environment"
+    exit 1
+fi
+
+echo "[SYNC POD] Google Service Account: Found"
+
+# Create necessary directories
+mkdir -p /workspace/.permanent_sync
+mkdir -p /root/.config/rclone
+
+# Initialize sync
+echo ""
+echo "[SYNC POD] Initializing Google Drive sync..."
+/app/scripts/init_sync.sh
+
+# Check if sync initialized successfully
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "ERROR: Sync initialization failed!"
+    echo "Check logs above for details"
+    exit 1
+fi
+
+echo ""
+echo "[SYNC POD] ✅ Sync initialized successfully"
+echo "[SYNC POD] Monitoring logs... (Ctrl+C to stop)"
+echo ""
+echo "========================================="
+echo ""
+
+# Tail logs to keep container running and show activity
+tail -f /tmp/rclone_sync.log 2>/dev/null || tail -f /tmp/sync.log 2>/dev/null || sleep infinity
+EOF
+
+RUN chmod +x /app/start_sync.sh
+
+# Create health check script
+RUN cat > /app/health_check.sh << 'EOF'
+#!/bin/bash
+# Health check for sync pod
+# Returns 0 if healthy, 1 if unhealthy
+
+# Check if sync process is running
+if ! pgrep -f "sync_loop" > /dev/null 2>&1; then
+    echo "UNHEALTHY: Sync process not running"
+    exit 1
+fi
+
+# Check if rclone can connect to Google Drive
+if ! timeout 10 rclone lsd gdrive: >/dev/null 2>&1; then
+    echo "UNHEALTHY: Cannot connect to Google Drive"
+    exit 1
+fi
+
+echo "HEALTHY: Sync running and Google Drive accessible"
+exit 0
+EOF
+
+RUN chmod +x /app/health_check.sh
+
+# Set working directory
+WORKDIR /app
+
+# Expose no ports (this is a background service)
+
+# Health check (runs every 5 minutes)
+HEALTHCHECK --interval=5m --timeout=30s --start-period=2m --retries=3 \
+    CMD /app/health_check.sh || exit 1
+
+# Run startup script
+CMD ["/app/start_sync.sh"]

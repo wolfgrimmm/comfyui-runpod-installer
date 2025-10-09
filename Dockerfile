@@ -1433,6 +1433,7 @@ RUN chmod +x /app/scripts/init_sync.sh 2>/dev/null || true
 # Environment
 ENV PYTHONUNBUFFERED=1
 ENV HF_HOME=/workspace
+ENV ENABLE_SYNC=false
 
 # Ports
 EXPOSE 7777 8188 8888
