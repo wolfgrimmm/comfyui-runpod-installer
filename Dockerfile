@@ -211,8 +211,8 @@ if [ "$NEED_INSTALL" = "1" ]; then
     # Text processing support (required for tokenization in many models)
     uv pip install sentencepiece
 
-    # ONNX Runtime 1.19+ supports CUDA 12.x
-    uv pip install onnxruntime-gpu==1.19.2 || pip install onnxruntime-gpu==1.19.2
+    # ONNX Runtime 1.22.0 - fixes GPU errors (per ComfyUI V54 Oct 3 update)
+    uv pip install onnxruntime-gpu==1.22.0 || pip install onnxruntime-gpu==1.22.0
 
     # Install triton for GPU kernel optimization - CRITICAL for Sage Attention + WAN 2.2!
     echo "📦 Installing Triton (ESSENTIAL for 13x speedup with Sage Attention)..."
@@ -224,7 +224,7 @@ if [ "$NEED_INSTALL" = "1" ]; then
     uv pip install ninja packaging wheel
 
     # Performance optimization libraries
-    uv pip install huggingface_hub hf_transfer accelerate piexif requests deepspeed
+    uv pip install huggingface_hub hf_transfer hf_xet accelerate piexif requests deepspeed ultralytics==8.3.197
 
     # ============================================================================
     # ATTENTION MECHANISMS - RTX 3000/4000/5000 SERIES SUPPORT
