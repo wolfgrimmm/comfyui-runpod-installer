@@ -1,0 +1,87 @@
+
+Up-to-date Massed Compute tutorial : https://youtu.be/8cMIwS9qo4M?si=A8izO5bQAzEcJwvY&t=1294
+
+Example tutorial for learn how to install and use Massed Compute
+(Starts at 12:58) : https://youtu.be/KW-MHmoNcqo?si=G1WbG-Qw4ujWvOtG&t=778
+
+Register for Massed Compute using the following link I appreicate that a lot:
+https://vm.massedcompute.com/signup?linkId=lp_034338&sourceId=secourses&tenantId=massed-compute
+
+We have a special coupon for all GPUs : SECourses
+
+If you want to learn more about GPUs and prices read this link : https://www.patreon.com/posts/126671823
+
+Select RTX A6000 or Better GPU - like L40S or A6000 ADA or A100 or H100 - best is RTX 6000 PRO
+
+Use thinclient or login patreon on Massed Compute to download files on to your Massed Compute
+
+Put everything into a folder in like desktop or downloads
+
+Don't run scripts from inside of synchronization folder 
+
+Move zip file into downloads folder and extract there
+
+Open a terminal in the folder where you did put the files
+
+To install run below command
+
+chmod +x Massed_Compute_Install.sh
+./Massed_Compute_Install.sh
+
+To download IP Adapter Models open another terminal in the folder where you insalled ComfyUI and run below py files
+Download_IP_Adapters_Fast.py file will download all of the currently known IP Adapters and Face IDs into accurate folders - 22 September 2024
+
+pip install huggingface_hub hf_transfer hf_xet --upgrade
+export HF_HUB_ENABLE_HF_TRANSFER=1
+python Download_IP_Adapters_Fast.py
+
+To download major models I recommend use our unified AI downloader - ultra fast download here : https://www.patreon.com/posts/114517862
+
+To use after install
+
+Open a new terminal in the folder where you downloaded files and executed
+
+cd ComfyUI
+source venv/bin/activate
+python3 main.py --listen 0.0.0.0 --port 8188 --use-sage-attention
+
+
+if you want to directly access get your server ip from Massed Compute interface
+
+e.g.
+
+http://216.81.245.200:300/
+
+this is normally to connect it via browser
+
+replace :300 part with 8188
+
+so e.g.
+
+http://216.81.245.200:8188
+
+This will let you connect your machine. remember this will be unencrpyted traffic so your ISP and network manager etc can monitor entire traffic 
+
+If you need more secure way you can use ngrok
+
+To access ComfyUI from your computer not inside Massed Compute we need to use ngrok
+
+Get your ngrok token here : https://dashboard.ngrok.com/get-started/your-authtoken
+
+Open a new terminal and execute below command after Comfy UI started
+
+ngrok config add-authtoken replace_your_token_here
+
+ngrok http 8188
+
+Open ngrok generated link and click visit site
+
+Example ngrok generated link : https://6058-64-247-196-42.ngrok-free.app
+
+
+to start with multiple gpus and on each gpu different comfyui as below
+
+export CUDA_VISIBLE_DEVICES=1
+cd ComfyUI
+source venv/bin/activate
+python3 main.py --listen 0.0.0.0 --port 8189 --use-sage-attention

@@ -1,0 +1,58 @@
+
+Example tutorial for learn how to install and use Massed Compute
+(Starts at 12:58) : https://youtu.be/KW-MHmoNcqo?si=G1WbG-Qw4ujWvOtG&t=778
+
+Register for Massed Compute using the following link I appreicate that a lot:
+https://vm.massedcompute.com/signup?linkId=lp_034338&sourceId=secourses&tenantId=massed-compute
+
+We have a special coupon for all GPUs : SECourses
+
+If you want to learn more about GPUs and prices read this link : https://www.patreon.com/posts/126671823
+
+Select RTX A6000 or Better GPU - like L40S or A6000 ADA or A100, H100 or RTX 6000 PRO - the bigger VRAM better for upscalers
+
+Use thinclient or login patreon on Massed Compute to download files on to your Massed Compute
+
+Put everything into a folder in like desktop or downloads
+
+Don't run scripts from inside of synchronization folder 
+
+I recommend just extract zip file into download folder on Massed Compute and run from there
+
+Open a terminal in the folder where you did put the files
+
+To install run below command
+
+pip install huggingface_hub
+chmod +x Massed_Compute_Install.sh
+./Massed_Compute_Install.sh
+
+The installer will auto download models. But if you get any error after, run below command and it will resume download and fix errors
+
+Open a terminal in same folder and run below command
+
+python Download_Models.py
+
+To run it again after install just open a CMD where you installed - installation will auto start the app so use this later for re-starting the app
+
+cd Ovi_Pro
+git pull
+source venv/bin/activate
+unset LD_LIBRARY_PATH
+export PYTHONWARNINGS=ignore
+python3 premium.py --share
+
+
+
+If you want to rent a machine with multiple GPUs you can follow following strategy
+
+So with below strategy we limit started app to GPU 1 and changing default output dir so wont overwrite each other
+
+
+cd Ovi_Pro
+git pull
+source venv/bin/activate
+export CUDA_VISIBLE_DEVICES=1
+unset LD_LIBRARY_PATH
+export PYTHONWARNINGS=ignore
+python3 premium.py --share --output_dir "/home/Ubuntu/Downloads/outputs1"

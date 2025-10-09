@@ -1,0 +1,1428 @@
+
+<html lang="en">
+  <head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+    <title>Ovi</title>
+    <meta name="description" content="Twin backbone cross-modal fusion for audio-video generation">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#EDE8F5">
+    <meta property="og:image" content="">
+    <link rel="stylesheet" href="./assets/index.css">
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.2/css/bootstrap.min.css'>
+    <link rel="shortcut icon" href="FILL UP" type="image/x-icon">
+    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=Tl39lvWqsaddqAH5_V-5Qel5b9WnfCf-AovcNgphXnMLJ-9dJXllUhd9X4aHow6Q" charset="UTF-8"></script><style>
+        @font-face {
+          font-family: 'lubri';
+          src: url('./assets/WDXLLubrifontTC-Regular.ttf') format('truetype');
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        video {
+            background-color: #000000;
+            aspect-ratio: 16 / 9;
+        }
+
+        section.portrait video {
+            background-color: #000000;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+        }
+
+        section.multi_ip video {
+            background-color: #000000;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+        }
+
+        section.portrait .prompt-wrap.full-screen-wrap video {
+            object-fit: cover;
+        }
+
+        section.portrait .flex {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            gap: 10px;
+        }
+
+        section.portrait2 .flex {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-start;
+        }
+
+        section.portrait .flex > div {
+            flex: 0 0 calc((100% - 5 * 10px) / 6);
+        }
+        section.portrait2 .flex > div {
+            flex: 0 0 calc((100% - 1 * 10px) / 2);
+        }
+
+        section.portrait .prompt {
+            font-size: 10px;
+        }
+        section.portrait2 .prompt {
+            font-size: 12px;
+        }
+
+        section.portrait .flex-row {
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+        }
+
+        section.portrait2 .flex-row {
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            section.portrait .flex > div {
+                flex: 0 0 calc((100% - 1 * 10px) / 2);
+            }
+        }
+
+        @media (max-width: 768px) {
+            section.portrait2 .flex > div {
+                flex: 0 0 calc((100% - 0 * 10px) / 1);
+            }
+        }
+
+        /* Ensure prompt adjusts for portrait mode */
+        .portrait .prompt {
+            position: absolute;  /* Allow positioning relative to the container */
+            bottom: 5%;          /* Adjust this to control the vertical placement of the prompt */
+            left: 50%;           /* Center horizontally */
+            transform: translateX(-50%); /* Offset by 50% of its width to truly center */
+            max-width: 80%;
+            text-align: center;  /* Center the text inside the prompt */
+            color: white;        /* Optional, if you want the text to stand out */
+            font-size: 1.2em;    /* Optional, adjust the text size */
+        }
+
+        .portrait2 .prompt{
+            position: absolute;  /* Allow positioning relative to the container */
+            bottom: 5%;          /* Adjust this to control the vertical placement of the prompt */
+            left: 50%;           /* Center horizontally */
+            transform: translateX(-50%); /* Offset by 50% of its width to truly center */
+            max-width: 80%;
+            text-align: center;  /* Center the text inside the prompt */
+            color: white;        /* Optional, if you want the text to stand out */
+            font-size: 1.2em;    /* Optional, adjust the text size */
+        }
+
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            font-family: "lubri", sans-serif;
+            padding: 0;
+            margin: 0;
+        }
+        #intro {
+            padding: 100px 0 0px 0; /* top padding */
+            min-height: 60vh; /* half the previous height */
+            justify-content: center; /* Center content vertically */
+            text-align: center; /* Center text alignment */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('./assets/poster_image.jpg');
+            background-size: cover; /* Cover the entire container */
+            background-position: top center; /* shift image upward so head is visible */
+            color: #ffffff; /* Ensure text color is readable */
+        }
+
+        #intro h1 {
+            font-size: 90px;
+            font-weight: 300;
+            margin: 20px 0;
+        } 
+
+        #intro h2 {
+            margin: 20px 0 40px 0;
+            font-weight: 300;
+            color: #ffffff
+        }
+
+        #intro h2 strong {
+            color: #fff;
+        }
+
+        .authors {
+            font-size: 16px;
+            font-weight: 500;
+            color: #ffffff;
+            text-align: center;
+            margin-bottom: 25px;
+            width: 80%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .author-block {
+            display: inline-block;
+            margin: 0 10px 0 10px;
+        }
+
+        .author-block a {
+            color: #ffffff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .author-block a:hover {
+            color: #fff;
+        }
+
+        .author-affiliation {
+            font-size: 16px;
+            color: #ffffff;
+            text-align: center;
+            margin-bottom: 60px;
+            width: 80%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .author-affiliation .author-block {
+            display: inline-block;
+            margin: 0 15px;
+        }
+
+        section {
+            max-width: 1920px;
+            margin: 0 auto;
+        }
+
+        .content {
+            padding: 0 10%;
+        }
+
+        .button {
+            background-color: #ccc;
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 100px;
+            cursor: pointer;
+            transition: background-color 0.5s;
+            text-decoration: none;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            display: inline-block;
+        }
+
+        .button:hover {
+            background-color: #fff;
+        }
+
+        .bibtex-section {
+            background-color: #111;
+            padding: 40px 10%;
+            text-align: center;
+            margin-top: 60px;
+            color: #ccc;
+        }
+
+        .bibtex-section h3 {
+            font-size: 24px;
+            font-weight: 400;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+
+        .bibtex-code {
+            background-color: #222;
+            color: #ddd;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: left;
+            display: inline-block;
+            font-family: monospace;
+            max-width: 800px;
+            overflow-x: auto;
+        }
+
+        section {
+            margin-top: 80px;
+        }
+        section:first-of-type {
+            margin-top: 0;
+        }
+
+        .title {
+            background-color: #000;
+            position: sticky;
+            top: 0;
+            padding: 20px 10%;
+            font-size: 20px;
+            font-weight: 600;
+            z-index: 1000;
+            min-height: 60px;
+            box-sizing: border-box;
+        }
+
+        .description {
+            padding: 0 10% 20px 10%;
+            color: #999;
+            line-height: 25px;
+            font-weight: 300;
+        }
+
+        .highlight {
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .flex-row {
+            display: flex;
+            column-gap: 5px;
+            flex-wrap: nowrap;
+            justify-content: space-between;
+            padding: 0 5px 5px 5px;
+            
+        }
+
+        .flex-row > div {
+            flex-grow: 1;
+            flex-basis: 0;
+            position: relative;
+        }
+
+        .flex > div {
+            width: calc(100% / 3 - 5px * 2 / 3);
+            margin-top: 2.5px;
+            margin-bottom: 2.5px;
+            position: relative;
+        }
+
+        .flex {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            padding: 0 5px;
+        }
+
+        .prompt-wrap {
+            position: relative;
+        }
+
+        .flex-2 {
+            justify-content: center;
+            column-gap: 5px;
+        }
+        .flex-2 > div {
+            width: calc(100% / 2 - 5px / 2);
+            min-width: calc(100% / 3 - 5px * 2 / 3);
+            max-width: calc(100vh - 200px);
+        }
+
+        video, img {
+            width: 100%;
+        }
+
+        .loading-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: rgba(255, 255, 255, 0.6);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .loading-text {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .loading-icon {
+            font-size: 48px;
+        }
+
+        .prompt {
+            max-width: calc(100% - 20px);
+            position: absolute;
+            background: rgba(0,0,0,0.5);
+            color: rgba(255,255,255,0.9);
+            font-size: 10px;
+            backdrop-filter: blur(10px);
+            top: 10px;
+            left: 10px;
+            padding: 5px 10px;
+            border-radius: 15px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+            box-sizing: border-box;
+        }
+
+        .flex-very-compact .full-screen-button {
+            width: 100%;
+            height: 100%;
+            top: 0;
+            right: 0;
+            border-radius: 0;
+        }
+
+        .chinese {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-weight: bold;
+            color: #d18585;
+            font-size: 1.1em;
+        }
+
+        @media (hover: hover) {
+            .prompt-wrap:hover .prompt,
+            .full-screen-wrap:hover .full-screen-button {
+                opacity: 1;
+                pointer-events: all;
+            }
+            #contributors a:hover {
+                background-color: #222;
+            }
+        }
+
+        @media (hover: none) {
+            #contributors a {
+                pointer-events: none;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .flex-dynamic > div {
+                width: calc(100% / 2 - 5px / 2);
+            }
+        }
+
+        @media (max-width: 640px) {
+            #intro h1 {
+                font-size: 50px;
+            }
+            #intro h2 {
+                font-size: 20px;
+            }
+            .ruler {
+                font-size: 10px;
+            }
+        }
+
+        @media (max-width: 512px) {
+            .flex-dynamic > div,
+            .flex-dynamic-1 > div {
+                width: 100%;
+            }
+
+            .content {
+                padding: 0 12px;
+            }
+
+            .description {
+                padding: 0 12px 20px 12px;
+            }
+
+            .title {
+                padding: 20px 12px;
+            }
+
+            .ruler-tight {
+                font-size: 6px;
+                column-gap: 0;
+            }
+
+            .title-long {
+                font-size: 16px;
+            }
+
+        }
+
+        .margin-top {
+            margin-top: 50px;
+        }
+
+        .ruler {
+            text-align: center;
+            position: sticky;
+            top: 60px;
+            z-index: 999;
+            background-color: #000;
+            color: #999;
+            padding: 5px 0;
+        }
+
+        .ruler > div {
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .selected {
+            box-shadow: 0 0 0 5px #fff;
+        }
+
+        #title-container {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        #title-icon {
+          height: 8em;
+          width: auto;
+          margin-right: 0px;
+          vertical-align: middle;
+        }
+
+        .title-art {
+          font-family: 'lubri', sans-serif;
+        }
+
+        h2 {
+            font-size: 2.5em;
+            color: rgb(255, 255, 255);
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        #video-wrapper {
+          border-radius: 50px;
+          max-width: 720px;
+          padding-bottom: 40%; 
+          margin: 0 auto;
+          background: #000000;
+        }
+
+        .ethics-section {
+            padding: 100px 10%;
+            text-align: center;
+            margin-top: 60px;
+            color: #ccc;
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+
+        .acknowledgements-section {
+            padding: 100px 10%;
+            text-align: center;
+            margin-top: 60px;
+            color: #ccc;
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+
+        .video-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 50vh;
+        }
+        .video-container video {
+            width: 100%;
+            max-width: 800px;
+            max-height: 450px;
+            height: auto;
+        }
+        .units-rule {
+            display: grid;
+            grid-auto-flow: column;
+            justify-content: center;
+            align-items: center;
+            column-gap: 0.75rem;
+        }
+        .units-rule i {
+            display: block;
+            width: 1px;
+            height: 1em;
+            background: currentColor;
+            opacity: 0.25;
+        }
+    </style>
+</head>
+<body>
+    <section id="intro">
+        <div class="content">
+            <div id="title-container">
+              <img id="title-icon" src="./assets/robot_red_eye.png" alt="Ovi Robot Logo">
+              <h1><strong>Ovi</strong></h1>
+            </div>
+            <h2><strong>Twin backbone cross-modal fusion for audio-video generation</strong></h2>
+            <div class="authors">
+                <span class="author-block"><a href="https://www.linkedin.com/in/chetwin-low-061975193/">Chetwin Low</a><sup>*</sup></span>
+                <span class="author-block"><a href="https://www.linkedin.com/in/weimin-wang-will/">Weimin Wang</a><sup>*, &dagger;</sup></span>
+                <span class="author-block"><a href="https://www.linkedin.com/in/calder-katyal-a8a9b3225/">Calder Katyal</a></span>
+            </div>
+
+            <!-- Added the affiliations section -->
+            <div class="author-affiliation">
+                <p class="units-rule">
+                    <span>Character AI</span>
+                    <i aria-hidden="true"></i>
+                    <span>Yale University</span>
+                </p>
+                <p>
+                    <span>
+                        <sup>*</sup> Equal contribution, 
+                        <sup>&dagger;</sup> Project Lead
+                    </span>
+                </p>
+            </div>
+
+            <a class="button" href="https://arxiv.org/abs/2510.01284" target="_blank" rel="noopener noreferrer">
+                Research Paper
+            </a>
+            <a class="button" href="https://github.com/character-ai/Ovi" target="_blank" rel="noopener noreferrer">
+                <i class="fa fa-github" style="font-size:17px"></i>
+                GitHub
+            </a>
+            <a class="button" href="https://huggingface.co/chetwinlow1/Ovi" target="_blank" rel="noopener noreferrer">
+                Model Card
+            </a>
+            <a class="button" href="https://huggingface.co/papers/2510.01284" target="_blank" rel="noopener noreferrer">
+                Huggingface Paper
+            </a>
+            <a class="button" href="https://wavespeed.ai/models/character-ai/ovi/image-to-video" target="_blank" rel="noopener noreferrer">
+              Create videos on wavespeed.ai!
+            </a>
+            <a class="button" href="https://huggingface.co/spaces/akhaliq/Ovi" target="_blank" rel="noopener noreferrer">
+                Create videos on huggingface!
+            </a>
+            <a class="button" href="https://x.com/_akhaliq/status/1974181920092418128" target="_blank" rel="noopener noreferrer">
+                X Post
+            </a>
+        </div>
+    </section>
+
+    <div class="container text-center" style="margin-top: 50px; text-align: center;">
+      <p class="title-art" style="font-size: 1.6em;"> The Last Stand Against Ovi </p>
+      <p class="description" style="font-size: 1.0em;"> All clips were created by Ovi, using only text or text+image as inputs. Video resized down to 480p to save space. Please turn on the sound for watching.</p>
+    </div>
+    
+
+    <div class="video-container">
+        <video controls loop>
+            <source src="./assets/final_ovi_trailer.mp4" type="video/mp4">
+            The Last Stand Against Ovi
+        </video>
+    </div>
+
+    <section id="video">
+        <div class="title" style="font-family: 'lubri'; font-size: 1.6em;">
+            Key Features
+        </div>
+        <div class="content" style="font-family: 'lubri'; line-height: 1.8; text-align: center;">
+            <div style="font-size: 16px; color: #ccc; max-width: 800px; margin: 0 auto;">
+                <div style="margin-bottom: 25px;">
+                    <h4 style="color: #fff; font-size: 20px; margin-bottom: 10px;"><strong>High-Quality Synchronized Audio</strong></h4>
+                    <p style="color: #ccc; opacity: 0.8;">We pretrained from scratch our high-quality 5B audio branch using a mirroring architecture of WAN 2.2 5B, as well as our 1B fusion branch. </p>
+                </div>
+                
+                <div style="margin-bottom: 25px;">
+                    <h4 style="color: #fff; font-size: 20px; margin-bottom: 10px;"><strong>Data-Driven Lip-sync Learning</strong></h4>
+                    <p style="color: #ccc; opacity: 0.8;">Achieving precise lip synchronization without explicit face bounding boxes, through pure data-driven learning</p>
+                </div>
+                
+                <div style="margin-bottom: 25px;">
+                    <h4 style="color: #fff; font-size: 20px; margin-bottom: 10px;"><strong>Multi-Person Dialogue Support</strong></h4>
+                    <p style="color: #ccc; opacity: 0.8;">Naturally extending to realistic multiple speakers and multi-turn conversations, making complex dialogue scenarios possible</p>
+                </div>
+                
+                <div style="margin-bottom: 25px;">
+                    <h4 style="color: #fff; font-size: 20px; margin-bottom: 10px;"><strong>Contextual Sound Generation</strong></h4>
+                    <p style="color: #ccc; opacity: 0.8;">Creating synchronized background music and sound effects that match visual actions</p>
+                </div>
+
+                <div style="margin-bottom: 25px;">
+                    <h4 style="color: #fff; font-size: 20px; margin-bottom: 10px;"><strong>OSS Release to Expedite Research  </strong></h4>
+                    <p style="color: #ccc; opacity: 0.8;">We are excited to release our full pre-trained model weights and inference code to expedite video+audio generation in OSS community. </p>
+                </div>
+
+
+            </div>
+        </div>
+    </section>
+
+    <div class="description" style="font-style: italic; margin-bottom: 10px; margin-top: 40px;">
+        Videos below were upsampled for visual appeal using standard tools. Audio remains original.
+    </div>
+
+    <section id="video">
+      <div class="title" style="font-family: 'lubri'; font-size: 1.6em;">
+        Human-centric AV Generation from Text & Image (TI2AV)
+      </div>
+      <div class="description">
+          Given a starting first frame and text prompt, Ovi generates a high quality video with audio.<br>
+          <i>All videos below have their first frames generated from an off-the-shelf imagen model.</i>
+      </div>
+      
+          <div class="flex flex-dynamic">
+            <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+              <div class="loading-placeholder">
+                  <div class="loading-text">Loading...</div>
+                  <div class="loading-icon">&#9749</div>
+              </div>
+              <video
+                controls
+                loop
+                playsinline
+                preload="metadata"
+                onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+                src="./assets/videos/ti2av/2.mp4">
+            </video>
+            <div class="prompt">"A young woman with long, wavy blonde hair and light-colored eyes is shown in a medium shot against a blurred backdrop of lush green foliage. She wears a denim jacket over a striped top. Initially, her eyes are closed and her mouth is slightly open as she speaks, &lt;S&gt;Enjoy this moment&lt;E&gt;. Her eyes then slowly open, looking slightly upwards and to the right, as her expression shifts to one of thoughtful contemplation. She continues to speak, &lt;S&gt;No matter where it's taking&lt;E&gt;, her gaze then settling with a serious and focused look towards someone off-screen to her right.. &lt;AUDCAP&gt;Clear female voice, faint ambient outdoor sounds&lt;ENDAUDCAP&gt;"</div>
+          </div>
+          <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+            <div class="loading-placeholder">
+                <div class="loading-text">Loading...</div>
+                <div class="loading-icon">&#9749</div>
+            </div>
+            <video
+              controls
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+              src="./assets/videos/ti2av/4.mp4">
+          </video>
+          <div class="prompt">"The video opens with a close-up of a woman with vibrant reddish-orange, shoulder-length hair and heavy dark eye makeup. She is wearing a dark brown leather jacket over a grey hooded top. She looks intently to her right, her mouth slightly agape, and her expression is serious and focused. The background shows a room with light green walls and dark wooden cabinets on the left, and a green plant on the right. She speaks, her voice clear and direct, saying, &lt;S&gt;doing&lt;E&gt;. She then pauses briefly, her gaze unwavering, and continues, &lt;S&gt;And I need you to trust them.&lt;E&gt;. Her mouth remains slightly open, indicating she is either about to speak more or has just finished a sentence, with a look of intense sincerity.. &lt;AUDCAP&gt;Tense, dramatic background music, clear female voice.&lt;ENDAUDCAP&gt;"</div>
+        </div>
+        <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+            <div class="loading-placeholder">
+                <div class="loading-text">Loading...</div>
+                <div class="loading-icon">&#9749</div>
+            </div>
+            <video
+              controls
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+              src="./assets/videos/ti2av/5.mp4">
+          </video>
+          <div class="prompt">"A bearded man wearing large dark sunglasses and a blue patterned cardigan sits in a studio, actively speaking into a large, suspended microphone. He has headphones on and gestures with his hands, displaying rings on his fingers. Behind him, a wall is covered with red, textured sound-dampening foam on the left, and a white banner on the right features the ""CHOICE FM"" logo and various social media handles like ""@ilovechoicefm"" with ""RALEIGH"" below it. The man intently addresses the microphone, articulating, &lt;S&gt;is talent. It's all about authenticity. You gotta be who you really are, especially if you're working&lt;E&gt;. He leans forward slightly as he speaks, maintaining a serious expression behind his sunglasses.. &lt;AUDCAP&gt;Clear male voice speaking into a microphone, a low background hum.&lt;ENDAUDCAP&gt;"</div>
+        </div>
+          <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+              <div class="loading-placeholder">
+                  <div class="loading-text">Loading...</div>
+                  <div class="loading-icon">&#9749</div>
+              </div>
+              <video
+                controls
+                loop
+                playsinline
+                preload="metadata"
+                onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+                src="./assets/videos/ti2av/1.mp4">
+            </video>
+            <div class="prompt">A young Black woman with dark, curly hair sits with her head bowed and bare shoulders, positioned to the right of the frame in what appears to be a dimly lit, hazy room. She looks downcast, appearing distressed or submissive. In the blurred background, a stern-faced woman with light hair in a dark uniform stands, looking directly towards the young woman. Another uniformed figure is faintly visible further back in the room. The uniformed woman in the foreground takes a deliberate step forward, her gaze remaining fixed on the young woman. She then speaks, her voice firm, &lt;S&gt;Come here.&lt;E&gt; The young woman remains still, her head still bowed, not immediately responding to the command.. &lt;AUDCAP&gt;Muffled clattering/rattling sounds, soft footsteps, indistinct background murmuring, a stern female voice.&lt;ENDAUDCAP&gt;</div>
+          </div>
+          <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+              <div class="loading-placeholder">
+                  <div class="loading-text">Loading...</div>
+                  <div class="loading-icon">&#9749</div>
+              </div>
+              <video
+                controls
+                loop
+                playsinline
+                preload="metadata"
+                onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+                src="./assets/videos/ti2av/3.mp4">
+            </video>
+            <div class="prompt">A man with a beard, wearing a patterned shirt, stands on the left, partially visible, looking towards a woman positioned slightly to the right of the frame. The woman, with dark hair fading to lighter ends and wearing a green and brown patterned top, initially looks down with a somber expression. She begins to speak, &lt;S&gt;Hope beats circuits every time.&lt;E&gt;. Her eyes appear to well up with tears as she slowly lifts her gaze slightly, maintaining a distressed look. She continues her statement, her voice tinged with sadness, &lt;S&gt;Humanity endures beyond your code.&lt;E&gt;. The man remains attentive, his focus entirely on the woman, as the scene holds on their interaction against a textured, light-colored wall background.. &lt;AUDCAP&gt;Female voice speaking with a distressed tone.&lt;ENDAUDCAP&gt;</div>
+          </div>
+          <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+              <div class="loading-placeholder">
+                  <div class="loading-text">Loading...</div>
+                  <div class="loading-icon">&#9749</div>
+              </div>
+              <video
+                controls
+                loop
+                playsinline
+                preload="metadata"
+                onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+                src="./assets/videos/ti2av/8.mp4">
+            </video>
+            <div class="prompt">A close-up shot shows a woman with her eyes closed, wearing makeup including red lipstick, as she begins to speak, &lt;S&gt;The truth&lt;E&gt;. Her right hand is slightly raised. She then opens her eyes, looking down and to the left, a slight smile playing on her lips, and continues, &lt;S&gt;is that&lt;E&gt;. A microphone becomes visible in the lower part of the frame. She continues to speak, her expression shifting slightly as she adds, &lt;S&gt;it's actually a really sad tale&lt;E&gt;. She looks down intently, her mouth slightly open, as if pausing or reflecting on her words. The background features a vibrant pink wall and a dark, reflective surface to her left.. &lt;AUDCAP&gt;Clear female speech, slight room reverberation.&lt;ENDAUDCAP&gt;</div>
+          </div>
+          <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+              <div class="loading-placeholder">
+                  <div class="loading-text">Loading...</div>
+                  <div class="loading-icon">&#9749</div>
+              </div>
+              <video
+                controls
+                loop
+                playsinline
+                preload="metadata"
+                onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+                src="./assets/videos/ti2av/9.mp4">
+            </video>
+            <div class="prompt">A zoomed in close-up shot of a man in a dark apron standing behind a cafe counter, leaning slightly on the polished surface. Across from him in the same frame, a woman in a beige coat holds a paper cup with both hands, her expression playful. The woman says &lt;S&gt;You always give me extra foam.&lt;E&gt; The man smirks, tilting his head toward the cup. The man says &lt;S&gt;That’s how I bribe loyal customers.&lt;E&gt; Warm cafe lights reflect softly on the counter between them as the background remains blurred.. &lt;AUDCAP&gt;Female and male voices speaking English casually, faint hiss of a milk steamer, cups clinking, low background chatter.&lt;ENDAUDCAP&gt;></div>
+          </div>
+          <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+              <div class="loading-placeholder">
+                  <div class="loading-text">Loading...</div>
+                  <div class="loading-icon">&#9749</div>
+              </div>
+              <video
+                controls
+                loop
+                playsinline
+                preload="metadata"
+                onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+                src="./assets/videos/ti2av/13.mp4">
+            </video>
+            <div class="prompt">A Black man with a short beard and dark hair stands center stage, illuminated by stage lights against a rippled royal blue curtain backdrop. He wears a white denim jacket over a mustard yellow t-shirt and holds a silver microphone in his right hand. He begins speaking, looking towards his left with a slight frown, &lt;S&gt;to&lt;E&gt; &lt;S&gt;cold like a month ago&lt;E&gt;. He then turns his gaze slightly right, his expression becoming more animated, his mouth open as if exclaiming. He shifts his weight, gesturing subtly with his microphone hand while continuing to speak, his head nodding slightly. He turns back to the left, his eyes wide and mouth open again, before stating with a direct look, &lt;S&gt;It's cold now, okay?&lt;E&gt; He then looks to his right, and his mouth briefly opens as if to say more, &lt;S&gt;I could&lt;E&gt;.. &lt;AUDCAP&gt;Male speaking voice, sound of audience laughter.&lt;ENDAUDCAP&gt;</div>
+          </div>
+          <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+              <div class="loading-placeholder">
+                  <div class="loading-text">Loading...</div>
+                  <div class="loading-icon">&#9749</div>
+              </div>
+              <video
+                controls
+                loop
+                playsinline
+                preload="metadata"
+                onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+                src="./assets/videos/ti2av/14.mp4">
+            </video>
+            <div class="prompt">The video opens with a medium shot of an older man with light brown, slightly disheveled hair, wearing a dark blazer over a grey t-shirt. He sits in front of a theatrical backdrop depicting a large, classic black and white passenger ship named "GLORIA" docked in a harbor, framed by red stage curtains on either side. The lighting is soft and even. As he speaks, he gestures expressively with both hands, often raising them and then bringing them down, or making a fist. His facial expression is animated and engaged, with a slight furrow in his brow as he explains. He begins by saying, &lt;S&gt;to help them through the grimness of daily life.&lt;E&gt; He then raises his hands again, gesturing outward, and continues speaking in a different language, &lt;S&gt;Da brauchst du natürlich Fantasiebilder.&lt;E&gt; His gaze is directed slightly off-camera as he conveys his thoughts.. &lt;AUDCAP&gt;Male voice speaking clearly and conversationally.&lt;ENDAUDCAP&gt;</div>
+          </div>
+          <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+              <div class="loading-placeholder">
+                  <div class="loading-text">Loading...</div>
+                  <div class="loading-icon">&#9749</div>
+              </div>
+              <video
+                controls
+                loop
+                playsinline
+                preload="metadata"
+                onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+                src="./assets/videos/ti2av/15.mp4">
+            </video>
+            <div class="prompt">A close-up shot focuses on a woman's face, positioned to the right of the frame, bathed in dim, almost dark lighting, with a faint blue/purple glow emanating from the left side. Her dark hair is visible, and her face expresses deep sadness, her eyes appearing moist and her brow furrowed as if struggling with emotion. She begins to speak, her voice trembling slightly, &lt;S&gt;No puedo olvidar aquella noche.&lt;E&gt; Her expression intensifies, tears welling in her eyes as she continues, her voice breaking slightly, &lt;S&gt;La recuerdo todo&lt;E&gt;, before the scene cuts off. The somber atmosphere is conveyed through her distressed demeanor and the low lighting.. &lt;AUDCAP&gt;Soft, melancholic background music, a female voice speaking emotionally, close to tears.&lt;ENDAUDCAP&gt;</div>
+          </div>
+          <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+              <div class="loading-placeholder">
+                  <div class="loading-text">Loading...</div>
+                  <div class="loading-icon">&#9749</div>
+              </div>
+              <video
+                controls
+                loop
+                playsinline
+                preload="metadata"
+                onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+                src="./assets/videos/ti2av/16.mp4">
+            </video>
+            <div class="prompt">A man with dark hair, wearing a dark top, is shown in a close-up, illuminated by an intense, deep red and pink light that casts a strong hue over the entire scene. His head is slightly tilted down, and his eyes are initially looking downwards. In the blurred background, another figure, possibly a child, is faintly visible to the left. The man's eyes briefly close, then open, and he looks slightly to his right, his expression appearing contemplative. He then articulates, &lt;S&gt;Who the hell is Mark?&lt;E&gt; His gaze remains fixed as he asks the question, his brow slightly furrowed.. &lt;AUDCAP&gt;A continuous low-frequency hum, a very faint, almost inaudible high-pitched tone just before the dialogue, a man's voice.&lt;ENDAUDCAP&gt;</div>
+          </div>
+          <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+              <div class="loading-placeholder">
+                  <div class="loading-text">Loading...</div>
+                  <div class="loading-icon">&#9749</div>
+              </div>
+              <video
+                controls
+                loop
+                playsinline
+                preload="metadata"
+                onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+                src="./assets/videos/ti2av/17.mp4">
+            </video>
+            <div class="prompt">A close-up shot features an East Asian man with dark, dishevelled hair and a short beard or stubble, his brow furrowed in intense concentration. He wears a light grey or blue bomber jacket over a white collared shirt. His eyes are wide open, fixed on something below or in front of him, and his mouth is slightly agape. &lt;S&gt;제가&lt;E&gt; he states, his voice low and strained. He blinks slowly, his eyes closing for a moment before reopening with an even more intense, pained expression. The arm of another person, clad in a dark sleeve, is visible behind his left shoulder, seeming to apply pressure. He continues, &lt;S&gt;과거에 과장님께 뭔가&lt;E&gt; as a loud, high-pitched ringing sound begins and persists, coinciding with his strained utterance.. &lt;AUDCAP&gt;Faint ambient hum, high-pitched continuous ringing sound.&lt;ENDAUDCAP&gt;</div>
+          </div>
+      </div>
+  </section>
+
+    <section id="video">
+      <div class="title" style="font-family: 'lubri'; font-size: 1.6em;">
+        Human-centric AV Generation from Text (T2AV)
+      </div>
+
+      <div class="description">
+        Given a text prompt only, Ovi generates a high quality video with audio.<br>
+        Videos generated include large motion ranges, multi-person conversations, and diverse emotions. 
+      </div>
+
+
+      <div class="flex flex-dynamic">
+        <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+          <div class="loading-placeholder">
+            <div class="loading-text">Loading...</div>
+            <div class="loading-icon">&#9749</div>
+            </div>
+            <video 
+              controls 
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+              src="./assets/videos/t2av/1.mp4">
+          </video>
+            
+        </div>
+        <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+          <div class="loading-placeholder">
+            <div class="loading-text">Loading...</div>
+            <div class="loading-icon">&#9749</div>
+            </div>
+            <video 
+              controls 
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+              src="./assets/videos/t2av/2.mp4">
+          </video>
+        </div>
+        <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+          <div class="loading-placeholder">
+            <div class="loading-text">Loading...</div>
+            <div class="loading-icon">&#9749</div>
+            </div>
+            <video 
+              controls 
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+              src="./assets/videos/t2av/3.mp4">
+          </video>
+            
+        </div>
+        <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+          <div class="loading-placeholder">
+            <div class="loading-text">Loading...</div>
+            <div class="loading-icon">&#9749</div>
+            </div>
+            <video 
+              controls 
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+              src="./assets/videos/t2av/4.mp4">
+          </video>
+        </div>
+        <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+          <div class="loading-placeholder">
+            <div class="loading-text">Loading...</div>
+            <div class="loading-icon">&#9749</div>
+            </div>
+            <video 
+              controls 
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+              src="./assets/videos/t2av/5.mp4">
+          </video>
+            
+        </div>
+        <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+          <div class="loading-placeholder">
+            <div class="loading-text">Loading...</div>
+            <div class="loading-icon">&#9749</div>
+            </div>
+            <video
+              controls
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+              src="./assets/videos/t2av/7.mp4">
+          </video>
+        </div>
+        <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+          <div class="loading-placeholder">
+            <div class="loading-text">Loading...</div>
+            <div class="loading-icon">&#9749</div>
+            </div>
+            <video
+              controls
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+              src="./assets/videos/t2av/13.mp4">
+          </video>
+        </div>
+        <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+          <div class="loading-placeholder">
+            <div class="loading-text">Loading...</div>
+            <div class="loading-icon">&#9749</div>
+            </div>
+            <video 
+              controls 
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+              src="./assets/videos/t2av/8.mp4">
+          </video>
+            
+        </div>
+        <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+          <div class="loading-placeholder">
+            <div class="loading-text">Loading...</div>
+            <div class="loading-icon">&#9749</div>
+            </div>
+            <video 
+              controls 
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+              src="./assets/videos/t2av/9.mp4">
+          </video>
+        </div>
+        <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+          <div class="loading-placeholder">
+            <div class="loading-text">Loading...</div>
+            <div class="loading-icon">&#9749</div>
+            </div>
+            <video 
+              controls 
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+              src="./assets/videos/t2av/10.mp4">
+          </video>
+            
+        </div>
+        <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+          <div class="loading-placeholder">
+            <div class="loading-text">Loading...</div>
+            <div class="loading-icon">&#9749</div>
+            </div>
+            <video 
+              controls 
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+              src="./assets/videos/t2av/11.mp4">
+          </video>
+            
+        </div>
+        <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+          <div class="loading-placeholder">
+            <div class="loading-text">Loading...</div>
+            <div class="loading-icon">&#9749</div>
+            </div>
+            <video 
+              controls 
+              loop
+              playsinline
+              preload="metadata"
+              onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+              src="./assets/videos/t2av/12.mp4">
+          </video>
+        </div>
+      </div>
+  </section>
+  <section id="video">
+    <div class="title" style="font-family: 'lubri'; font-size: 1.6em;">
+      Multi Person AV Generation from Text or Image (TI2AV)
+    </div>
+
+    <div class="description">
+      Given a text prompt with optional starting image, Ovi generates a video with multi person dialogue.
+    </div>
+
+    <div class="flex flex-dynamic">
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video 
+            controls 
+            loop
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+            src="./assets/videos/multiperson/robot.mp4">
+        </video>
+      </div>
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video 
+            controls 
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+            src="./assets/videos/multiperson/comeout.mp4">
+        </video>
+          
+      </div>
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video 
+            controls 
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+            src="./assets/videos/multiperson/ghost.mp4">
+        </video>
+          
+      </div>
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video 
+            controls 
+            loop
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+            src="./assets/videos/multiperson/poppy.mp4">
+        </video>
+          
+      </div>
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video 
+            controls 
+            loop
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+            src="./assets/videos/multiperson/yellowpage.mp4">
+        </video>
+          
+      </div>
+    </div>
+  </section>
+  <section id="video">
+    <div class="title" style="font-family: 'lubri'; font-size: 1.6em;">
+      Sound effect (SFX) AV Generation from Text w or w/o Image (TI2AV or T2AV)
+    </div>
+
+    <div class="description">
+      Given a text prompt with optional starting image, Ovi generates a video with high-quality sound effects.
+    </div>
+
+    <div class="flex flex-dynamic">
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video
+            controls
+            loop
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+            src="./assets/videos/sfx/1.mp4">
+        </video>
+      </div>
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video
+            controls
+            loop
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+            src="./assets/videos/sfx/2.mp4">
+        </video>
+
+      </div>
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video
+            controls
+            loop
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+            src="./assets/videos/sfx/3.mp4">
+        </video>
+
+      </div>
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video
+            controls
+            loop
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+            src="./assets/videos/sfx/6.mp4">
+        </video>
+
+      </div>
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video
+            controls
+            loop
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+            src="./assets/videos/sfx/7.mp4">
+        </video>
+
+      </div>
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video
+            controls
+            loop
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+            src="./assets/videos/sfx/4.mp4">
+        </video>
+      </div>
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video
+            controls
+            loop
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+            src="./assets/videos/sfx/5.mp4">
+        </video>
+      </div>
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video
+            controls
+            loop
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+            src="./assets/videos/sfx/8.mp4">
+        </video>
+      </div>
+      <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+        <div class="loading-placeholder">
+          <div class="loading-text">Loading...</div>
+          <div class="loading-icon">&#9749</div>
+          </div>
+          <video
+            controls
+            loop
+            playsinline
+            preload="metadata"
+            onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+            src="./assets/videos/sfx/9.mp4">
+        </video>
+      </div>
+    </div>
+</section>
+<section id="video">
+  <div class="title" style="font-family: 'lubri'; font-size: 1.6em;">
+    Music Instrumeent AV Generation from Text w or w/o Image (TI2AV or T2AV)
+  </div>
+
+  <div class="description">
+    Given a text prompt with optional starting image, Ovi generates a video with music.  
+  </div>
+
+  <div class="flex flex-dynamic">
+    <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+      <div class="loading-placeholder">
+        <div class="loading-text">Loading...</div>
+        <div class="loading-icon">&#9749</div>
+        </div>
+        <video 
+          controls 
+          loop
+          playsinline
+          preload="metadata"
+          onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';" 
+          src="./assets/videos/music/1.mp4">
+      </video>
+    </div>
+    <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+      <div class="loading-placeholder">
+        <div class="loading-text">Loading...</div>
+        <div class="loading-icon">&#9749</div>
+        </div>
+        <video
+          controls
+          loop
+          playsinline
+          preload="metadata"
+          onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+          src="./assets/videos/music/2.mp4">
+      </video>
+
+    </div>
+    <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+      <div class="loading-placeholder">
+        <div class="loading-text">Loading...</div>
+        <div class="loading-icon">&#9749</div>
+        </div>
+        <video
+          controls
+          loop
+          playsinline
+          preload="metadata"
+          onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+          src="./assets/videos/music/3.mp4">
+      </video>
+    </div>
+    <div class="prompt-wrap full-screen-wrap" style="position: relative;">
+      <div class="loading-placeholder">
+        <div class="loading-text">Loading...</div>
+        <div class="loading-icon">&#9749</div>
+        </div>
+        <video
+          controls
+          loop
+          playsinline
+          preload="metadata"
+          onloadeddata="this.style.display='block'; this.previousElementSibling.style.display='none';"
+          src="./assets/videos/music/4.mp4">
+      </video>
+
+    </div>
+  </div>
+
+    <section class="acknowledgements-section">
+        <div class="title" style="font-family: 'lubri'; font-size: 1.6em; color: #fff;">
+            Ovi Team
+        </div>
+        <div class="authors">
+            <p class="role" style="display: flex; justify-content: space-between;">
+                <strong>Project and Team Leader</strong>
+                <span style="text-align: right;">
+                    <a href="https://linkedin.com/in/weimin-wang-will" target="_blank">Weimin Wang</a>
+                </span>
+            </p>
+            <p class="role" style="display: flex; justify-content: space-between;">
+                <strong>Modeling and designs </strong>
+                <span style="text-align: right;">
+                    <a href="https://www.linkedin.com/in/chetwin-low-061975193/" target="_blank">Chetwin Low</a>,
+                    <a href="https://linkedin.com/in/weimin-wang-will" target="_blank">Weimin Wang</a>
+                </span>
+            </p>
+            <p class="role" style="display: flex; justify-content: space-between;">
+                <strong>Codebase for training and data pipeline </strong>
+                <span style="text-align: right;">
+                    <a href="https://www.linkedin.com/in/chetwin-low-061975193/" target="_blank">Chetwin Low</a>,
+                    <a href="https://linkedin.com/in/weimin-wang-will" target="_blank">Weimin Wang</a>,
+                    <a href="https://www.linkedin.com/in/calder-katyal-a8a9b3225/" target="_blank">Calder Katyal</a>
+                </span>
+            </p>
+            <p class="role" style="display: flex; justify-content: space-between;">
+                <strong>Data</strong>
+                <span style="text-align: right;">
+                    <a href="https://www.linkedin.com/in/calder-katyal-a8a9b3225/" target="_blank">Calder Katyal</a>,
+                    <a href="https://www.linkedin.com/in/yi-cui-234627a7/" target="_blank">Yi Cui</a>,
+                    <a href="https://www.linkedin.com/in/diegodelatorre650/" target="_blank">Diego De La Torre</a>,
+                    <a href="https://profiles.stanford.edu/261951" target="_blank">Manav Shah</a>
+                </span>
+            </p>
+        </div>
+    </section>
+
+    <section id="limitations">
+        <div class="title" style="font-family: 'lubri'; font-size: 1.6em; color: #fff;">
+          Limitations
+        </div>
+      
+        <div class="content">
+          <div class="description">
+            All models have limits, including <span class="highlight">Ovi</span> 
+          </div>
+      
+          <ul class="description" style="line-height: 1.8; margin-top: 20px; margin-left: 20px;">
+            <li style="margin-bottom: 15px;">
+              <strong>Video branch constraints.</strong>
+              Visual quality inherits from the pretrained <em>WAN 2.2 5B ti2v</em> backbone. 
+            </li>
+      
+            <li style="margin-bottom: 15px;">
+              <strong>Speed/memory vs. fine detail.</strong>
+              The <em>11B parameter</em> model (<em>5B visual + 5B audio + 1B fusion</em>) and high spatial compression rate balance inference speed and memory, 
+              limiting extremely fine-grained details, tiny objects, or intricate textures in complex scenes.
+            </li>
+      
+            <li style="margin-bottom: 15px;">
+              <strong>Human-centric bias.</strong>
+              Data skews toward human-centric content, so Ovi performs best on human-focused scenarios. The audio branch enables highly emotional, dramatic short clips within this focus.
+            </li>
+      
+            <li style="margin-bottom: 15px;">
+              <strong>Pretraining only stage.</strong>
+              Without extensive post-training or RL stages, outputs vary more between runs. 
+              <em>Tip:</em> Try multiple random seeds for better results.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      
+    <section class="ethics-section">
+        <div class="title" style="font-family: 'lubri'; font-size: 1.6em; color: #fff;">
+            Ethical Considerations
+        </div>
+        <p style="color: #ccc; opacity: 0.8;">
+            The reference images are sourced from public domains or generated by AI models, and are intended solely to demonstrate the capabilities of this research. If there are any concerns, please contact us (weiminwang@character.ai) and we will delete them.
+        </p>
+    </section>
+
+    <section class="bibtex-section">
+        <h3>BibTeX</h3>
+        <pre class="bibtex-code">
+          @misc{low2025ovitwinbackbonecrossmodal,
+            title={Ovi: Twin Backbone Cross-Modal Fusion for Audio-Video Generation}, 
+            author={Chetwin Low and Weimin Wang and Calder Katyal},
+            year={2025},
+            eprint={2510.01284},
+            archivePrefix={arXiv},
+            primaryClass={cs.MM},
+            url={https://arxiv.org/abs/2510.01284}, 
+      }
+        </pre>
+    </section>
+
+</body>
+</html>

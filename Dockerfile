@@ -261,9 +261,10 @@ if [ "$NEED_INSTALL" = "1" ]; then
     pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/flash_attn-2.8.2-cp311-cp311-linux_x86_64.whl
 
     # 3. Sage Attention 2.2.0 - CRITICAL for WAN 2.2 (13x speedup!)
+    # Using abi3 wheel (universal binary, works with Python 3.9+)
     echo "📦 Installing Sage Attention 2.2.0 (pre-compiled with sm_120 support)..."
-    uv pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-cp311-cp311-linux_x86_64.whl || \
-    pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-cp311-cp311-linux_x86_64.whl
+    uv pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-cp39-abi3-linux_x86_64.whl || \
+    pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-cp39-abi3-linux_x86_64.whl
 
     # 4. insightface 0.7.3 - For ReActor face swap
     echo "📦 Installing insightface 0.7.3 (pre-compiled with sm_120 support)..."
