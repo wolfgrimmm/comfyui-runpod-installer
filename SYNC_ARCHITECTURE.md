@@ -883,3 +883,129 @@ df -h /workspace
 **Time saved:** ~40 hours/month
 
 **This is the right solution.**
+
+---
+
+## Implementation Status
+
+### ✅ Phase 1: Code Implementation - COMPLETED
+
+All code changes have been implemented and committed to GitHub:
+
+1. **Created Dockerfile.sync** - Dedicated sync pod Docker image
+   - Minimal Ubuntu-based image with rclone
+   - Startup script with comprehensive error checking
+   - Health check script for monitoring
+   - Logs to keep container running
+
+2. **Modified sync scripts** - Added ENABLE_SYNC environment variable
+   - `scripts/init_sync.sh` - Exits early if ENABLE_SYNC=false
+   - `scripts/ensure_sync.sh` - Exits early if ENABLE_SYNC=false
+   - User pods automatically skip sync initialization
+
+3. **Modified Dockerfile** - Disabled sync for user pods
+   - Added `ENV ENABLE_SYNC=false` to user pod image
+   - User pods only save to network volume
+
+4. **Created SYNC_ARCHITECTURE.md** - Complete documentation
+   - Architecture overview and diagrams
+   - Implementation guide
+   - Troubleshooting and maintenance
+
+**Git commit:** `9070d1e` - "Implement dedicated sync pod architecture to fix Google Drive duplicates"
+
+### 🔄 Phase 2: Docker Image Build & Push - IN PROGRESS
+
+Next steps to deploy the solution:
+
+#### Build User Pod Image (with sync disabled)
+```bash
+# This will build the main ComfyUI image with ENABLE_SYNC=false
+cd /path/to/comfyui-runpod-installer
+docker build --platform linux/amd64 -t wolfgrimmm/comfyui-runpod:latest .
+docker push wolfgrimmm/comfyui-runpod:latest
+```
+
+#### Build Sync Pod Image
+```bash
+# This will build the dedicated sync pod image
+docker build --platform linux/amd64 -f Dockerfile.sync -t wolfgrimmm/comfyui-sync:latest .
+docker push wolfgrimmm/comfyui-sync:latest
+```
+
+### 📋 Phase 3: Deployment - PENDING
+
+Once Docker images are built and pushed:
+
+#### Step 1: Deploy Dedicated Sync Pod
+1. Go to RunPod → Create Pod
+2. Select **CPU pod** (cheapest option, ~$0.10/hour)
+3. Use image: `wolfgrimmm/comfyui-sync:latest`
+4. Mount your **network volume** to `/workspace`
+5. Add environment variable:
+   ```
+   GOOGLE_SERVICE_ACCOUNT = <your-service-account-json>
+   ```
+6. Start pod and verify logs show successful initialization
+
+#### Step 2: Update User Pods
+1. Stop all existing user pods
+2. Create new pods using updated image: `wolfgrimmm/comfyui-runpod:latest`
+3. Mount **same network volume** to `/workspace`
+4. Start pods - they will automatically skip sync (ENABLE_SYNC=false)
+
+#### Step 3: Verify Everything Works
+```bash
+# On sync pod, check logs:
+cat /tmp/rclone_sync.log
+
+# Should see successful sync messages like:
+# [SYNC] Syncing 3 files for user serhii...
+# [SYNC] Sync completed successfully for serhii
+
+# On user pods, check startup logs:
+cat /workspace/startup.log | grep SYNC
+
+# Should see:
+# [SYNC] Sync disabled via ENABLE_SYNC environment variable
+# [SYNC] This pod will only save files locally to network volume
+# [SYNC] A dedicated sync pod handles Google Drive uploads
+```
+
+### 🎯 Expected Results After Deployment
+
+1. **User pods:**
+   - No sync processes running
+   - Files only saved to `/workspace/output/<username>/`
+   - Fast startup (no Google Drive initialization)
+
+2. **Sync pod:**
+   - Single rclone sync process running
+   - Syncs all users every 60 seconds
+   - No duplicate files on Google Drive
+   - Health check passes every 5 minutes
+
+3. **Google Drive:**
+   - Files appear in `ComfyUI-Output/output/<username>/`
+   - Only ONE copy of each file
+   - Updates within 60 seconds of generation
+
+### 🐛 If Issues Occur
+
+See **Troubleshooting** section above for common issues and solutions.
+
+**Most common issues:**
+- Sync pod can't access Google Drive → Check GOOGLE_SERVICE_ACCOUNT environment variable
+- Files not appearing on Google Drive → Check sync pod logs: `cat /tmp/rclone_sync.log`
+- User pods still trying to sync → Verify ENABLE_SYNC=false in Dockerfile and rebuild image
+
+---
+
+## Quick Reference
+
+**User Pod Image:** `wolfgrimmm/comfyui-runpod:latest` (sync disabled)
+**Sync Pod Image:** `wolfgrimmm/comfyui-sync:latest` (sync enabled)
+**Network Volume:** Mount to `/workspace` on ALL pods
+**Environment Variable:** `GOOGLE_SERVICE_ACCOUNT` (sync pod only)
+**Sync Interval:** 60 seconds
+**Cost:** ~$0.10/hour = ~$72/month for dedicated sync pod
