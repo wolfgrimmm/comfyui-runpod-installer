@@ -1164,7 +1164,7 @@
                     return data;
                 } else {
                     // ComfyUI is not running - but check if we recently started it
-                    const STARTUP_WINDOW = 5 * 60 * 1000; // 5 minutes
+                    const STARTUP_WINDOW = 20 * 60 * 1000; // 20 minutes
                     const withinStartupWindow = lastStartTime && (Date.now() - lastStartTime < STARTUP_WINDOW);
 
                     if (withinStartupWindow) {
@@ -1783,7 +1783,7 @@
                     }
                 } else {
                     // Not running - but check if we recently started ComfyUI
-                    const STARTUP_WINDOW = 5 * 60 * 1000; // 5 minutes in milliseconds
+                    const STARTUP_WINDOW = 20 * 60 * 1000; // 20 minutes in milliseconds
                     const withinStartupWindow = lastStartTime && (Date.now() - lastStartTime < STARTUP_WINDOW);
 
                     if (withinStartupWindow) {
