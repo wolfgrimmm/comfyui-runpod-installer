@@ -4,12 +4,13 @@ FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 WORKDIR /
 
-# Install system dependencies including Python build tools, rclone, and ffmpeg
+# Install system dependencies including Python build tools, rclone, ffmpeg, and S3FS
 RUN apt-get update && apt-get install -y \
     git wget curl psmisc lsof unzip \
     python3.11-dev python3.11-venv python3-pip \
     build-essential software-properties-common \
     ffmpeg \
+    s3fs \
     && curl -O https://downloads.rclone.org/rclone-current-linux-amd64.deb \
     && dpkg -i rclone-current-linux-amd64.deb \
     && rm rclone-current-linux-amd64.deb \

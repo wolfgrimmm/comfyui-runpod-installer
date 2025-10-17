@@ -1,0 +1,242 @@
+<!-- S3 Storage Panel -->
+<div class="s3-panel glass-panel" style="padding: 12px 15px;">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27,6.96 12,12.01 20.73,6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+            <span style="font-size: 1rem; font-weight: 500;">S3 Storage</span>
+            <span class="status-indicator" data-status="checking" style="margin-left: 8px;"></span>
+        </div>
+        <div class="s3-actions" style="display: flex; gap: 8px;">
+            <button class="btn-minimal" onclick="testS3Connection()" title="Test S3 Connection">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 12l2 2 4-4"/>
+                    <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/>
+                    <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"/>
+                    <path d="M12 3c0 1-1 3-3 3s-3-2-3-3 1-3 3-3 3 2 3 3"/>
+                    <path d="M12 21c0-1 1-3 3-3s3 2 3 3-1 3-3 3-3-2-3-3"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+    
+    <!-- S3 Storage Options -->
+    <div class="s3-storage-options" style="margin-top: 12px; display: none;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-primary btn-sm" onclick="createS3Symlink()" id="s3SymlinkBtn">
+                🗄️ Link to S3 (S3FS)
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="createRcloneS3Symlink()" id="rcloneS3SymlinkBtn">
+                🔗 Link to S3 (Rclone)
+            </button>
+            <button class="btn btn-warning btn-sm" onclick="unmountS3()" id="unmountS3Btn" style="display: none;">
+                ⚠️ Unmount S3
+            </button>
+        </div>
+        
+        <!-- S3 Status Info -->
+        <div class="s3-status-info" style="margin-top: 8px; font-size: 0.85rem; color: var(--text-secondary);">
+            <div id="s3StatusText">Checking S3 configuration...</div>
+        </div>
+    </div>
+</div>
+
+<style>
+.s3-panel {
+    margin-top: 15px;
+}
+
+.s3-storage-options {
+    animation: slideInUp 0.3s ease-out;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+}
+
+.s3-status-info {
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.s3-status-info.success {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+}
+
+.s3-status-info.error {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.s3-status-info.warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+</style>
+
+<script>
+// S3 Storage Functions
+let s3Status = null;
+
+async function updateS3Status() {
+    try {
+        const response = await fetch('/api/s3/status');
+        s3Status = await response.json();
+        
+        const statusIndicator = document.querySelector('.s3-panel .status-indicator');
+        const storageOptions = document.querySelector('.s3-storage-options');
+        const statusText = document.getElementById('s3StatusText');
+        
+        if (s3Status.configured) {
+            statusIndicator.setAttribute('data-status', 'active');
+            storageOptions.style.display = 'block';
+            
+            if (s3Status.active_mounts > 0) {
+                statusText.textContent = `S3 configured • ${s3Status.active_mounts} active mount(s)`;
+                statusText.parentElement.className = 's3-status-info success';
+                document.getElementById('unmountS3Btn').style.display = 'inline-block';
+            } else {
+                statusText.textContent = `S3 configured • Ready to mount`;
+                statusText.parentElement.className = 's3-status-info';
+                document.getElementById('unmountS3Btn').style.display = 'none';
+            }
+        } else {
+            statusIndicator.setAttribute('data-status', 'inactive');
+            storageOptions.style.display = 'block';
+            statusText.textContent = 'S3 not configured • Set RUNPOD_S3_ACCESS_KEY and RUNPOD_S3_SECRET_KEY';
+            statusText.parentElement.className = 's3-status-info warning';
+        }
+    } catch (error) {
+        console.error('Failed to update S3 status:', error);
+        const statusIndicator = document.querySelector('.s3-panel .status-indicator');
+        statusIndicator.setAttribute('data-status', 'inactive');
+    }
+}
+
+async function testS3Connection() {
+    try {
+        showLoading(true, 'Testing S3 connection...');
+        const response = await fetch('/api/s3/test_connection');
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('S3 connection successful!', 'success');
+        } else {
+            showToast(`S3 connection failed: ${data.message}`, 'error');
+        }
+        
+        // Update status after test
+        await updateS3Status();
+    } catch (error) {
+        showToast('Error testing S3 connection: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function createS3Symlink() {
+    const username = document.getElementById('username').value;
+    if (!username) {
+        showToast('Please select a user first', 'error');
+        return;
+    }
+    
+    try {
+        showLoading(true, 'Creating S3 symlink...');
+        const response = await fetch('/api/s3/symlink', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: username})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            await updateS3Status();
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (error) {
+        showToast('Error creating S3 symlink: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function createRcloneS3Symlink() {
+    const username = document.getElementById('username').value;
+    if (!username) {
+        showToast('Please select a user first', 'error');
+        return;
+    }
+    
+    try {
+        showLoading(true, 'Creating Rclone S3 symlink...');
+        const response = await fetch('/api/s3/rclone_symlink', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: username})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            await updateS3Status();
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (error) {
+        showToast('Error creating Rclone S3 symlink: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function unmountS3() {
+    const username = document.getElementById('username').value;
+    if (!username) {
+        showToast('Please select a user first', 'error');
+        return;
+    }
+    
+    try {
+        showLoading(true, 'Unmounting S3 storage...');
+        const response = await fetch('/api/s3/unmount', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: username})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            await updateS3Status();
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (error) {
+        showToast('Error unmounting S3: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Initialize S3 status on page load
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(updateS3Status, 1000);
+});
+</script>
