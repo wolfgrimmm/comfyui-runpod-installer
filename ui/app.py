@@ -1272,6 +1272,134 @@ def storage_status():
         'current_user': manager.current_user
     })
 
+@app.route('/api/files/download_all')
+def download_all_files():
+    """Download all files for a user as a ZIP file"""
+    username = request.args.get('username', manager.current_user)
+    
+    if not username:
+        return jsonify({'error': 'No user selected'}), 400
+    
+    try:
+        import zipfile
+        import tempfile
+        from flask import send_file
+        
+        # Create temporary ZIP file
+        temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+        
+        with zipfile.ZipFile(temp_zip.name, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            user_output_dir = f"{OUTPUT_BASE}/{username}"
+            
+            if os.path.exists(user_output_dir):
+                # Walk through all files in user directory
+                for root, dirs, files in os.walk(user_output_dir):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        # Create archive path relative to user folder
+                        arc_path = os.path.relpath(file_path, user_output_dir)
+                        zipf.write(file_path, arc_path)
+            else:
+                return jsonify({'error': f'No files found for user {username}'}), 404
+        
+        # Send ZIP file
+        return send_file(
+            temp_zip.name,
+            as_attachment=True,
+            download_name=f'{username}_files_{datetime.now().strftime("%Y%m%d")}.zip',
+            mimetype='application/zip'
+        )
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to create download: {str(e)}'}), 500
+
+@app.route('/api/files/list')
+def list_user_files():
+    """List all files for a user"""
+    username = request.args.get('username', manager.current_user)
+    
+    if not username:
+        return jsonify({'success': False, 'error': 'No user selected'}), 400
+    
+    try:
+        user_output_dir = f"{OUTPUT_BASE}/{username}"
+        files = []
+        
+        if os.path.exists(user_output_dir):
+            for root, dirs, filenames in os.walk(user_output_dir):
+                for filename in filenames:
+                    file_path = os.path.join(root, filename)
+                    try:
+                        stat = os.stat(file_path)
+                        files.append({
+                            'name': filename,
+                            'path': file_path,
+                            'size': stat.st_size,
+                            'modified': stat.st_mtime
+                        })
+                    except OSError:
+                        continue
+        
+        # Sort by modification time (newest first)
+        files.sort(key=lambda x: x['modified'], reverse=True)
+        
+        return jsonify({'success': True, 'files': files})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/download')
+def download_single_file():
+    """Download a single file"""
+    username = request.args.get('username', manager.current_user)
+    filename = request.args.get('filename')
+    
+    if not username or not filename:
+        return jsonify({'error': 'Missing parameters'}), 400
+    
+    try:
+        from flask import send_file
+        
+        user_output_dir = f"{OUTPUT_BASE}/{username}"
+        file_path = os.path.join(user_output_dir, filename)
+        
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'File not found'}), 404
+        
+        return send_file(file_path, as_attachment=True, download_name=filename)
+        
+    except Exception as e:
+        return jsonify({'error': f'Download failed: {str(e)}'}), 500
+
+@app.route('/api/files/view')
+def view_file():
+    """View a file in browser"""
+    username = request.args.get('username', manager.current_user)
+    filename = request.args.get('filename')
+    
+    if not username or not filename:
+        return jsonify({'error': 'Missing parameters'}), 400
+    
+    try:
+        from flask import send_file
+        
+        user_output_dir = f"{OUTPUT_BASE}/{username}"
+        file_path = os.path.join(user_output_dir, filename)
+        
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'File not found'}), 404
+        
+        # Determine MIME type
+        import mimetypes
+        mime_type, _ = mimetypes.guess_type(file_path)
+        if not mime_type:
+            mime_type = 'application/octet-stream'
+        
+        return send_file(file_path, mimetype=mime_type)
+        
+    except Exception as e:
+        return jsonify({'error': f'View failed: {str(e)}'}), 500
+
 # ============= Model Manager Routes =============
 
 @app.route('/models')

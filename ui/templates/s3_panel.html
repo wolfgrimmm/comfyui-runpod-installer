@@ -32,6 +32,9 @@
             <button class="btn btn-secondary btn-sm" onclick="createRcloneS3Symlink()" id="rcloneS3SymlinkBtn">
                 🔗 Link to S3 (Rclone)
             </button>
+            <button class="btn btn-success btn-sm" onclick="downloadAllFiles()" id="downloadAllBtn">
+                📥 Download All Files
+            </button>
             <button class="btn btn-warning btn-sm" onclick="unmountS3()" id="unmountS3Btn" style="display: none;">
                 ⚠️ Unmount S3
             </button>
@@ -230,6 +233,35 @@ async function unmountS3() {
         }
     } catch (error) {
         showToast('Error unmounting S3: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function downloadAllFiles() {
+    const username = document.getElementById('username').value;
+    if (!username) {
+        showToast('Please select a user first', 'error');
+        return;
+    }
+    
+    try {
+        showLoading(true, 'Preparing download...');
+        
+        // Create download link
+        const downloadUrl = `/api/files/download_all?username=${username}`;
+        
+        // Create temporary link and click it
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `${username}_files_${new Date().toISOString().split('T')[0]}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showToast('Download started! Check your downloads folder.', 'success');
+    } catch (error) {
+        showToast('Error starting download: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
