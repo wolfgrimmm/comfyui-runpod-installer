@@ -201,8 +201,8 @@ while true; do
         for user_dir in /workspace/input/*/; do
             if [ -d "$user_dir" ]; then
                 username=$(basename "$user_dir")
-                rclone copy "$user_dir" "gdrive:ComfyUI-Output/input/$username" \
-                    --transfers 8 --tpslimit 10 --ignore-existing --no-update-modtime >/dev/null 2>&1
+                rclone sync "$user_dir" "gdrive:ComfyUI-Output/input/$username" \
+                    --transfers 8 --tpslimit 10 --no-update-modtime >/dev/null 2>&1
             fi
         done
     fi
@@ -211,7 +211,7 @@ while true; do
         for user_dir in /workspace/workflows/*/; do
             if [ -d "$user_dir" ]; then
                 username=$(basename "$user_dir")
-                rclone copy "$user_dir" "gdrive:ComfyUI-Output/workflows/$username" \
+                rclone sync "$user_dir" "gdrive:ComfyUI-Output/workflows/$username" \
                     --transfers 8 --tpslimit 10 --no-update-modtime >/dev/null 2>&1
             fi
         done
