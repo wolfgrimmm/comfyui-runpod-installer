@@ -17,7 +17,6 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from gdrive_sync import GDriveSync
 from gdrive_oauth import GDriveOAuth
-from s3_storage import S3Storage
 
 # Try to import model downloader
 try:
@@ -734,9 +733,6 @@ manager = ComfyUIManager()
 gdrive = GDriveSync(WORKSPACE_DIR)
 gdrive_oauth = GDriveOAuth(WORKSPACE_DIR)
 
-# Initialize S3 storage
-s3_storage = S3Storage(WORKSPACE_DIR)
-
 # Log Google Drive status at startup
 print(f"Google Drive status at startup:")
 print(f"  rclone available: {gdrive.rclone_available}")
@@ -1209,68 +1205,6 @@ def setup_service_account():
         return jsonify({'success': True, 'message': message})
     else:
         return jsonify({'success': False, 'error': message}), 400
-
-# ============= S3 Storage Routes =============
-
-@app.route('/api/s3/status')
-def s3_status():
-    """Get S3 storage status"""
-    status = s3_storage.get_s3_status()
-    return jsonify(status)
-
-@app.route('/api/s3/test_connection')
-def s3_test_connection():
-    """Test S3 connection"""
-    success, message = s3_storage.test_s3_connection()
-    return jsonify({'success': success, 'message': message})
-
-@app.route('/api/s3/symlink', methods=['POST'])
-def s3_symlink():
-    """Create S3 symlink for user output folder"""
-    data = request.json
-    username = data.get('username', manager.current_user)
-    
-    if not username:
-        return jsonify({'success': False, 'error': 'No user selected'}), 400
-    
-    success, message = s3_storage.create_s3_output_symlink(username)
-    return jsonify({'success': success, 'message': message})
-
-@app.route('/api/s3/rclone_symlink', methods=['POST'])
-def s3_rclone_symlink():
-    """Create S3 symlink using rclone for user output folder"""
-    data = request.json
-    username = data.get('username', manager.current_user)
-    
-    if not username:
-        return jsonify({'success': False, 'error': 'No user selected'}), 400
-    
-    success, message = s3_storage.create_rclone_s3_symlink(username)
-    return jsonify({'success': success, 'message': message})
-
-@app.route('/api/s3/unmount', methods=['POST'])
-def s3_unmount():
-    """Unmount S3 storage for user"""
-    data = request.json
-    username = data.get('username', manager.current_user)
-    
-    if not username:
-        return jsonify({'success': False, 'error': 'No user selected'}), 400
-    
-    success, message = s3_storage.unmount_s3(username)
-    return jsonify({'success': success, 'message': message})
-
-@app.route('/api/storage/status')
-def storage_status():
-    """Get overall storage configuration status"""
-    return jsonify({
-        's3': s3_storage.get_s3_status(),
-        'gdrive': {
-            'configured': gdrive.check_gdrive_configured(),
-            'rclone_available': gdrive.rclone_available
-        },
-        'current_user': manager.current_user
-    })
 
 @app.route('/api/files/download_all')
 def download_all_files():

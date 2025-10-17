@@ -4,10 +4,9 @@
 # This runs on every pod start and ensures sync always works
 
 # Check if sync is disabled via environment variable
-if [ "$ENABLE_SYNC" = "false" ]; then
+if [ "$ENABLE_SYNC" = "false" ] && [ -z "$GOOGLE_SERVICE_ACCOUNT" ] && [ -z "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
     echo "[SYNC] Sync disabled via ENABLE_SYNC environment variable"
-    echo "[SYNC] This pod will only save files locally to network volume"
-    echo "[SYNC] A dedicated sync pod handles Google Drive uploads"
+    echo "[SYNC] To enable sync, set GOOGLE_SERVICE_ACCOUNT secret or remove ENABLE_SYNC=false"
     exit 0
 fi
 
