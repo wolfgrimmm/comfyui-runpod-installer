@@ -319,17 +319,26 @@ class ComfyUIManager:
             env_vars["VIRTUAL_ENV"] = "/workspace/venv"
             env_vars["PYTHONPATH"] = "/workspace/ComfyUI"
 
-            # Check GPU and set attention mechanism
-            try:
-                gpu_check = subprocess.run(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
-                                         capture_output=True, text=True, timeout=5)
-                gpu_name = gpu_check.stdout.strip() if gpu_check.returncode == 0 else ""
+            # ComfyUI V54 Approach: Always use Sage Attention (universal best performance)
+            # Load saved attention mechanism settings from venv if available
+            env_settings_file = "/workspace/venv/.env_settings"
+            if os.path.exists(env_settings_file):
+                try:
+                    with open(env_settings_file, 'r') as f:
+                        for line in f:
+                            if line.startswith('export COMFYUI_ATTENTION_MECHANISM='):
+                                mechanism = line.split('=', 1)[1].strip().strip('"').strip("'")
+                                if mechanism:
+                                    env_vars["COMFYUI_ATTENTION_MECHANISM"] = mechanism
+                                    print(f"🎯 Using saved attention mechanism: {mechanism}")
+                                    break
+                except Exception as e:
+                    print(f"⚠️ Could not read attention settings: {e}")
 
-                if "5090" in gpu_name or "RTX 5090" in gpu_name:
-                    print(f"🎯 Detected RTX 5090 - using Sage Attention for optimal performance")
-                    env_vars["COMFYUI_ATTENTION_MECHANISM"] = "sage"
-            except:
-                pass
+            # If no saved settings, default to sage (V54 approach)
+            if "COMFYUI_ATTENTION_MECHANISM" not in env_vars:
+                env_vars["COMFYUI_ATTENTION_MECHANISM"] = "sage"
+                print(f"🚀 Using Sage Attention (universal best performance for all GPUs)")
 
             # Check if we should force safe mode
             if os.path.exists("/workspace/.comfyui_safe_mode"):

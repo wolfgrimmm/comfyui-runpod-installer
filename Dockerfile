@@ -349,48 +349,21 @@ echo "✅ All attention mechanisms pre-installed:"
 mkdir -p /workspace/venv
 touch /workspace/venv/.env_settings
 
-# Check what's actually installed and select appropriate mechanism
-# PRIORITY ORDER: Sage (for Blackwell) > Flash3 (for Hopper) > Flash2 > xformers
-ATTENTION_SET=0
+# ComfyUI V54 Approach: Always use Sage Attention (universal best performance)
+# ComfyUI will auto-fallback to xformers/flash if sage doesn't work on specific hardware
+# This matches the MonsterMMORPG/Wan_GGUF optimized setup used by thousands of users
 
-# FIRST PRIORITY: Sage Attention for Blackwell GPUs (RTX 5090) - CRITICAL for WAN 2.2!
-if [[ "$GPU_TYPE" == "blackwell" ]] && echo "$GPU_NAME" | grep -qE "5090|B200|RTX PRO 6000"; then
-    if python -c "import sageattention" 2>/dev/null; then
-        echo "   🚀 Sage Attention selected for $GPU_NAME (PRIORITY for WAN 2.2)"
-        echo "   ⚡ MASSIVE speedup: 40min → 3min generation!"
-        echo "export COMFYUI_ATTENTION_MECHANISM=sage" > /workspace/venv/.env_settings
-        ATTENTION_SET=1
-    else
-        echo "   ⚠️ Sage Attention not installed - WAN 2.2 will be 13x SLOWER!"
-        echo "   📦 Installing Sage Attention is CRITICAL for RTX 5090"
-        # Fallback to Flash Attention 2 but warn about performance
-        if python -c "import flash_attn" 2>/dev/null; then
-            echo "   ✅ Using Flash Attention 2 as fallback (slower for WAN 2.2)"
-            echo "export COMFYUI_ATTENTION_MECHANISM=flash2" > /workspace/venv/.env_settings
-            ATTENTION_SET=1
-        fi
-    fi
-# Flash Attention 3 for Hopper GPUs
-elif [[ "$GPU_TYPE" == "hopper" ]] && python -c "import flash_attn; exit(0 if flash_attn.__version__.startswith('3') else 1)" 2>/dev/null; then
-    echo "   ✅ Flash Attention 3 available and selected for $GPU_NAME"
-    echo "export COMFYUI_ATTENTION_MECHANISM=flash3" > /workspace/venv/.env_settings
-    ATTENTION_SET=1
-# Flash Attention 2 for Ampere/Ada GPUs
-elif [[ "$GPU_TYPE" == "ampere" || "$GPU_TYPE" == "ada" ]] && python -c "import flash_attn" 2>/dev/null; then
-    echo "   ✅ Flash Attention 2 available and selected for $GPU_NAME"
-    echo "export COMFYUI_ATTENTION_MECHANISM=flash2" > /workspace/venv/.env_settings
-    ATTENTION_SET=1
-fi
-
-# Default to xformers for everything else - it's the most compatible
-if [ "$ATTENTION_SET" -eq 0 ]; then
-    if python -c "import xformers" 2>/dev/null; then
-        echo "   ✅ xformers selected as safe default for $GPU_NAME"
-        echo "export COMFYUI_ATTENTION_MECHANISM=xformers" > /workspace/venv/.env_settings
-    else
-        echo "   ⚠️ No optimized attention available, using PyTorch native"
-        echo "export COMFYUI_ATTENTION_MECHANISM=default" > /workspace/venv/.env_settings
-    fi
+if python -c "import sageattention" 2>/dev/null; then
+    echo "   🚀 Sage Attention selected for $GPU_NAME (universal best performance)"
+    echo "   ⚡ Optimized for all GPUs: RTX 3090/4090/5090, H100, A100, L40S, etc."
+    echo "   📦 ComfyUI will auto-fallback to xformers/flash if needed"
+    echo "export COMFYUI_ATTENTION_MECHANISM=sage" > /workspace/venv/.env_settings
+elif python -c "import xformers" 2>/dev/null; then
+    echo "   ✅ xformers selected as fallback for $GPU_NAME"
+    echo "export COMFYUI_ATTENTION_MECHANISM=xformers" > /workspace/venv/.env_settings
+else
+    echo "   ⚠️ No optimized attention available, using PyTorch native"
+    echo "export COMFYUI_ATTENTION_MECHANISM=default" > /workspace/venv/.env_settings
 fi
 
 # Log the final configuration
@@ -1127,32 +1100,21 @@ if [ -d "/workspace/ComfyUI/models/tensorrt" ]; then
     fi
 fi
 
-# All attention mechanisms are pre-installed during Docker build
-# No runtime compilation needed!
+# ComfyUI V54 Approach: Always prefer Sage Attention (universal best performance)
+# All attention mechanisms are pre-installed during Docker build - no compilation needed!
 if [ -z "$COMFYUI_ATTENTION_MECHANISM" ]; then
-    # Auto-detect best available mechanism if not set
-    # PRIORITY: Sage (for RTX 5090/Blackwell) > Flash3 > Flash2 > xformers
     GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 || echo "Unknown")
 
-    # Check for RTX 5090/Blackwell first - Sage is CRITICAL for WAN 2.2 performance
-    if echo "$GPU_NAME" | grep -qE "5090|B200|RTX PRO 6000" && python -c "import sageattention" 2>/dev/null; then
+    # Try sage first for all GPUs (ComfyUI will auto-fallback if it doesn't work)
+    if python -c "import sageattention" 2>/dev/null; then
         export COMFYUI_ATTENTION_MECHANISM="sage"
-        echo "🎯 Auto-detected Sage Attention for $GPU_NAME (optimal for WAN 2.2)"
-    elif python -c "import flash_attn; exit(0 if flash_attn.__version__.startswith('3') else 1)" 2>/dev/null; then
-        export COMFYUI_ATTENTION_MECHANISM="flash3"
-        echo "🚀 Auto-detected Flash Attention 3"
-    elif python -c "import flash_attn" 2>/dev/null; then
-        export COMFYUI_ATTENTION_MECHANISM="flash2"
-        echo "⚡ Auto-detected Flash Attention 2"
-    elif python -c "import sageattention" 2>/dev/null; then
-        export COMFYUI_ATTENTION_MECHANISM="sage"
-        echo "🎯 Auto-detected Sage Attention"
+        echo "🚀 Using Sage Attention for $GPU_NAME (universal best performance)"
     elif python -c "import xformers" 2>/dev/null; then
         export COMFYUI_ATTENTION_MECHANISM="xformers"
-        echo "📦 Auto-detected xformers"
+        echo "📦 Using xformers for $GPU_NAME (fallback)"
     else
         export COMFYUI_ATTENTION_MECHANISM="default"
-        echo "ℹ️ Using default PyTorch attention"
+        echo "ℹ️ Using default PyTorch attention for $GPU_NAME"
     fi
 fi
 
