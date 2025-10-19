@@ -12,9 +12,36 @@ fi
 
 echo "[ENSURE SYNC] Checking Google Drive sync status..."
 
-# Function to check if sync is running
+# Function to check if sync is running (with stale process detection)
 is_sync_running() {
-    pgrep -f "sync_loop\|permanent_sync\|rclone_sync" > /dev/null 2>&1
+    # Check if PID file exists
+    if [ ! -f /workspace/.permanent_sync/sync.pid ]; then
+        return 1
+    fi
+
+    # Read PID and check if process is actually running
+    SYNC_PID=$(cat /workspace/.permanent_sync/sync.pid 2>/dev/null)
+    if [ -z "$SYNC_PID" ]; then
+        return 1
+    fi
+
+    # Check if this PID actually exists and is a sync_loop process
+    if kill -0 $SYNC_PID 2>/dev/null; then
+        # PID exists, verify it's actually our sync script
+        if ps -p $SYNC_PID -o args= | grep -q "sync_loop.sh"; then
+            return 0  # Valid sync running
+        else
+            # PID exists but isn't our sync script (stale PID file)
+            echo "[ENSURE SYNC] Stale PID file detected (PID $SYNC_PID is not sync_loop)"
+            rm -f /workspace/.permanent_sync/sync.pid
+            return 1
+        fi
+    else
+        # PID doesn't exist (dead process)
+        echo "[ENSURE SYNC] Dead sync process detected (PID $SYNC_PID)"
+        rm -f /workspace/.permanent_sync/sync.pid
+        return 1
+    fi
 }
 
 # Function to check if rclone works
@@ -22,21 +49,35 @@ is_rclone_working() {
     rclone lsd gdrive: >/dev/null 2>&1
 }
 
+# Kill any zombie sync processes from terminated pods
+echo "[ENSURE SYNC] Checking for zombie sync processes..."
+ZOMBIE_PIDS=$(pgrep -f "sync_loop.sh" | grep -v "^$$" || true)
+if [ -n "$ZOMBIE_PIDS" ]; then
+    ZOMBIE_COUNT=$(echo "$ZOMBIE_PIDS" | wc -l)
+    echo "[ENSURE SYNC] Found $ZOMBIE_COUNT zombie sync processes from old pods, cleaning up..."
+    pkill -9 -f "sync_loop.sh" 2>/dev/null || true
+    pkill -9 -f "rclone.*ComfyUI-Output" 2>/dev/null || true
+    sleep 2
+    echo "[ENSURE SYNC] Zombie processes killed"
+fi
+
 # Check if sync is already running
 if is_sync_running; then
-    echo "[ENSURE SYNC] Sync process already running"
+    echo "[ENSURE SYNC] Valid sync process already running"
 
     # But verify rclone is actually working
     if is_rclone_working; then
         echo "[ENSURE SYNC] ✅ Everything is working!"
         exit 0
     else
-        echo "[ENSURE SYNC] ⚠️ Sync running but rclone not working, fixing..."
-        pkill -f "sync_loop\|permanent_sync\|rclone_sync"
+        echo "[ENSURE SYNC] ⚠️ Sync running but rclone not working, restarting..."
+        SYNC_PID=$(cat /workspace/.permanent_sync/sync.pid 2>/dev/null)
+        kill -9 $SYNC_PID 2>/dev/null || true
+        rm -f /workspace/.permanent_sync/sync.pid
         sleep 2
     fi
 else
-    echo "[ENSURE SYNC] No sync process found"
+    echo "[ENSURE SYNC] No valid sync process found, will start new one"
 fi
 
 # Try different methods to get sync working

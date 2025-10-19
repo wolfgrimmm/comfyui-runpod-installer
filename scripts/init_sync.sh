@@ -204,9 +204,12 @@ EOF
 
 # Function to start the sync loop
 start_sync_loop() {
-    # Kill any existing sync processes
-    pkill -f "rclone_sync_loop|permanent_sync" 2>/dev/null || true
-    sleep 1
+    # Kill any zombie sync processes from terminated pods
+    echo "[SYNC INIT] Cleaning up zombie processes from old pods..."
+    pkill -9 -f "sync_loop.sh" 2>/dev/null || true
+    pkill -9 -f "rclone.*ComfyUI-Output" 2>/dev/null || true
+    rm -f /workspace/.permanent_sync/sync.pid 2>/dev/null || true
+    sleep 2
 
     # Create the sync script in workspace
     cat > /workspace/.permanent_sync/sync_loop.sh << 'SYNC_SCRIPT'
