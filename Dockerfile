@@ -1064,10 +1064,25 @@ else
     fi
 fi
 
-# Load attention mechanism configuration
-if [ -f "/workspace/venv/.env_settings" ]; then
-    source /workspace/venv/.env_settings
+# ComfyUI V54 Approach: ALWAYS use Sage Attention for all modern GPUs
+# Don't trust old .env_settings file - it may be from old Docker image
+# Sage has universal compatibility and best performance for ALL GPUs
+
+# Force sage attention for all GPUs (ComfyUI will auto-fallback if needed)
+if python -c "import sageattention" 2>/dev/null; then
+    export COMFYUI_ATTENTION_MECHANISM="sage"
+    echo "🚀 Using Sage Attention (universal best performance for all GPUs)"
+elif python -c "import xformers" 2>/dev/null; then
+    export COMFYUI_ATTENTION_MECHANISM="xformers"
+    echo "📦 Using xformers (fallback)"
+else
+    export COMFYUI_ATTENTION_MECHANISM="default"
+    echo "ℹ️ Using default PyTorch attention"
 fi
+
+# Update .env_settings file for consistency
+mkdir -p /workspace/venv
+echo "export COMFYUI_ATTENTION_MECHANISM=$COMFYUI_ATTENTION_MECHANISM" > /workspace/venv/.env_settings
 
 # ============================================================================
 # GPU CHANGE DETECTION AND CACHE CLEANING
@@ -1175,23 +1190,8 @@ if [ -d "/workspace/ComfyUI/models/tensorrt" ]; then
     fi
 fi
 
-# ComfyUI V54 Approach: Always prefer Sage Attention (universal best performance)
-# All attention mechanisms are pre-installed during Docker build - no compilation needed!
-if [ -z "$COMFYUI_ATTENTION_MECHANISM" ]; then
-    GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 || echo "Unknown")
-
-    # Try sage first for all GPUs (ComfyUI will auto-fallback if it doesn't work)
-    if python -c "import sageattention" 2>/dev/null; then
-        export COMFYUI_ATTENTION_MECHANISM="sage"
-        echo "🚀 Using Sage Attention for $GPU_NAME (universal best performance)"
-    elif python -c "import xformers" 2>/dev/null; then
-        export COMFYUI_ATTENTION_MECHANISM="xformers"
-        echo "📦 Using xformers for $GPU_NAME (fallback)"
-    else
-        export COMFYUI_ATTENTION_MECHANISM="default"
-        echo "ℹ️ Using default PyTorch attention for $GPU_NAME"
-    fi
-fi
+# Attention mechanism already set above (lines 1072-1085)
+# No need for additional detection here
 
 # Check if ComfyUI is installed
 if [ ! -f "/workspace/ComfyUI/main.py" ]; then
