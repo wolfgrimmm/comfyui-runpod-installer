@@ -319,26 +319,40 @@ class ComfyUIManager:
             env_vars["VIRTUAL_ENV"] = "/workspace/venv"
             env_vars["PYTHONPATH"] = "/workspace/ComfyUI"
 
-            # ComfyUI V54 Approach: Always use Sage Attention (universal best performance)
-            # Load saved attention mechanism settings from venv if available
-            env_settings_file = "/workspace/venv/.env_settings"
-            if os.path.exists(env_settings_file):
-                try:
-                    with open(env_settings_file, 'r') as f:
-                        for line in f:
-                            if line.startswith('export COMFYUI_ATTENTION_MECHANISM='):
-                                mechanism = line.split('=', 1)[1].strip().strip('"').strip("'")
-                                if mechanism:
-                                    env_vars["COMFYUI_ATTENTION_MECHANISM"] = mechanism
-                                    print(f"🎯 Using saved attention mechanism: {mechanism}")
-                                    break
-                except Exception as e:
-                    print(f"⚠️ Could not read attention settings: {e}")
+            # ComfyUI V54 Approach: ALWAYS use Sage Attention for all modern GPUs
+            # Don't trust old .env_settings file - it may be from old Docker image
+            # Force sage attention (ComfyUI will auto-fallback if needed)
 
-            # If no saved settings, default to sage (V54 approach)
-            if "COMFYUI_ATTENTION_MECHANISM" not in env_vars:
-                env_vars["COMFYUI_ATTENTION_MECHANISM"] = "sage"
-                print(f"🚀 Using Sage Attention (universal best performance for all GPUs)")
+            # Check if sageattention package is installed
+            try:
+                import subprocess
+                result = subprocess.run(["/workspace/venv/bin/python", "-c", "import sageattention"],
+                                      capture_output=True, timeout=2)
+                if result.returncode == 0:
+                    env_vars["COMFYUI_ATTENTION_MECHANISM"] = "sage"
+                    print(f"🚀 Using Sage Attention (universal best performance for all GPUs)")
+                else:
+                    # Sage not available, try xformers
+                    result = subprocess.run(["/workspace/venv/bin/python", "-c", "import xformers"],
+                                          capture_output=True, timeout=2)
+                    if result.returncode == 0:
+                        env_vars["COMFYUI_ATTENTION_MECHANISM"] = "xformers"
+                        print(f"📦 Using xformers (fallback)")
+                    else:
+                        env_vars["COMFYUI_ATTENTION_MECHANISM"] = "default"
+                        print(f"ℹ️ Using default PyTorch attention")
+            except Exception as e:
+                print(f"⚠️ Error checking attention mechanism: {e}")
+                env_vars["COMFYUI_ATTENTION_MECHANISM"] = "sage"  # Default to sage
+
+            # Update .env_settings file for consistency
+            env_settings_file = "/workspace/venv/.env_settings"
+            try:
+                os.makedirs(os.path.dirname(env_settings_file), exist_ok=True)
+                with open(env_settings_file, 'w') as f:
+                    f.write(f"export COMFYUI_ATTENTION_MECHANISM={env_vars['COMFYUI_ATTENTION_MECHANISM']}\n")
+            except Exception as e:
+                print(f"⚠️ Could not update .env_settings: {e}")
 
             # Check if we should force safe mode
             if os.path.exists("/workspace/.comfyui_safe_mode"):
