@@ -29,7 +29,7 @@ except ImportError:
 app = Flask(__name__)
 
 # Configuration
-WORKSPACE_DIR = "/workspace"
+WORKSPACE_DIR = os.environ.get("WORKSPACE_DIR", "/workspace")
 COMFYUI_DIR = f"{WORKSPACE_DIR}/ComfyUI"  # ComfyUI is in /workspace/ComfyUI
 INPUT_BASE = f"{WORKSPACE_DIR}/input"
 OUTPUT_BASE = f"{WORKSPACE_DIR}/output"
@@ -356,14 +356,10 @@ class ComfyUIManager:
             base_cmd += f" --output-directory /workspace/output/{username}"
             base_cmd += f" --input-directory /workspace/input/{username}"
 
-            # Add attention-specific flags
+            # ComfyUI V54 Approach: Add attention-specific flags (sage only, xformers is default)
             if attention_mechanism == "sage":
                 base_cmd += " --use-sage-attention"
-            elif attention_mechanism == "flash2" or attention_mechanism == "flash3":
-                base_cmd += " --use-flash-attention"
-            elif attention_mechanism == "xformers":
-                # xformers is enabled by default, no flag needed
-                pass
+            # xformers is ComfyUI's default, no flag needed
 
             # Add logging
             base_cmd += " 2>&1 | tee /tmp/comfyui_start.log"

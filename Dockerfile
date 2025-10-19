@@ -1239,19 +1239,12 @@ start_comfyui_with_fallback() {
     while [ $attempt -le $max_attempts ]; do
         echo "📊 Attempt $attempt of $max_attempts to start ComfyUI..."
 
+        # ComfyUI V54 Approach: Simple sage/xformers/default selection (no flash attention)
         case "$COMFYUI_ATTENTION_MECHANISM" in
-            flash3)
-                echo "🚀 Starting ComfyUI with Flash Attention 3 (Hopper optimized)"
-                python main.py --listen 0.0.0.0 --port 8188 2>&1 | tee /tmp/comfyui_start.log &
-                ;;
-            flash2)
-                echo "⚡ Starting ComfyUI with Flash Attention 2"
-                python main.py --listen 0.0.0.0 --port 8188 2>&1 | tee /tmp/comfyui_start.log &
-                ;;
             sage)
                 echo "🎯 Starting ComfyUI with Sage Attention 2.2.0"
                 echo "   ⚡ WAN 2.2 will generate 13x faster with Sage!"
-                python main.py --listen 0.0.0.0 --port 8188 2>&1 | tee /tmp/comfyui_start.log &
+                python main.py --listen 0.0.0.0 --port 8188 --use-sage-attention 2>&1 | tee /tmp/comfyui_start.log &
                 ;;
             xformers)
                 echo "📦 Starting ComfyUI with xformers"

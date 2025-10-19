@@ -3,44 +3,17 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-        <meta http-equiv="Pragma" content="no-cache">
-        <meta http-equiv="Expires" content="0">
         <title>ComfyUI Control Panel</title>
-
-        <!-- Premium Animation Libraries -->
-        <!-- GSAP - Industry standard animation engine -->
-        <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
-
-        <!-- Atropos - 3D Parallax Depth Effects -->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/atropos@2.0.2/atropos.min.css">
-        <script src="https://cdn.jsdelivr.net/npm/atropos@2.0.2/atropos.min.js"></script>
-
-        <!-- Lottie - GPU-Accelerated Animations -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
-
-        <!-- Rive - Interactive State Machine Animations -->
-        <script src="https://unpkg.com/@rive-app/canvas@2.7.0"></script>
-
-        <!-- Three.js for 3D effects (required by Vanta) -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-
-        <!-- Lottie Player for easy integration -->
-        <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
-
-        <!-- Vanta.js - Stunning Background Effects -->
-        <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.dots.min.js"></script>
-
+        
         <!-- Simple CSS Animations -->
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
         
         :root {
-            --primary: #6B6B6B;
-            --primary-glow: #6B6B6B40;
-            --glass-bg: rgba(0, 0, 0, 0.9);
+            --primary: #E7331D;
+            --primary-glow: #E7331D40;
+            --glass-bg: rgba(255, 255, 255, 0.02);
             --glass-border: rgba(255, 255, 255, 0.08);
             --text-primary: rgba(255, 255, 255, 0.95);
             --text-secondary: rgba(255, 255, 255, 0.7);
@@ -50,13 +23,6 @@
             --hover-transform: translateY(-4px);
             --shadow-color: rgba(0, 0, 0, 0.4);
             --shadow-color-light: rgba(0, 0, 0, 0.2);
-
-            /* Apple-style border radius system */
-            --radius-xl: 20px;   /* Large containers, cards */
-            --radius-lg: 16px;   /* Medium containers */
-            --radius-md: 12px;   /* Buttons, inputs, controls */
-            --radius-sm: 8px;    /* Small elements, badges */
-            --radius-xs: 6px;    /* Tiny elements */
         }
         
         @keyframes backgroundFloat {
@@ -101,20 +67,20 @@
         }
         
         @keyframes morphBorder {
-            0%, 100% { border-radius: var(--radius-lg); }
-            50% { border-radius: var(--radius-xl); }
+            0%, 100% { border-radius: 16px; }
+            50% { border-radius: 24px; }
         }
         
         @keyframes glowPulse {
             0%, 100% { 
-                box-shadow: 0 0 20px rgba(107, 107, 107, 0.3),
-                           0 0 40px rgba(107, 107, 107, 0.2),
-                           0 0 60px rgba(107, 107, 107, 0.1);
+                box-shadow: 0 0 20px rgba(231, 51, 29, 0.3),
+                           0 0 40px rgba(231, 51, 29, 0.2),
+                           0 0 60px rgba(231, 51, 29, 0.1);
             }
             50% { 
-                box-shadow: 0 0 30px rgba(107, 107, 107, 0.5),
-                           0 0 60px rgba(107, 107, 107, 0.3),
-                           0 0 90px rgba(107, 107, 107, 0.2);
+                box-shadow: 0 0 30px rgba(231, 51, 29, 0.5),
+                           0 0 60px rgba(231, 51, 29, 0.3),
+                           0 0 90px rgba(231, 51, 29, 0.2);
             }
         }
         
@@ -173,15 +139,28 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 40px 20px;
+            justify-content: space-between;
+            padding: 20px;
             position: relative;
             overflow-y: auto;
             overflow-x: hidden;
         }
         
         body::before {
-            display: none;
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(ellipse at top left, rgba(231, 51, 29, 0.15) 0%, transparent 40%),
+                radial-gradient(ellipse at top right, rgba(139, 92, 246, 0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at bottom left, rgba(59, 130, 246, 0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at bottom right, rgba(236, 72, 153, 0.1) 0%, transparent 40%),
+                radial-gradient(ellipse at center, rgba(231, 51, 29, 0.05) 0%, transparent 50%);
+            z-index: 0;
+            animation: backgroundFloat 20s ease-in-out infinite;
         }
 
         /* Advanced Particle System */
@@ -201,15 +180,36 @@
             position: relative;
         }
 
-        /* Removed glow-effect::before to eliminate any potential gray tint */
+        .glow-effect::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, 
+                rgba(231, 51, 29, 0.3), 
+                rgba(139, 92, 246, 0.3), 
+                rgba(59, 130, 246, 0.3), 
+                rgba(236, 72, 153, 0.3));
+            border-radius: inherit;
+            z-index: -1;
+            filter: blur(8px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .glow-effect:hover::before {
+            opacity: 1;
+        }
 
         /* ===== ADVANCED BUTTON ANIMATIONS ===== */
         .btn-advanced {
             position: relative;
             overflow: hidden;
-            background: linear-gradient(135deg,
-                rgba(107, 107, 107, 0.15),
-                rgba(107, 107, 107, 0.1));
+            background: linear-gradient(135deg, 
+                rgba(231, 51, 29, 0.15), 
+                rgba(139, 92, 246, 0.15));
             background-size: 200% 200%;
             border: 1px solid rgba(255, 255, 255, 0.15);
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -238,8 +238,8 @@
             transform: translateY(-4px) scale(1.03);
             border-color: rgba(255, 255, 255, 0.3);
             box-shadow: 
-                0 20px 50px rgba(107, 107, 107, 0.3),
-                0 0 80px rgba(107, 107, 107, 0.2),
+                0 20px 50px rgba(231, 51, 29, 0.3),
+                0 0 80px rgba(231, 51, 29, 0.2),
                 0 0 0 1px rgba(255, 255, 255, 0.2);
         }
         
@@ -273,52 +273,73 @@
         }
         
         .container {
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(30px) brightness(0.8);
-            -webkit-backdrop-filter: blur(30px) brightness(0.8);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: var(--radius-xl);
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--blur-strength));
+            -webkit-backdrop-filter: blur(var(--blur-strength));
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
             padding: 48px;
             width: 100%;
-            max-width: 520px;
-            box-shadow:
+            max-width: 800px;
+            box-shadow: 
                 0 20px 40px var(--shadow-color),
-                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
             position: relative;
             z-index: 1;
             animation: slideInUp 0.8s ease-out;
             overflow: hidden;
             margin: 0 auto;
-            transition: border-color 0.3s ease, background 0.3s ease;
         }
-
         
         /* Responsive breakpoints */
-        @media (max-width: 768px) {
+        @media (max-width: 1200px) {
             .container {
-                max-width: 90%;
+                max-width: 90vw;
                 padding: 40px;
             }
         }
-
-        @media (max-width: 576px) {
+        
+        @media (max-width: 992px) {
             .container {
-                max-width: 95%;
-                padding: 32px;
-                border-radius: var(--radius-lg);
-            }
-        }
-
-        @media (max-width: 480px) {
-            .container {
-                max-width: 100%;
-                padding: 24px;
-                border-radius: var(--radius-md);
+                max-width: 95vw;
+                padding: 36px;
             }
         }
         
-        /* Removed light spot effect */
+        @media (max-width: 768px) {
+            .container {
+                max-width: 98vw;
+                padding: 32px;
+                border-radius: 20px;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .container {
+                max-width: 100vw;
+                padding: 24px;
+                border-radius: 16px;
+                margin: 0;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+                border-radius: 12px;
+            }
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            animation: shimmer 3s linear infinite;
+        }
         
         .quick-actions {
             position: absolute;
@@ -332,11 +353,13 @@
         .action-btn {
             width: 44px;
             height: 44px;
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: var(--radius-md);
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.15)),
+                linear-gradient(45deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%, rgba(255, 255, 255, 0.1) 100%);
+            backdrop-filter: blur(20px) saturate(1.6);
+            -webkit-backdrop-filter: blur(20px) saturate(1.6);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -376,23 +399,10 @@
             fill: none;
             stroke-width: 2;
             transition: stroke 0.3s;
-            animation: iconFloat 3s ease-in-out infinite;
         }
-
+        
         .action-btn:hover svg {
             stroke: var(--text-primary);
-            animation: iconSpin 0.6s ease-in-out;
-        }
-
-        @keyframes iconFloat {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-3px); }
-        }
-
-        @keyframes iconSpin {
-            0% { transform: rotate(0deg) scale(1); }
-            50% { transform: rotate(180deg) scale(1.1); }
-            100% { transform: rotate(360deg) scale(1); }
         }
         
         .action-btn .tooltip {
@@ -403,7 +413,7 @@
             background: rgba(0, 0, 0, 0.9);
             color: white;
             padding: 6px 12px;
-            border-radius: var(--radius-sm);
+            border-radius: 8px;
             font-size: 12px;
             white-space: nowrap;
             pointer-events: none;
@@ -435,16 +445,16 @@
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 2px 10px rgba(107, 107, 107, 0.3));
+            filter: drop-shadow(0 2px 10px rgba(231, 51, 29, 0.3));
         }
         
         .logo .ui {
-            color: #E7331D;
-            background: linear-gradient(135deg, #E7331D, #ff6b6b);
+            color: var(--primary);
+            background: linear-gradient(135deg, var(--primary), #ff6b6b);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 2px 20px rgba(107, 107, 107, 0.5));
+            filter: drop-shadow(0 2px 20px rgba(231, 51, 29, 0.5));
         }
         
         .subtitle {
@@ -466,25 +476,13 @@
             backdrop-filter: blur(25px) saturate(180%);
             -webkit-backdrop-filter: blur(25px) saturate(180%);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: var(--radius-xl);
+            border-radius: 20px;
             padding: 20px;
             margin-bottom: 32px;
             position: relative;
             overflow: hidden;
-            box-shadow:
+            box-shadow: 
                 0 8px 32px rgba(0, 0, 0, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .status-card:hover {
-            border-color: rgba(107, 107, 107, 0.4);
-            box-shadow:
-                0 8px 32px rgba(0, 0, 0, 0.4),
-                0 0 20px rgba(107, 107, 107, 0.3),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
 
@@ -532,8 +530,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 0;
-            position: relative;
+            margin-bottom: 16px;
         }
         
         .status-badge {
@@ -602,7 +599,32 @@
             font-weight: 500;
             color: var(--text-primary);
         }
-
+        
+        .status-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 4px;
+        }
+        
         .profile-section {
             margin-bottom: 24px;
             animation: slideInUp 0.8s ease-out 0.3s both;
@@ -624,29 +646,24 @@
         }
         
         .select-wrapper::before {
-            content: '';
+            content: '👤';
             position: absolute;
             left: 16px;
             top: 50%;
             transform: translateY(-50%);
-            width: 18px;
-            height: 18px;
+            font-size: 18px;
             z-index: 2;
             pointer-events: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'%3E%3C/path%3E%3Ccircle cx='12' cy='7' r='4'%3E%3C/circle%3E%3C/svg%3E");
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
         }
         
         select {
             width: 100%;
             padding: 16px 48px;
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--glass-bg);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border: 2px solid var(--glass-border);
-            border-radius: var(--radius-lg);
+            border-radius: 16px;
             font-size: 15px;
             color: var(--text-primary);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -662,17 +679,16 @@
         }
         
         select:focus {
-            border-color: rgba(107, 107, 107, 0.3);
+            border-color: rgba(231, 51, 29, 0.3);
             background-color: rgba(255, 255, 255, 0.03);
-            box-shadow:
-                0 0 0 4px rgba(107, 107, 107, 0.1),
-                0 10px 30px rgba(107, 107, 107, 0.1);
+            box-shadow: 
+                0 0 0 4px rgba(231, 51, 29, 0.1),
+                0 10px 30px rgba(231, 51, 29, 0.1);
         }
-
+        
         select:hover {
-            border-color: rgba(107, 107, 107, 0.4);
+            border-color: rgba(255, 255, 255, 0.15);
             background-color: rgba(255, 255, 255, 0.03);
-            box-shadow: 0 0 20px rgba(107, 107, 107, 0.3);
         }
         
         select option {
@@ -691,11 +707,32 @@
 
         .auto-open-section {
             margin: 20px 0;
-            padding: 16px 0;
+            padding: 16px 20px;
+            background: 
+                linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1)),
+                linear-gradient(45deg, rgba(255, 255, 255, 0.15) 0%, transparent 50%, rgba(255, 255, 255, 0.08) 100%);
+            backdrop-filter: blur(15px) saturate(1.4);
+            -webkit-backdrop-filter: blur(15px) saturate(1.4);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 16px;
+            box-shadow: 
+                0 6px 20px rgba(0, 0, 0, 0.08),
+                0 2px 6px rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
         }
         
         .auto-open-section::before {
-            display: none;
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+            animation: checkboxShine 6s ease-in-out infinite;
         }
         
         @keyframes checkboxShine {
@@ -718,7 +755,7 @@
             cursor: pointer;
             accent-color: #10b981;
             border: 2px solid var(--glass-border);
-            border-radius: var(--radius-xs);
+            border-radius: 4px;
         }
 
         .checkbox-text {
@@ -743,7 +780,7 @@
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
             border: 2px solid var(--glass-border);
-            border-radius: var(--radius-md);
+            border-radius: 12px;
             color: var(--text-primary);
             font-size: 14px;
             outline: none;
@@ -751,7 +788,7 @@
         }
         
         .add-user-section input:focus {
-            border-color: rgba(107, 107, 107, 0.3);
+            border-color: rgba(231, 51, 29, 0.3);
             background-color: rgba(255, 255, 255, 0.03);
         }
         
@@ -760,7 +797,7 @@
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
             border: 2px solid var(--glass-border);
-            border-radius: var(--radius-md);
+            border-radius: 12px;
             color: var(--text-primary);
             font-weight: 600;
             cursor: pointer;
@@ -780,7 +817,7 @@
             padding: 12px 16px;
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
+            border-radius: 12px;
             margin-bottom: 16px;
             cursor: pointer;
             transition: all 0.3s;
@@ -801,12 +838,12 @@
             width: 48px;
             height: 24px;
             background: rgba(255, 255, 255, 0.1);
-            border-radius: var(--radius-md);
+            border-radius: 12px;
             transition: background 0.3s;
         }
         
         .toggle-switch.active {
-            background: rgba(107, 107, 107, 0.3);
+            background: rgba(231, 51, 29, 0.3);
         }
         
         .toggle-switch::after {
@@ -850,7 +887,7 @@
         .btn {
             padding: 18px 24px;
             border: none;
-            border-radius: var(--radius-xl);
+            border-radius: 20px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
@@ -881,7 +918,7 @@
                 padding: 14px 18px;
                 font-size: 14px;
                 min-height: 48px;
-                border-radius: var(--radius-lg);
+                border-radius: 16px;
             }
         }
         
@@ -890,84 +927,118 @@
                 padding: 12px 16px;
                 font-size: 13px;
                 min-height: 44px;
-                border-radius: var(--radius-md);
+                border-radius: 12px;
             }
         }
         
         .btn-primary {
             grid-column: 1 / -1;
-            background:
+            background: 
                 linear-gradient(135deg, rgba(231, 51, 29, 0.3), rgba(231, 51, 29, 0.15)),
                 linear-gradient(45deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%, rgba(255, 255, 255, 0.1) 100%);
             backdrop-filter: blur(25px) saturate(180%) brightness(120%) contrast(110%);
             -webkit-backdrop-filter: blur(25px) saturate(180%) brightness(120%) contrast(110%);
             color: white;
             border: 1px solid rgba(231, 51, 29, 0.4);
-            box-shadow:
-                0 8px 20px rgba(0, 0, 0, 0.3),
-                0 4px 10px rgba(0, 0, 0, 0.2),
+            box-shadow: 
+                0 8px 32px rgba(231, 51, 29, 0.3),
+                0 2px 8px rgba(231, 51, 29, 0.2),
                 inset 0 1px 0 rgba(255, 255, 255, 0.4),
-                inset 0 -1px 0 rgba(107, 107, 107, 0.3);
+                inset 0 -1px 0 rgba(231, 51, 29, 0.3);
             position: relative;
             overflow: hidden;
         }
 
-        /* Removed button light spot effects for cleaner look */
+        /* Button Glass Reflection */
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(180deg, 
+                rgba(255, 255, 255, 0.3) 0%, 
+                rgba(255, 255, 255, 0.15) 50%, 
+                transparent 100%);
+            border-radius: 20px 20px 0 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Button Glass Shine */
+        .btn-primary::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, 
+                transparent 0deg, 
+                rgba(255, 255, 255, 0.2) 45deg, 
+                rgba(255, 255, 255, 0.4) 90deg, 
+                transparent 135deg, 
+                transparent 360deg);
+            animation: glassRotate 10s linear infinite;
+            pointer-events: none;
+            z-index: 2;
+        }
+        
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: buttonShine 4s ease-in-out infinite;
+        }
+        
+        @keyframes buttonShine {
+            0% { left: -100%; }
+            50% { left: 100%; }
+            100% { left: 100%; }
+        }
         
         .btn-primary:hover:not(:disabled) {
             transform: translateY(-3px) scale(1.02);
-            box-shadow:
-                0 0 30px rgba(231, 51, 29, 0.25),
-                0 20px 40px rgba(0, 0, 0, 0.4),
-                0 10px 20px rgba(0, 0, 0, 0.3);
-            background: linear-gradient(135deg, rgba(107, 107, 107, 0.4), rgba(107, 107, 107, 0.3));
+            box-shadow: 
+                0 0 50px rgba(231, 51, 29, 0.6),
+                0 0 100px rgba(231, 51, 29, 0.3),
+                0 20px 40px rgba(231, 51, 29, 0.4);
+            background: linear-gradient(135deg, rgba(231, 51, 29, 0.3), rgba(231, 51, 29, 0.2));
             border-color: var(--primary);
         }
 
         .btn-success {
             grid-column: 1 / -1;
-            background:
-                linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.15)),
-                linear-gradient(45deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%, rgba(255, 255, 255, 0.1) 100%);
-            backdrop-filter: blur(25px) saturate(180%) brightness(120%) contrast(110%);
-            -webkit-backdrop-filter: blur(25px) saturate(180%) brightness(120%) contrast(110%);
+            background: linear-gradient(135deg, #10b981, #34d399);
+            border: 2px solid #10b981;
             color: white;
-            border: 1px solid rgba(16, 185, 129, 0.4);
-            box-shadow:
-                0 8px 20px rgba(0, 0, 0, 0.3),
-                0 4px 10px rgba(0, 0, 0, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.4),
-                inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
         }
 
         .btn-success:hover:not(:disabled) {
             transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
             background: linear-gradient(135deg, #34d399, #10b981);
         }
 
         .btn-secondary {
-            background:
-                linear-gradient(135deg, rgba(107, 107, 107, 0.3), rgba(107, 107, 107, 0.15)),
-                linear-gradient(45deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%, rgba(255, 255, 255, 0.1) 100%);
-            backdrop-filter: blur(25px) saturate(180%) brightness(120%) contrast(110%);
-            -webkit-backdrop-filter: blur(25px) saturate(180%) brightness(120%) contrast(110%);
-            color: white;
-            border: 1px solid rgba(107, 107, 107, 0.4);
-            box-shadow:
-                0 8px 20px rgba(0, 0, 0, 0.3),
-                0 4px 10px rgba(0, 0, 0, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.4),
-                inset 0 -1px 0 rgba(255, 255, 255, 0.1);
-            padding: 12px 20px;
-            font-size: 14px;
-            min-height: 44px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 2px solid var(--glass-border);
+            color: var(--text-primary);
         }
-
+        
         .btn-secondary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.15);
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(107, 107, 107, 0.15);
-            background: linear-gradient(135deg, #6B6B6B, #7B7B7B);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
         }
         
         .btn:disabled {
@@ -977,25 +1048,7 @@
         }
         
         .btn:active:not(:disabled) {
-            transform: translateY(-1px) scale(0.98);
-            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* Ripple effect */
-        .ripple {
-            position: absolute;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.5);
-            transform: scale(0);
-            animation: ripple-animation 0.6s ease-out;
-            pointer-events: none;
-        }
-
-        @keyframes ripple-animation {
-            to {
-                transform: scale(4);
-                opacity: 0;
-            }
+            transform: translateY(-1px) scale(1.01);
         }
 
         .btn-loading {
@@ -1019,7 +1072,7 @@
             padding: 16px;
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
-            border-radius: var(--radius-lg);
+            border-radius: 16px;
         }
         
         .resource-item {
@@ -1032,7 +1085,7 @@
             width: 32px;
             height: 32px;
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-            border-radius: var(--radius-sm);
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1120,7 +1173,7 @@
             height: 48px;
             animation: spin 1s linear infinite;
             margin: 0 auto 24px;
-            box-shadow: 0 0 20px rgba(107, 107, 107, 0.3);
+            box-shadow: 0 0 20px rgba(231, 51, 29, 0.3);
         }
         
         .loading-text {
@@ -1148,7 +1201,7 @@
             top: 20px;
             right: 20px;
             padding: 16px 24px;
-            border-radius: var(--radius-md);
+            border-radius: 12px;
             display: none;
             font-size: 14px;
             font-weight: 500;
@@ -1169,7 +1222,7 @@
         }
         
         .toast.info {
-            background: linear-gradient(135deg, rgba(107, 107, 107, 0.9), rgba(107, 107, 107, 0.7));
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(59, 130, 246, 0.7));
             color: white;
         }
         
@@ -1202,7 +1255,8 @@
             }
             
             .status-details {
-                /* Already centered with flexbox, no changes needed */
+                grid-template-columns: 1fr;
+                gap: 12px;
             }
             
             .resource-monitor {
@@ -1281,13 +1335,6 @@
         .main-wrapper {
             opacity: 1;
             transform: translateY(0);
-            width: 100%;
-            max-width: 560px;
-            margin: 0 auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
         }
 
         /* Smart Button Interactions */
@@ -1301,7 +1348,7 @@
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(231, 51, 29, 0.25);
-            background: linear-gradient(135deg, #E7331D, #ff6b6b);
+            background: linear-gradient(135deg, #e7331d, #ff4d2e);
         }
 
         .btn-primary:active {
@@ -1366,7 +1413,7 @@
 
         /* Smart Focus States */
         .btn-primary:focus-visible {
-            outline: 2px solid rgba(107, 107, 107, 0.5);
+            outline: 2px solid rgba(231, 51, 29, 0.5);
             outline-offset: 2px;
         }
 
@@ -1390,14 +1437,11 @@
 
         /* Typing Cursor Animation */
         .typing-cursor {
-            color: var(--primary);
+            color: #ffffff;
             animation: blink 0.8s infinite;
             font-weight: bold;
             font-size: inherit;
             margin-left: 2px;
-            background: rgba(107, 107, 107, 0.2);
-            padding: 0 2px;
-            border-radius: 3px;
         }
 
         @keyframes blink {
@@ -1438,21 +1482,19 @@
     </style>
 </head>
 <body>
-        <!-- Clean Black Background - dot grid canvas will be added via JS -->
-        <div id="glassBackground" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; background: #000;"></div>
+        <!-- Subtle Background -->
+        <div id="glassBackground" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;">
+            <!-- Base Gradient -->
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);"></div>
+        </div>
     
     <div class="main-wrapper" style="position: relative; z-index: 10;">
         <div class="container glow-effect floating">
         <div class="quick-actions">
-            <button class="action-btn" onclick="openJupyterLab()" id="jupyterLabBtn">
-                <lottie-player
-                    src="https://assets-v2.lottiefiles.com/a/618e7af4-2595-11ee-ba4a-c726a07376ae/pwiyh1eZE5.json"
-                    background="transparent"
-                    speed="1"
-                    style="width: 28px; height: 28px;"
-                    loop
-                    autoplay>
-                </lottie-player>
+            <button class="action-btn" onclick="openJupyterLab()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
             </button>
             <button class="action-btn" onclick="openModelManager()">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -1463,7 +1505,7 @@
         
         <div class="header">
             <div class="logo">
-                <h1 id="title-text"></h1>
+                <h1>COMFY<span class="ui">UI</span></h1>
             </div>
         </div>
         
@@ -1475,12 +1517,26 @@
                         {% if running %}
                             Active • {{ current_user }}
                         {% else %}
-                            Offline
+                            System Inactive
                         {% endif %}
                     </div>
                 </div>
-                <div style="font-size: 12px; color: var(--text-tertiary); position: absolute; right: 0;">
-                    v2.0
+                <div style="font-size: 12px; color: var(--text-tertiary);">
+                    v1.0.3
+                </div>
+            </div>
+            <div class="status-details">
+                <div class="stat-item">
+                    <div class="stat-value" id="uptime">{{ uptime|default('0m') }}</div>
+                    <div class="stat-label">Uptime</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="models">{{ models_count|default(0) }}</div>
+                    <div class="stat-label">Models</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="queue">{{ queue_size|default(0) }}</div>
+                    <div class="stat-label">Queue</div>
                 </div>
             </div>
         </div>
@@ -1545,478 +1601,161 @@
     
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
-            <!-- Lottie Loading Animation Container -->
-            <div id="lottieLoadingContainer" style="width: 120px; height: 120px; margin: 0 auto;"></div>
+            <div class="spinner"></div>
             <div class="loading-text" id="loadingText">Initializing ComfyUI</div>
             <div class="loading-subtext" id="loadingSubtext">This may take a moment...</div>
             <div class="loading-progress" id="loadingProgress"></div>
         </div>
     </div>
-
-    <!-- Lottie Success Animation Container (positioned in status area) -->
-    <div id="lottieSuccessContainer" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 200px; z-index: 10000; display: none; pointer-events: none;"></div>
-
-    <!-- Lottie Error Animation Container -->
-    <div id="lottieErrorContainer" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 200px; z-index: 10000; display: none; pointer-events: none;"></div>
-
+    
     <div class="toast" id="toast"></div>
     
     <script>
         // Advanced Particle System (Huly.io style)
-        // ============================================
-        // 🎨 PREMIUM ANIMATION INITIALIZATION
-        // Using GSAP + Atropos + Lottie for 60 FPS performance
-        // ============================================
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Register GSAP plugins
-            gsap.registerPlugin(ScrollTrigger);
-
-            // 🎯 Micro-interactions: Ripple effect on all buttons
-            document.querySelectorAll('.btn, .btn-primary, .btn-secondary, .btn-success, .action-btn').forEach(button => {
-                button.addEventListener('click', function(e) {
-                    // Don't add ripple if button is disabled
-                    if (this.disabled) return;
-
-                    const ripple = document.createElement('span');
-                    ripple.classList.add('ripple');
-
-                    const rect = this.getBoundingClientRect();
-                    const size = Math.max(rect.width, rect.height);
-                    const x = e.clientX - rect.left - size / 2;
-                    const y = e.clientY - rect.top - size / 2;
-
-                    ripple.style.width = ripple.style.height = size + 'px';
-                    ripple.style.left = x + 'px';
-                    ripple.style.top = y + 'px';
-
-                    this.appendChild(ripple);
-
-                    // Remove ripple after animation
-                    setTimeout(() => ripple.remove(), 600);
-                });
-            });
-
-            // 🎨 Initialize Lottie Animations
-            let loadingAnimation = null;
-            let successAnimation = null;
-            let errorAnimation = null;
-
-            // Loading animation (Spinning dots - reliable public CDN)
-            if (document.getElementById('lottieLoadingContainer')) {
-                loadingAnimation = lottie.loadAnimation({
-                    container: document.getElementById('lottieLoadingContainer'),
-                    renderer: 'svg',
-                    loop: true,
-                    autoplay: false,
-                    path: 'https://assets3.lottiefiles.com/packages/lf20_0apkn3k1.json'
-                });
+        class ParticleSystem {
+            constructor() {
+                this.canvas = document.getElementById('particleCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.particles = [];
+                this.mouse = { x: 0, y: 0 };
+                this.init();
             }
 
-            // Success animation (Green checkmark - reliable public CDN)
-            if (document.getElementById('lottieSuccessContainer')) {
-                successAnimation = lottie.loadAnimation({
-                    container: document.getElementById('lottieSuccessContainer'),
-                    renderer: 'svg',
-                    loop: false,
-                    autoplay: false,
-                    path: 'https://assets4.lottiefiles.com/packages/lf20_zyquagfl.json'
-                });
+            init() {
+                this.resizeCanvas();
+                this.createParticles();
+                this.bindEvents();
+                this.animate();
             }
 
-            // Error animation (we'll add this if needed)
-            // For now, we'll just use the toast notification for errors
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
 
-            // Helper functions to control animations
-            window.showLottieLoading = function() {
-                if (loadingAnimation) {
-                    document.getElementById('lottieLoadingContainer').style.display = 'block';
-                    loadingAnimation.goToAndPlay(0);
-                }
-            };
-
-            window.hideLottieLoading = function() {
-                if (loadingAnimation) {
-                    loadingAnimation.stop();
-                    document.getElementById('lottieLoadingContainer').style.display = 'none';
-                }
-            };
-
-            window.showLottieSuccess = function() {
-                if (successAnimation) {
-                    const container = document.getElementById('lottieSuccessContainer');
-                    container.style.display = 'block';
-                    successAnimation.goToAndPlay(0);
-
-                    // Hide after animation completes
-                    setTimeout(() => {
-                        container.style.display = 'none';
-                    }, 2000);
-                }
-            };
-
-            // 1. GSAP 3D Parallax Effect with LAYERED DEPTH
-            const container = document.querySelector('.container');
-
-            if (container) {
-                // Set up 3D perspective on container (maximum for extreme depth)
-                container.style.transformStyle = 'preserve-3d';
-                container.style.perspective = '1500px';
-
-                // Create depth layers for different elements
-                const depthLayers = {
-                    content: document.querySelectorAll('.header'), // Middle layer - headers/titles
-                    sections: document.querySelectorAll('.profile-section'), // Sections - Active Profile only
-                    statCards: document.querySelectorAll('.stat-item'), // Stat cards (Uptime, Models, Queue)
-                    buttons: document.querySelectorAll('#primaryBtn, .btn-primary, .btn-success, #actionsGrid .btn'), // Main action buttons
-                    topIcons: document.querySelectorAll('.quick-actions .action-btn') // Top icons (closest)
-                };
-
-                // Apply initial Z-depth to layers
-                if (depthLayers.content) {
-                    depthLayers.content.forEach(el => {
-                        el.style.transform = 'translateZ(15px)';
-                        el.style.transformStyle = 'preserve-3d';
+            createParticles() {
+                const particleCount = Math.min(80, Math.floor((window.innerWidth * window.innerHeight) / 15000));
+                
+                for (let i = 0; i < particleCount; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        vx: (Math.random() - 0.5) * 0.5,
+                        vy: (Math.random() - 0.5) * 0.5,
+                        size: Math.random() * 2 + 1,
+                        opacity: Math.random() * 0.5 + 0.1,
+                        color: this.getRandomColor(),
+                        life: Math.random() * 100 + 50,
+                        maxLife: Math.random() * 100 + 50
                     });
                 }
+            }
 
-                if (depthLayers.sections) {
-                    depthLayers.sections.forEach(el => {
-                        el.style.transform = 'translateZ(30px)';
-                        el.style.transformStyle = 'preserve-3d';
-                    });
-                }
+            getRandomColor() {
+                const colors = [
+                    'rgba(231, 51, 29, ', // Red
+                    'rgba(139, 92, 246, ', // Purple
+                    'rgba(59, 130, 246, ', // Blue
+                    'rgba(236, 72, 153, '  // Pink
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
 
-                if (depthLayers.statCards) {
-                    depthLayers.statCards.forEach(el => {
-                        // Already has translateZ(40px) in CSS, just ensure preserve-3d
-                        el.style.transformStyle = 'preserve-3d';
-                    });
-                }
-
-                if (depthLayers.buttons) {
-                    depthLayers.buttons.forEach(el => {
-                        el.style.transform = 'translateZ(150px)';
-                        el.style.transformStyle = 'preserve-3d';
-                    });
-                }
-
-                if (depthLayers.topIcons) {
-                    depthLayers.topIcons.forEach(el => {
-                        el.style.transform = 'translateZ(85px)';
-                        el.style.transformStyle = 'preserve-3d';
-                    });
-                }
-
-                // Mouse move parallax with layered depth
+            bindEvents() {
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
                 document.addEventListener('mousemove', (e) => {
-                    const rect = container.getBoundingClientRect();
-                    const centerX = rect.left + rect.width / 2;
-                    const centerY = rect.top + rect.height / 2;
-
-                    const xAxis = (centerX - e.clientX) / 60;
-                    const yAxis = (centerY - e.clientY) / 60;
-
-                    // Rotate the entire container (increased rotation for stronger 3D)
-                    gsap.to(container, {
-                        rotationY: xAxis,
-                        rotationX: yAxis,
-                        duration: 0.4,
-                        ease: 'power2.out',
-                        transformPerspective: 1500,
-                        transformOrigin: 'center'
-                    });
-
-                    // Move content layer (subtle)
-                    depthLayers.content.forEach(el => {
-                        gsap.to(el, {
-                            x: -xAxis * 0.3,
-                            y: -yAxis * 0.3,
-                            duration: 0.5,
-                            ease: 'power2.out'
-                        });
-                    });
-
-                    // Move sections layer (Active Profile, Google Drive)
-                    depthLayers.sections.forEach(el => {
-                        gsap.to(el, {
-                            x: -xAxis * 0.6,
-                            y: -yAxis * 0.6,
-                            duration: 0.5,
-                            ease: 'power2.out'
-                        });
-                    });
-
-                    // Move stat cards layer (Uptime, Models, Queue) - medium depth
-                    depthLayers.statCards.forEach(el => {
-                        gsap.to(el, {
-                            x: -xAxis * 0.8,
-                            y: -yAxis * 0.8,
-                            duration: 0.5,
-                            ease: 'power2.out'
-                        });
-                    });
-
-                    // Move buttons layer (Launch ComfyUI button, etc) - enhanced parallax movement
-                    depthLayers.buttons.forEach(el => {
-                        gsap.to(el, {
-                            x: -xAxis * 2.5,
-                            y: -yAxis * 2.5,
-                            duration: 0.3,
-                            ease: 'power2.out'
-                        });
-                    });
-
-                    // Move top icons layer (most pronounced)
-                    depthLayers.topIcons.forEach(el => {
-                        gsap.to(el, {
-                            x: -xAxis * 1.4,
-                            y: -yAxis * 1.4,
-                            duration: 0.5,
-                            ease: 'power2.out'
-                        });
-                    });
-                });
-
-                // Reset on mouse leave
-                document.addEventListener('mouseleave', () => {
-                    gsap.to(container, {
-                        rotationY: 0,
-                        rotationX: 0,
-                        duration: 0.5,
-                        ease: 'power2.out'
-                    });
-
-                    // Reset all layers
-                    depthLayers.content.forEach(el => {
-                        gsap.to(el, { x: 0, y: 0, duration: 0.5, ease: 'power2.out' });
-                    });
-
-                    depthLayers.sections.forEach(el => {
-                        gsap.to(el, { x: 0, y: 0, duration: 0.5, ease: 'power2.out' });
-                    });
-
-                    depthLayers.buttons.forEach(el => {
-                        gsap.to(el, { x: 0, y: 0, duration: 0.5, ease: 'power2.out' });
-                    });
-
-                    depthLayers.topIcons.forEach(el => {
-                        gsap.to(el, { x: 0, y: 0, duration: 0.5, ease: 'power2.out' });
-                    });
+                    this.mouse.x = e.clientX;
+                    this.mouse.y = e.clientY;
                 });
             }
 
-            // 2. GSAP Magnetic Cursor Effect on Buttons
-            const buttons = document.querySelectorAll('.btn, .action-btn');
+            updateParticles() {
+                this.particles.forEach((particle, index) => {
+                    // Update position
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
 
-            buttons.forEach(button => {
-                button.addEventListener('mouseenter', (e) => {
-                    gsap.to(button, {
-                        scale: 1.05,
-                        duration: 0.3,
-                        ease: 'power2.out'
-                    });
-                });
-
-                button.addEventListener('mouseleave', (e) => {
-                    gsap.to(button, {
-                        scale: 1,
-                        x: 0,
-                        y: 0,
-                        duration: 0.3,
-                        ease: 'power2.out'
-                    });
-                });
-
-                button.addEventListener('mousemove', (e) => {
-                    const rect = button.getBoundingClientRect();
-                    const x = e.clientX - rect.left - rect.width / 2;
-                    const y = e.clientY - rect.top - rect.height / 2;
-
-                    gsap.to(button, {
-                        x: x * 0.1,
-                        y: y * 0.1,
-                        duration: 0.3,
-                        ease: 'power2.out'
-                    });
-                });
-            });
-
-            // 3. Vanta.js DOTS Background - Subtle textured animation with wave movement
-            if (typeof VANTA !== 'undefined') {
-                VANTA.DOTS({
-                    el: "#glassBackground",
-                    mouseControls: true,
-                    touchControls: true,
-                    gyroControls: false,
-                    minHeight: 200.00,
-                    minWidth: 200.00,
-                    scale: 1.00,
-                    scaleMobile: 1.00,
-                    color: 0xe7331d,        // Red color for dots
-                    color2: 0xff6b6b,       // Orange-red for variation
-                    backgroundColor: 0x000000, // Black background
-                    size: 3.0,              // Dot size (small and subtle)
-                    spacing: 25.0,          // Space between dots
-                    showLines: false        // No lines, just dots with wave movement
-                });
-            }
-
-            // 4. GSAP Entrance Animations
-            gsap.from('.container', {
-                y: 50,
-                opacity: 0,
-                duration: 0.8,
-                ease: 'power3.out'
-            });
-
-            // 5. Status Dot Pulse Animation
-            const statusDot = document.querySelector('.status-dot');
-            if (statusDot) {
-                gsap.to(statusDot, {
-                    scale: 1.2,
-                    opacity: 0.8,
-                    duration: 1.5,
-                    repeat: -1,
-                    yoyo: true,
-                    ease: 'power1.inOut'
-                });
-            }
-
-            // 6. Smooth Scroll Fade-in for Elements
-            gsap.utils.toArray('.btn, .user-section, .status-indicator').forEach((elem, i) => {
-                gsap.from(elem, {
-                    scrollTrigger: {
-                        trigger: elem,
-                        start: 'top 90%',
-                        toggleActions: 'play none none reverse'
-                    },
-                    y: 30,
-                    opacity: 0,
-                    duration: 0.6,
-                    delay: i * 0.1,
-                    ease: 'power2.out'
-                });
-            });
-
-            // 7. Button Click Ripple Effect
-            document.querySelectorAll('.btn, .action-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const ripple = document.createElement('span');
-                    const rect = button.getBoundingClientRect();
-                    const size = Math.max(rect.width, rect.height);
-                    const x = e.clientX - rect.left - size / 2;
-                    const y = e.clientY - rect.top - size / 2;
-
-                    ripple.style.cssText = `
-                        position: absolute;
-                        width: ${size}px;
-                        height: ${size}px;
-                        left: ${x}px;
-                        top: ${y}px;
-                        background: rgba(255, 255, 255, 0.3);
-                        border-radius: 50%;
-                        pointer-events: none;
-                        transform: scale(0);
-                    `;
-
-                    button.style.position = 'relative';
-                    button.style.overflow = 'hidden';
-                    button.appendChild(ripple);
-
-                    gsap.to(ripple, {
-                        scale: 2,
-                        opacity: 0,
-                        duration: 0.6,
-                        ease: 'power2.out',
-                        onComplete: () => ripple.remove()
-                    });
-                });
-            });
-
-            // 8. Dropdown Smooth Animation
-            const usernameSelect = document.querySelector('#username');
-            if (usernameSelect) {
-                usernameSelect.addEventListener('change', () => {
-                    gsap.fromTo(usernameSelect,
-                        { scale: 0.95 },
-                        { scale: 1, duration: 0.2, ease: 'back.out(1.7)' }
-                    );
-                });
-            }
-
-            // 9. Toast Notification Enhancement
-            const originalShowToast = window.showToast;
-            window.showToast = function(message, type = 'info') {
-                originalShowToast(message, type);
-                const toast = document.getElementById('toast');
-                if (toast) {
-                    gsap.fromTo(toast,
-                        { y: -20, opacity: 0 },
-                        { y: 0, opacity: 1, duration: 0.4, ease: 'power2.out' }
-                    );
-                }
-            };
-
-            // 10. Custom Mouse Cursor - REMOVED (user didn't like it)
-
-            // 11. Interactive Title Animation
-            const titleText = document.getElementById('title-text');
-            if (titleText) {
-                const text = titleText.textContent || 'ComfyUI Control';
-                titleText.innerHTML = text.split('').map((char, i) =>
-                    `<span style="display: inline-block; transition: all 0.3s; cursor: default;">${char === ' ' ? '&nbsp;' : char}</span>`
-                ).join('');
-
-                const letters = titleText.querySelectorAll('span');
-                letters.forEach((letter, i) => {
-                    letter.addEventListener('mouseenter', () => {
-                        gsap.to(letter, {
-                            y: -10,
-                            color: 'var(--primary)',
-                            scale: 1.3,
-                            duration: 0.3,
-                            ease: 'back.out(2)'
-                        });
-                    });
-
-                    letter.addEventListener('mouseleave', () => {
-                        gsap.to(letter, {
-                            y: 0,
-                            color: 'var(--text-primary)',
-                            scale: 1,
-                            duration: 0.3,
-                            ease: 'power2.out'
-                        });
-                    });
-                });
-            }
-
-            // 12. Fun Easter Egg: Konami Code (⬆️⬆️⬇️⬇️⬅️➡️⬅️➡️BA)
-            const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
-            let konamiIndex = 0;
-
-            document.addEventListener('keydown', (e) => {
-                if (e.key === konamiCode[konamiIndex]) {
-                    konamiIndex++;
-                    if (konamiIndex === konamiCode.length) {
-                        // Easter egg activated!
-                        gsap.to('.container', {
-                            rotation: 360,
-                            scale: 1.1,
-                            duration: 1,
-                            ease: 'back.out(1.7)',
-                            onComplete: () => {
-                                gsap.to('.container', { rotation: 0, scale: 1, duration: 0.5 });
-                                showToast('🎉 Konami Code Activated! You found the secret!', 'success');
-                            }
-                        });
-                        konamiIndex = 0;
+                    // Mouse interaction
+                    const dx = this.mouse.x - particle.x;
+                    const dy = this.mouse.y - particle.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 120) {
+                        const force = (120 - distance) / 120;
+                        particle.vx += (dx / distance) * force * 0.02;
+                        particle.vy += (dy / distance) * force * 0.02;
                     }
-                } else {
-                    konamiIndex = 0;
+
+                    // Apply friction
+                    particle.vx *= 0.98;
+                    particle.vy *= 0.98;
+
+                    // Wrap around screen
+                    if (particle.x < 0) particle.x = this.canvas.width;
+                    if (particle.x > this.canvas.width) particle.x = 0;
+                    if (particle.y < 0) particle.y = this.canvas.height;
+                    if (particle.y > this.canvas.height) particle.y = 0;
+
+                    // Update life
+                    particle.life--;
+                    if (particle.life <= 0) {
+                        particle.x = Math.random() * this.canvas.width;
+                        particle.y = Math.random() * this.canvas.height;
+                        particle.life = particle.maxLife;
+                    }
+                });
+            }
+
+            drawParticles() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw connections first
+                for (let i = 0; i < this.particles.length; i++) {
+                    for (let j = i + 1; j < this.particles.length; j++) {
+                        const dx = this.particles[i].x - this.particles[j].x;
+                        const dy = this.particles[i].y - this.particles[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < 100) {
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(this.particles[i].x, this.particles[i].y);
+                            this.ctx.lineTo(this.particles[j].x, this.particles[j].y);
+                            this.ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - distance / 100) * 0.1})`;
+                            this.ctx.lineWidth = 0.5;
+                            this.ctx.stroke();
+                        }
+                    }
                 }
-            });
+
+                // Draw particles
+                this.particles.forEach(particle => {
+                    const alpha = (particle.life / particle.maxLife) * particle.opacity;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    this.ctx.fillStyle = particle.color + alpha + ')';
+                    this.ctx.fill();
+
+                    // Add glow effect
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, particle.size * 2, 0, Math.PI * 2);
+                    this.ctx.fillStyle = particle.color + (alpha * 0.3) + ')';
+                    this.ctx.fill();
+                });
+            }
+
+            animate() {
+                this.updateParticles();
+                this.drawParticles();
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // Initialize particle system when page loads
+        let particleSystem;
+        document.addEventListener('DOMContentLoaded', () => {
+            particleSystem = new ParticleSystem();
         });
 
         let checkInterval = null;
@@ -2064,11 +1803,8 @@
                     openBtn.onclick = openComfyUI;
                     actionsGrid.appendChild(openBtn);
 
-                    // Play success sound and show Lottie animation
+                    // Play success sound
                     playSuccessSound();
-                    if (typeof showLottieSuccess === 'function') {
-                        showLottieSuccess();
-                    }
 
                     // Auto-open if checkbox is checked
                     const autoOpenCheckbox = document.getElementById('autoOpenCheckbox');
@@ -2157,16 +1893,8 @@
                 document.getElementById('loadingSubtext').textContent = subtext;
                 document.getElementById('loadingProgress').textContent = '';
                 overlay.classList.add('active');
-                // Start Lottie loading animation
-                if (typeof showLottieLoading === 'function') {
-                    showLottieLoading();
-                }
             } else {
                 overlay.classList.remove('active');
-                // Stop Lottie loading animation
-                if (typeof hideLottieLoading === 'function') {
-                    hideLottieLoading();
-                }
                 if (checkInterval) {
                     clearInterval(checkInterval);
                     checkInterval = null;
@@ -2229,7 +1957,7 @@
                     } else {
                         // Not within startup window - actually inactive
                         statusDot.className = 'status-dot inactive';
-                        statusText.textContent = 'Offline';
+                        statusText.textContent = 'System Inactive';
                     }
                     return data;
                 }
@@ -2319,70 +2047,8 @@
                 showToast('Please select a user from the dropdown', 'error');
                 return;
             }
-
+            
             const primaryBtn = document.getElementById('primaryBtn');
-
-            // 🎬 SPECIAL LAUNCH ANIMATION!
-            // 1. Button explosion effect
-            gsap.to(primaryBtn, {
-                scale: 1.2,
-                duration: 0.15,
-                ease: 'power2.out',
-                onComplete: () => {
-                    gsap.to(primaryBtn, { scale: 1, duration: 0.3, ease: 'elastic.out(1, 0.5)' });
-                }
-            });
-
-            // 2. Create energy burst particles
-            for (let i = 0; i < 12; i++) {
-                const particle = document.createElement('div');
-                const angle = (Math.PI * 2 * i) / 12;
-                particle.style.cssText = `
-                    position: absolute;
-                    width: 8px;
-                    height: 8px;
-                    background: var(--primary);
-                    border-radius: 50%;
-                    left: 50%;
-                    top: 50%;
-                    pointer-events: none;
-                    box-shadow: 0 0 10px var(--primary);
-                `;
-                primaryBtn.appendChild(particle);
-
-                gsap.to(particle, {
-                    x: Math.cos(angle) * 80,
-                    y: Math.sin(angle) * 80,
-                    opacity: 0,
-                    scale: 0,
-                    duration: 0.8,
-                    ease: 'power2.out',
-                    onComplete: () => particle.remove()
-                });
-            }
-
-            // 3. Screen flash effect
-            const flash = document.createElement('div');
-            flash.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: radial-gradient(circle, rgba(107, 107, 107, 0.3), transparent);
-                pointer-events: none;
-                z-index: 9999;
-            `;
-            document.body.appendChild(flash);
-            gsap.to(flash, {
-                opacity: 0,
-                duration: 0.5,
-                ease: 'power2.out',
-                onComplete: () => flash.remove()
-            });
-
-            // 4. Container shake effect - REMOVED per user request
-
             primaryBtn.disabled = true;
             primaryBtn.classList.add('btn-loading');
             primaryBtn.textContent = 'Starting...';
@@ -2417,7 +2083,7 @@
             // showLoading(true, 'Starting ComfyUI...', 'Initializing workspace');
             checkAttempts = 0;
 
-            // Track when we started ComfyUI BEFORE the fetch to prevent premature "Offline" status
+            // Track when we started ComfyUI BEFORE the fetch to prevent premature "System Inactive" status
             // This ensures the periodic status check sees lastStartTime immediately
             lastStartTime = Date.now();
 
@@ -2667,11 +2333,6 @@
 
                                 showToast('ComfyUI is ready! Click "Open ComfyUI" to access it.', 'success');
 
-                                // Show success Lottie animation
-                                if (typeof showLottieSuccess === 'function') {
-                                    showLottieSuccess();
-                                }
-
                                 // Update start time for uptime tracking
                                 if (statusData.start_time) {
                                     startTime = statusData.start_time * 1000;
@@ -2905,7 +2566,7 @@
 
                     if (withinStartupWindow) {
                         // We recently started ComfyUI - keep showing "Initializing" even if API says not running
-                        // This prevents premature "Offline" during normal startup delays
+                        // This prevents premature "System Inactive" during normal startup delays
                         if (statusDot && statusText) {
                             const elapsed = Math.floor((Date.now() - lastStartTime) / 1000);
                             const minutes = Math.floor(elapsed / 60);
@@ -2919,7 +2580,7 @@
                         // Not within startup window - actually inactive
                         if (statusDot && statusText) {
                             statusDot.className = 'status-dot inactive';
-                            statusText.textContent = 'Offline';
+                            statusText.textContent = 'System Inactive';
                         }
                         // Clear tracking variables since we're actually inactive
                         lastStartTime = null;
@@ -3162,79 +2823,86 @@
     <script>
         // Particle system removed - keeping simple background
     </script>
-    
-    <!-- Typing Animation -->
-    <script>
-        // Typing animation that starts immediately when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            const title = document.getElementById('title-text');
-            if (!title) return;
+        <!-- Simple Clean Animations -->
+        <script>
+            // Simple typing animation - run only once
+            let typingAnimationStarted = false;
+            
+            function initTypingAnimation() {
+                if (typingAnimationStarted) return; // Prevent multiple runs
+                typingAnimationStarted = true;
+                
+                const title = document.querySelector('.logo h1');
+                if (!title) return;
 
-            const fullText = 'COMFY<span class="ui">UI</span>';
-            let currentText = '';
-            let index = 0;
+                const fullText = 'COMFY<span class="ui">UI</span>';
+                let currentText = '';
+                let index = 0;
 
-            function typeNextChar() {
-                if (index < fullText.length) {
-                    // Handle HTML tags properly
-                    if (fullText[index] === '<') {
-                        // Find the end of the HTML tag
-                        const tagEnd = fullText.indexOf('>', index);
-                        if (tagEnd !== -1) {
-                            currentText += fullText.substring(index, tagEnd + 1);
-                            index = tagEnd + 1;
+                function typeNextChar() {
+                    if (index < fullText.length) {
+                        // Handle HTML tags properly
+                        if (fullText[index] === '<') {
+                            // Find the end of the HTML tag
+                            const tagEnd = fullText.indexOf('>', index);
+                            if (tagEnd !== -1) {
+                                currentText += fullText.substring(index, tagEnd + 1);
+                                index = tagEnd + 1;
+                            } else {
+                                currentText += fullText[index];
+                                index++;
+                            }
                         } else {
                             currentText += fullText[index];
                             index++;
                         }
-                    } else {
-                        currentText += fullText[index];
-                        index++;
-                    }
 
-                    title.innerHTML = currentText + '<span class="typing-cursor">|</span>';
-                    setTimeout(typeNextChar, 100);
-                } else {
-                    // Animation complete - keep cursor blinking
-                    title.innerHTML = currentText + '<span class="typing-cursor">|</span>';
+                        title.innerHTML = currentText + '<span class="typing-cursor">|</span>';
+                        setTimeout(typeNextChar, 100);
+                    } else {
+                        // Animation complete - keep cursor blinking
+                        title.innerHTML = currentText + '<span class="typing-cursor">|</span>';
+                    }
                 }
+
+                // Start typing animation
+                setTimeout(typeNextChar, 1000);
             }
 
-            // Start typing animation immediately
-            typeNextChar();
-        });
+            // Initialize typing animation only once
+            setTimeout(initTypingAnimation, 1000);
 
-        // Simple ripple effect
-        function createRipple(event) {
-            const button = event.currentTarget;
-            const ripple = document.createElement('span');
-            const rect = button.getBoundingClientRect();
-            const size = Math.max(rect.width, rect.height);
-            const x = event.clientX - rect.left - size / 2;
-            const y = event.clientY - rect.top - size / 2;
+            // Simple ripple effect
+            function createRipple(event) {
+                const button = event.currentTarget;
+                const ripple = document.createElement('span');
+                const rect = button.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = event.clientX - rect.left - size / 2;
+                const y = event.clientY - rect.top - size / 2;
 
-            ripple.style.cssText = `
-                position: absolute;
-                width: ${size}px;
-                height: ${size}px;
-                left: ${x}px;
-                top: ${y}px;
-                background: rgba(255, 255, 255, 0.3);
-                border-radius: 50%;
-                pointer-events: none;
-                z-index: 10;
-                animation: ripple 0.6s ease-out forwards;
-            `;
+                ripple.style.cssText = `
+                    position: absolute;
+                    width: ${size}px;
+                    height: ${size}px;
+                    left: ${x}px;
+                    top: ${y}px;
+                    background: rgba(255, 255, 255, 0.3);
+                    border-radius: 50%;
+                    pointer-events: none;
+                    z-index: 10;
+                    animation: ripple 0.6s ease-out forwards;
+                `;
 
-            button.appendChild(ripple);
+                button.appendChild(ripple);
 
-            setTimeout(() => ripple.remove(), 600);
-        }
+                setTimeout(() => ripple.remove(), 600);
+            }
 
-        // Add ripple to all buttons
-        document.querySelectorAll('.btn').forEach(btn => {
-            btn.addEventListener('click', createRipple);
-        });
-    </script>
+            // Add ripple to all buttons
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.addEventListener('click', createRipple);
+            });
+        </script>
     </body>
 </html>
