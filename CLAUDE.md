@@ -2390,3 +2390,410 @@ python main.py --listen 0.0.0.0 --port 8188 --use-sage-attention 2>&1 | grep -i 
 
 ---
 
+## 24. Sage Attention Not Actually Being Used After Pod Startup (Bug #24)
+
+### Problem
+User reported that ComfyUI was not using sage attention after pod startup, even though:
+- Sage attention was successfully installed during Docker build
+- Init scripts correctly detected sage and saved it to `.env_settings`
+- Logs showed "Using Sage Attention for [GPU]" during startup
+- But ComfyUI was actually using xformers (default) instead of sage
+
+User feedback: "the problem that cui doesn't use sage after pod star up. once i did it manually and it used it but now it doesn't again"
+
+### Root Cause
+**The `--use-sage-attention` flag was missing from the Python startup command!**
+
+Even though all the detection and configuration logic was working correctly, the actual ComfyUI startup command in three places was missing the required flag:
+
+1. **Dockerfile start_comfyui.sh (line ~1247)**: `sage)` case ran `python main.py` WITHOUT `--use-sage-attention` flag
+2. **Dockerfile start_comfyui.sh (lines ~1242-1250)**: Still had Flash Attention cases (flash2/flash3) that shouldn't exist per V54 approach
+3. **ui/app.py (lines ~362-363)**: Still had Flash Attention handling code that shouldn't exist
+
+**Timeline of what was happening:**
+1. ✅ init.sh detected sage → wrote `COMFYUI_ATTENTION_MECHANISM=sage` to `.env_settings`
+2. ✅ start_comfyui.sh loaded sage from `.env_settings`
+3. ✅ Startup logs showed "Using Sage Attention for [GPU]"
+4. ❌ **But Python command was:** `python main.py --listen 0.0.0.0 --port 8188` (NO FLAG!)
+5. ❌ ComfyUI defaulted to xformers because no `--use-sage-attention` flag was provided
+
+**Reference - ComfyUI V54 approach:**
+From `Comfy_UI_V54/Windows_Run_GPU.bat` line 9:
+```bat
+python.exe -s main.py --windows-standalone-build --use-sage-attention
+```
+The flag is essential - without it, ComfyUI doesn't know to use sage!
+
+### Solution
+**Files Modified:**
+- `Dockerfile` (start_comfyui.sh script, lines ~1242-1257)
+- `ui/app.py` (lines ~359-362)
+
+#### Fix 1: Added missing `--use-sage-attention` flag to Dockerfile
+**Before (line 1247):**
+```bash
+sage)
+    echo "🎯 Starting ComfyUI with Sage Attention 2.2.0"
+    echo "   ⚡ WAN 2.2 will generate 13x faster with Sage!"
+    python main.py --listen 0.0.0.0 --port 8188 2>&1 | tee /tmp/comfyui_start.log &
+    ;;
+```
+
+**After:**
+```bash
+sage)
+    echo "🎯 Starting ComfyUI with Sage Attention 2.2.0"
+    echo "   ⚡ WAN 2.2 will generate 13x faster with Sage!"
+    python main.py --listen 0.0.0.0 --port 8188 --use-sage-attention 2>&1 | tee /tmp/comfyui_start.log &
+    ;;
+```
+
+#### Fix 2: Removed Flash Attention cases from Dockerfile (V54 approach)
+**Before:**
+```bash
+case "$COMFYUI_ATTENTION_MECHANISM" in
+    flash3)
+        echo "🚀 Starting ComfyUI with Flash Attention 3 (Hopper optimized)"
+        python main.py --listen 0.0.0.0 --port 8188 2>&1 | tee /tmp/comfyui_start.log &
+        ;;
+    flash2)
+        echo "⚡ Starting ComfyUI with Flash Attention 2"
+        python main.py --listen 0.0.0.0 --port 8188 2>&1 | tee /tmp/comfyui_start.log &
+        ;;
+    sage)
+        ...
+```
+
+**After:**
+```bash
+# ComfyUI V54 Approach: Simple sage/xformers/default selection (no flash attention)
+case "$COMFYUI_ATTENTION_MECHANISM" in
+    sage)
+        ...
+    xformers)
+        ...
+    auto|default|*)
+        ...
+esac
+```
+
+#### Fix 3: Cleaned up app.py to remove Flash Attention handling
+**Before (lines 359-366):**
+```python
+# Add attention-specific flags
+if attention_mechanism == "sage":
+    base_cmd += " --use-sage-attention"
+elif attention_mechanism == "flash2" or attention_mechanism == "flash3":
+    base_cmd += " --use-flash-attention"
+elif attention_mechanism == "xformers":
+    # xformers is enabled by default, no flag needed
+    pass
+```
+
+**After:**
+```python
+# ComfyUI V54 Approach: Add attention-specific flags (sage only, xformers is default)
+if attention_mechanism == "sage":
+    base_cmd += " --use-sage-attention"
+# xformers is ComfyUI's default, no flag needed
+```
+
+### Why This Works
+ComfyUI's attention mechanism selection (from `/workspace/ComfyUI/comfy/cli_args.py`):
+```python
+attn_group.add_argument("--use-sage-attention", action="store_true",
+                       help="Use sage attention.")
+```
+
+Without the `--use-sage-attention` flag, ComfyUI's `model_management.sage_attention_enabled()` returns `False`, and it falls back to the default (xformers).
+
+**Now the flow works correctly:**
+1. ✅ init.sh detects sage → saves to `.env_settings`
+2. ✅ start_comfyui.sh loads sage from `.env_settings`
+3. ✅ start_comfyui.sh sets `COMFYUI_ATTENTION_MECHANISM="sage"`
+4. ✅ **Python command includes:** `--use-sage-attention` flag
+5. ✅ ComfyUI actually uses sage attention!
+
+### Testing
+**Verify sage is being used:**
+```bash
+# Check ComfyUI startup logs
+tail -100 /tmp/comfyui_start.log | grep -i "sage"
+
+# Should see:
+# Using sage attention
+# Using sage attention
+
+# NOT just:
+# 🎯 Starting ComfyUI with Sage Attention 2.2.0
+# (which is just our echo statement, not ComfyUI's actual output)
+```
+
+**Check what attention is active in running ComfyUI:**
+```bash
+# SSH into pod
+cd /workspace/ComfyUI
+source /workspace/venv/bin/activate
+
+# Check if sage is imported
+python -c "from comfy import model_management; print(f'Sage enabled: {model_management.sage_attention_enabled()}')"
+
+# Should print: Sage enabled: True
+```
+
+### Result
+- ✅ ComfyUI now actually uses sage attention after pod startup
+- ✅ The `--use-sage-attention` flag is properly passed to the Python command
+- ✅ Flash Attention handling removed (matches V54 approach)
+- ✅ Simplified attention mechanism selection (sage/xformers/default only)
+- ✅ Universal sage usage for all GPUs (RTX 3090/4090/5090, H100, A100, L40S, etc.)
+
+### Files Modified
+1. **Dockerfile** (start_comfyui.sh script)
+   - Line 1247: Added `--use-sage-attention` flag to sage case
+   - Lines 1242-1257: Removed flash2/flash3 cases, simplified to sage/xformers/default only
+
+2. **ui/app.py**
+   - Lines 359-362: Removed flash2/flash3 handling, simplified to sage-only flag
+
+### Status
+- **Issue severity:** High (sage attention not working despite correct configuration)
+- **Status:** ✅ **RESOLVED**
+- **Affects:** All users - sage attention was configured but not actually being used
+- **Solution:** Add missing `--use-sage-attention` flag to startup commands
+- **Performance impact:** Now users will get the intended 13x speedup with sage attention for WAN 2.2 workflows
+
+---
+
+## 25. GPU Change Detection - Cached Kernels Cause Errors (Bug #25)
+
+### Problem
+User reported critical issue when switching between different GPUs:
+- User has shared network volume (`/workspace`) that persists across pod terminations
+- When switching from one GPU to another (e.g., RTX 4090 → RTX 5090), ComfyUI fails to start
+- Error occurs because **CUDA kernel caches are compiled for specific GPU architectures**
+- Cache from previous GPU (e.g., compute 8.9 for RTX 4090) doesn't work on new GPU (e.g., compute 12.0 for RTX 5090)
+
+User feedback: "the thing is - once i want to change videocard - it will cause error because previous cache was for different videocard."
+
+### Root Cause
+**GPU-specific caches persist on network volume:**
+
+The system already clears some caches at startup:
+```bash
+# Existing code (Dockerfile line 1228-1232):
+if [ -d "$HOME/.triton" ] || [ -d "/root/.triton" ]; then
+    echo "🧹 Clearing Triton cache..."
+    rm -rf ~/.triton /root/.triton /tmp/triton_* 2>/dev/null || true
+fi
+```
+
+**But this is NOT enough because:**
+1. **No GPU change detection** - Clears cache every startup, not just when GPU changes
+2. **Missing `/workspace` caches** - Only clears `/root` and `/tmp`, but caches also persist in `/workspace`
+3. **Only Triton cache** - Doesn't clear PyTorch kernels, CUDA compute cache, or Python __pycache__
+4. **TensorRT engines unchecked** - Only checks TensorRT later, but doesn't detect GPU changes
+
+**Cache locations that persist on network volume:**
+- `/workspace/.triton/` - Triton kernel cache (Sage Attention)
+- `/workspace/.cache/torch/kernels/` - PyTorch compiled kernels
+- `/workspace/.nv/ComputeCache/` - CUDA compute cache
+- `/workspace/ComfyUI/**/__pycache__/` - Python bytecode with GPU-specific code
+- `/workspace/ComfyUI/models/tensorrt/*.trt` - TensorRT engines
+
+**When GPU changes, all these become incompatible:**
+- RTX 4090: compute capability 8.9, sm_89 kernels
+- RTX 5090: compute capability 12.0, sm_120 kernels
+- Using sm_89 kernels on RTX 5090 → **CUDA errors and crashes**
+
+### Solution
+**Files Modified:** `Dockerfile` (start_comfyui.sh script, lines 1072-1152)
+
+Added comprehensive GPU change detection and cache clearing system:
+
+**1. GPU Change Detection:**
+```bash
+# Get current GPU info
+CURRENT_GPU=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)
+CURRENT_COMPUTE_CAP=$(python -c "import torch; cc = torch.cuda.get_device_capability(); print(f'{cc[0]}.{cc[1]}')")
+
+# Check if GPU changed since last run
+GPU_CHANGED=false
+if [ -f "/workspace/.last_gpu_info" ]; then
+    LAST_GPU=$(cat /workspace/.last_gpu_info)
+    if [ "$LAST_GPU" != "$CURRENT_GPU:$CURRENT_COMPUTE_CAP" ]; then
+        echo "   ⚠️  GPU changed since last run!"
+        GPU_CHANGED=true
+    fi
+fi
+
+# Save current GPU info for next run
+echo "$CURRENT_GPU:$CURRENT_COMPUTE_CAP" > /workspace/.last_gpu_info
+```
+
+**How it works:**
+- Stores GPU name + compute capability in `/workspace/.last_gpu_info`
+- Compares current GPU to stored info on each startup
+- Only triggers cache clear when GPU actually changes
+- Persists across pod restarts (stored on network volume)
+
+**2. Comprehensive Cache Clearing (only when GPU changes):**
+```bash
+if [ "$GPU_CHANGED" = true ]; then
+    echo "🧹 Clearing all GPU-specific caches to prevent errors..."
+
+    # 1. Triton cache (Sage Attention, custom CUDA kernels)
+    rm -rf /root/.triton /workspace/.triton ~/.triton 2>/dev/null || true
+    rm -rf /tmp/triton_* /tmp/*triton* 2>/dev/null || true
+
+    # 2. PyTorch kernel cache
+    rm -rf /root/.cache/torch/kernels 2>/dev/null || true
+    rm -rf /workspace/.cache/torch/kernels 2>/dev/null || true
+
+    # 3. CUDA compute cache
+    rm -rf /root/.nv/ComputeCache 2>/dev/null || true
+    rm -rf /workspace/.nv/ComputeCache 2>/dev/null || true
+
+    # 4. Python __pycache__ with GPU-specific compiled code
+    find /workspace/ComfyUI -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+
+    # 5. TensorRT engines
+    rm -rf /workspace/ComfyUI/models/tensorrt/*.trt 2>/dev/null || true
+    rm -rf /workspace/ComfyUI/models/tensorrt/*.engine 2>/dev/null || true
+fi
+```
+
+**What each cache contains:**
+1. **Triton cache:** Compiled CUDA kernels for Sage Attention (sm_89 vs sm_120)
+2. **PyTorch kernels:** JIT-compiled GPU operations
+3. **CUDA compute cache:** PTX-compiled device code
+4. **Python __pycache__:** Bytecode that may import GPU-specific libraries
+5. **TensorRT engines:** Pre-optimized inference engines for specific GPU
+
+**3. Existing TensorRT cleanup still runs:**
+The existing TensorRT engine validation (lines 1147-1175) now uses the detected compute capability:
+```bash
+GPU_COMPUTE_CAP="$CURRENT_COMPUTE_CAP"  # Reuse detected value
+
+# Find and remove TRT engines that don't match current GPU
+find /workspace/ComfyUI/models/tensorrt -name "*.trt" -type f 2>/dev/null | while read -r trt_file; do
+    # Extract compute capability from filename
+    if [ "$ENGINE_CC" != "$GPU_COMPUTE_CAP" ]; then
+        rm -f "$trt_file"
+    fi
+done
+```
+
+### Why This Works
+
+**Before (BROKEN):**
+```
+User switches from RTX 4090 to RTX 5090 pod:
+1. Network volume /workspace still has RTX 4090 caches
+2. ComfyUI starts, tries to use cached sm_89 kernels
+3. RTX 5090 expects sm_120 kernels
+4. CUDA error: "PTX JIT compilation failed"
+5. ComfyUI crashes or generates incorrect results
+```
+
+**After (FIXED):**
+```
+User switches from RTX 4090 to RTX 5090 pod:
+1. start_comfyui.sh detects GPU change:
+   - /workspace/.last_gpu_info = "NVIDIA GeForce RTX 4090:8.9"
+   - Current GPU = "NVIDIA GeForce RTX 5090:12.0"
+   - GPU_CHANGED = true
+2. Clears all GPU caches in /workspace
+3. Saves new GPU info: "NVIDIA GeForce RTX 5090:12.0"
+4. ComfyUI starts fresh, compiles new sm_120 kernels
+5. Works perfectly on RTX 5090!
+```
+
+**Efficiency benefits:**
+- **Only clears when GPU changes** - Not every startup
+- **Preserves caches when same GPU** - Faster subsequent startups
+- **Works across all GPU switches** - Any architecture change detected
+
+### Testing
+
+**Test GPU change detection:**
+```bash
+# Check current GPU tracking
+cat /workspace/.last_gpu_info
+# Output: NVIDIA GeForce RTX 4090:8.9
+
+# Check startup logs after switching to different GPU
+tail -100 /tmp/comfyui_start.log | grep -A 10 "Checking for GPU changes"
+
+# Should see:
+# 🔍 Checking for GPU changes...
+#    Current GPU: NVIDIA GeForce RTX 5090 (compute 12.0)
+#    ⚠️  GPU changed since last run!
+#    Previous: NVIDIA GeForce RTX 4090 (compute 8.9)
+#    Current:  NVIDIA GeForce RTX 5090 (compute 12.0)
+#
+# 🧹 Clearing all GPU-specific caches to prevent errors...
+#    • Clearing Triton cache...
+#    • Clearing PyTorch kernel cache...
+#    • Clearing CUDA compute cache...
+#    • Clearing Python cache in ComfyUI...
+#    • Clearing TensorRT engines...
+#    ✅ All GPU caches cleared
+```
+
+**Verify caches are cleared:**
+```bash
+# After GPU change, these should be empty or not exist:
+ls -la /workspace/.triton/  # Should not exist or be empty
+ls -la /workspace/.cache/torch/kernels/  # Should not exist or be empty
+ls -la /workspace/.nv/ComputeCache/  # Should not exist or be empty
+find /workspace/ComfyUI -name "__pycache__" | wc -l  # Should be 0 or very small
+ls /workspace/ComfyUI/models/tensorrt/*.trt  # Should not exist
+```
+
+**Test same GPU (no cache clear):**
+```bash
+# After startup with SAME GPU
+tail -50 /tmp/comfyui_start.log | grep "Checking for GPU changes"
+
+# Should see:
+# 🔍 Checking for GPU changes...
+#    Current GPU: NVIDIA GeForce RTX 5090 (compute 12.0)
+# (no cache clearing messages - GPU didn't change)
+```
+
+### Common GPU Switches This Fixes
+
+| From GPU | Compute | To GPU | Compute | Cache Issue |
+|----------|---------|--------|---------|-------------|
+| RTX 3090 | 8.6 | RTX 4090 | 8.9 | sm_86 → sm_89 kernels |
+| RTX 4090 | 8.9 | RTX 5090 | 12.0 | sm_89 → sm_120 kernels |
+| A100 | 8.0 | H100 | 9.0 | sm_80 → sm_90 kernels |
+| RTX 4090 | 8.9 | L40S | 8.9 | Same compute, but different GPU family |
+| Any GPU | any | Any GPU | any | Always detects and handles |
+
+### Result
+- ✅ Automatic GPU change detection on every startup
+- ✅ Clears ALL GPU-specific caches (Triton, PyTorch, CUDA, Python, TensorRT)
+- ✅ Only clears when GPU actually changes (efficient)
+- ✅ Persists GPU info across pod restarts
+- ✅ Works with shared network volume across multiple pods
+- ✅ No manual intervention required when switching GPUs
+- ✅ Prevents CUDA PTX errors, kernel mismatches, and crashes
+
+### Files Modified
+1. **Dockerfile** (start_comfyui.sh script)
+   - Lines 1072-1152: Added GPU change detection and comprehensive cache clearing
+   - Stores GPU info in `/workspace/.last_gpu_info`
+   - Clears 5 types of GPU caches when GPU changes
+   - Reuses compute capability for TensorRT validation
+
+### Status
+- **Issue severity:** Critical (blocks users from switching GPUs)
+- **Status:** ✅ **RESOLVED**
+- **Affects:** Users with shared network volume who switch between different GPU types
+- **Solution:** Automatic GPU change detection with comprehensive cache clearing
+- **Performance impact:** Minimal - only clears when GPU changes, preserves caches otherwise
+
+---
+

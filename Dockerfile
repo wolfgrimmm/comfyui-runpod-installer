@@ -1069,12 +1069,87 @@ if [ -f "/workspace/venv/.env_settings" ]; then
     source /workspace/venv/.env_settings
 fi
 
-# Clean up incompatible TensorRT engines
+# ============================================================================
+# GPU CHANGE DETECTION AND CACHE CLEANING
+# ============================================================================
+# When switching between different GPUs (e.g., RTX 4090 -> RTX 5090),
+# cached CUDA kernels from the previous GPU will cause errors.
+# This section detects GPU changes and clears all GPU-specific caches.
+# ============================================================================
+
+echo "🔍 Checking for GPU changes..."
+
+# Get current GPU info
+CURRENT_GPU=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 || echo "unknown")
+CURRENT_COMPUTE_CAP=$(python -c "import torch; cc = torch.cuda.get_device_capability(); print(f'{cc[0]}.{cc[1]}')" 2>/dev/null || echo "unknown")
+
+echo "   Current GPU: $CURRENT_GPU (compute $CURRENT_COMPUTE_CAP)"
+
+# Check if GPU changed since last run
+GPU_CHANGED=false
+if [ -f "/workspace/.last_gpu_info" ]; then
+    LAST_GPU=$(cat /workspace/.last_gpu_info 2>/dev/null || echo "")
+    if [ "$LAST_GPU" != "$CURRENT_GPU:$CURRENT_COMPUTE_CAP" ]; then
+        echo "   ⚠️  GPU changed since last run!"
+        echo "   Previous: $(echo $LAST_GPU | cut -d: -f1) (compute $(echo $LAST_GPU | cut -d: -f2))"
+        echo "   Current:  $CURRENT_GPU (compute $CURRENT_COMPUTE_CAP)"
+        GPU_CHANGED=true
+    fi
+else
+    echo "   First run on this workspace"
+    GPU_CHANGED=true
+fi
+
+# If GPU changed, clear ALL GPU-specific caches
+if [ "$GPU_CHANGED" = true ]; then
+    echo ""
+    echo "🧹 Clearing all GPU-specific caches to prevent errors..."
+
+    # 1. Triton cache (Sage Attention, custom CUDA kernels)
+    if [ -d "/root/.triton" ] || [ -d "/workspace/.triton" ]; then
+        echo "   • Clearing Triton cache..."
+        rm -rf /root/.triton /workspace/.triton ~/.triton 2>/dev/null || true
+        rm -rf /tmp/triton_* /tmp/*triton* 2>/dev/null || true
+    fi
+
+    # 2. PyTorch kernel cache
+    if [ -d "/root/.cache/torch" ] || [ -d "/workspace/.cache/torch" ]; then
+        echo "   • Clearing PyTorch kernel cache..."
+        rm -rf /root/.cache/torch/kernels 2>/dev/null || true
+        rm -rf /workspace/.cache/torch/kernels 2>/dev/null || true
+    fi
+
+    # 3. CUDA compute cache
+    if [ -d "/root/.nv" ] || [ -d "/workspace/.nv" ]; then
+        echo "   • Clearing CUDA compute cache..."
+        rm -rf /root/.nv/ComputeCache 2>/dev/null || true
+        rm -rf /workspace/.nv/ComputeCache 2>/dev/null || true
+    fi
+
+    # 4. Python __pycache__ with GPU-specific compiled code
+    echo "   • Clearing Python cache in ComfyUI..."
+    find /workspace/ComfyUI -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+
+    # 5. TensorRT engines (handled separately below)
+    if [ -d "/workspace/ComfyUI/models/tensorrt" ]; then
+        echo "   • Clearing TensorRT engines..."
+        rm -rf /workspace/ComfyUI/models/tensorrt/*.trt 2>/dev/null || true
+        rm -rf /workspace/ComfyUI/models/tensorrt/*.engine 2>/dev/null || true
+    fi
+
+    echo "   ✅ All GPU caches cleared"
+    echo ""
+fi
+
+# Save current GPU info for next run
+echo "$CURRENT_GPU:$CURRENT_COMPUTE_CAP" > /workspace/.last_gpu_info
+
+# Clean up incompatible TensorRT engines (even if GPU didn't change)
 if [ -d "/workspace/ComfyUI/models/tensorrt" ]; then
     echo "🔍 Checking for incompatible TensorRT engines..."
 
     # Get current GPU compute capability
-    GPU_COMPUTE_CAP=$(python -c "import torch; cc = torch.cuda.get_device_capability(); print(f'{cc[0]}.{cc[1]}')" 2>/dev/null || echo "unknown")
+    GPU_COMPUTE_CAP="$CURRENT_COMPUTE_CAP"
 
     if [ "$GPU_COMPUTE_CAP" != "unknown" ]; then
         # Find and remove TRT engines that don't match current GPU
