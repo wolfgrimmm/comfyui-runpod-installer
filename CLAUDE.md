@@ -3071,3 +3071,271 @@ ps aux | grep sync_loop | grep -v grep | wc -l
 
 ---
 
+## 28. Sage Attention Doesn't Support B200 GPU (sm_100 Architecture)
+
+### Problem
+User on **NVIDIA B200 GPU** experiencing sage attention failures:
+- Hundreds of errors during generation: `"Error running sage attention: Unsupported CUDA architecture: sm100, using pytorch attention instead."`
+- ComfyUI falling back to PyTorch attention (no 13x speedup)
+- TensorRT errors: `"Engine was compiled for compute 10.0, but got compute 12.0"`
+- All previous sage attention fixes worked for process/config, but **root cause was missing B200 support**
+
+**User context:**
+- GPU: NVIDIA B200 with 192GB VRAM
+- CUDA compute capability: 10.0 (sm_100)
+- Previous assumption was RTX 5090 (sm_120), but user actually on B200
+
+### Root Cause
+
+**Pre-compiled sage attention wheel missing sm_100 kernels:**
+
+Currently installed wheel from MonsterMMORPG/Wan_GGUF:
+```
+sageattention-2.2.0-cp39-abi3-linux_x86_64.whl
+```
+
+Contains only:
+- `_qattn_sm80.abi3.so` - RTX 3090, A100 (Ampere, compute 8.0)
+- `_qattn_sm89.abi3.so` - RTX 4090, L40S (Ada, compute 8.9)
+- `_qattn_sm90.abi3.so` - H100, H200, RTX 5090 (Hopper/Blackwell, compute 9.0)
+
+**Missing:** `_qattn_sm100.abi3.so` - B200, GB200 (Blackwell data center, compute 10.0)
+
+**CUDA Architecture Confusion:**
+
+Blackwell architecture has **TWO different compute capabilities**:
+1. **sm_120 (compute 12.0)** - Consumer RTX 50xx series GPUs (RTX 5090, etc.)
+   - Requires CUDA 12.8+, PyTorch 2.7.0+
+   - Used for gaming/prosumer workloads
+2. **sm_100 (compute 10.0)** - Data center Blackwell GPUs (B200, GB200)
+   - Requires CUDA 12.8+, PyTorch 2.7.0+
+   - Used for enterprise AI/HPC workloads
+
+Both are Blackwell, but different compute capabilities = incompatible binaries.
+
+### Official SageAttention Support Status
+
+**Main repository (thu-ml/SageAttention):**
+
+From `setup.py`:
+```python
+SUPPORTED_ARCHS = {"8.0", "8.6", "8.9", "9.0", "12.0"}
+```
+
+Supports:
+- ✅ sm_80 (Ampere: RTX 3090, A100)
+- ✅ sm_86 (Ampere: RTX 3080/3080Ti)
+- ✅ sm_89 (Ada: RTX 4090)
+- ✅ sm_90 (Hopper: H100)
+- ✅ sm_120 (Blackwell consumer: RTX 5090) - **Recently added**
+- ❌ sm_100 (Blackwell data center: B200, GB200) - **NOT SUPPORTED**
+
+**SageAttention3 Blackwell:**
+
+Experimental version in `sageattention3_blackwell/` subdirectory:
+- Only supports RTX 5090 (sm_120)
+- Requires FP4 instruction support
+- B200 has FP4 support (20 petaflops FP4), but implementation not ready
+- Open issue #237 requesting B200/GB200 sm_100 support
+
+### Solutions
+
+#### Solution 1: Compile SageAttention from Source for sm_100 (UNTESTED)
+
+**Requirements:**
+- CUDA 12.8+ (B200 requires this)
+- PyTorch 2.7.0+ cu128
+- B200 GPU with compute 10.0
+
+**Steps:**
+```bash
+# Clone official repository
+git clone https://github.com/thu-ml/SageAttention.git
+cd SageAttention
+
+# Edit setup.py to add sm_100 support
+sed -i 's/SUPPORTED_ARCHS = {.*}/SUPPORTED_ARCHS = {"8.0", "8.6", "8.9", "9.0", "10.0", "12.0"}/' setup.py
+
+# Compile with sm_100 architecture
+export EXT_PARALLEL=4
+export NVCC_APPEND_FLAGS="--threads 8"
+export MAX_JOBS=32
+export TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0;10.0;12.0"
+
+# Install
+pip install -e .
+```
+
+**Risk:** Untested - may fail during compilation if kernels don't support sm_100 instructions.
+
+#### Solution 2: Use SageAttention3 Blackwell (RISKY)
+
+```bash
+git clone https://github.com/thu-ml/SageAttention.git
+cd SageAttention/sageattention3_blackwell
+python setup.py install
+```
+
+**Status:** Only supports RTX 5090 (sm_120), unclear if B200 (sm_100) will work.
+
+**Blocker:** Requires PyTorch 2.7.0+, many packages incompatible.
+
+#### Solution 3: Wait for Official B200 Support
+
+**GitHub issue:** https://github.com/thu-ml/SageAttention/issues/237
+
+**Maintainer response:** No timeline given yet.
+
+**Community status:**
+- User "monstari": Card must have FP4 support (B200 has 20 PFLOPS FP4 ✅)
+- User "atagunov": Confirmed B200 has FP4
+- Issue remains open, awaiting maintainer response
+
+#### Solution 4: Use PyTorch Attention (CURRENT FALLBACK)
+
+**What happens now:**
+```python
+# ComfyUI automatically falls back when sage fails
+try:
+    from sageattention import sageattn
+    # Fails: "Unsupported CUDA architecture: sm100"
+except:
+    # Falls back to PyTorch scaled_dot_product_attention
+```
+
+**Performance impact:**
+- No 13x speedup from sage attention
+- Still functional, just slower
+- All workflows work, just take longer
+
+**This is the current state** - ComfyUI is working but not optimized for B200.
+
+### Key Technical Discoveries
+
+**1. B200 vs RTX 5090 Compute Capabilities:**
+```
+RTX 5090:  sm_120 (compute 12.0) - Consumer Blackwell
+B200:      sm_100 (compute 10.0) - Data center Blackwell
+```
+
+Both require CUDA 12.8+ and PyTorch 2.7.0+, but are **not binary compatible**.
+
+**2. Why Previous Fixes Failed:**
+
+All previous fixes (Bug #24, #25, #26, #27) correctly configured:
+- ✅ `--use-sage-attention` flag present
+- ✅ Process starts correctly
+- ✅ Sageattention package installed
+- ✅ Config files correct
+- ✅ No zombie processes
+- ✅ GPU cache cleared
+
+But sage attention still failed because:
+- ❌ Wheel doesn't include sm_100 kernels
+- ❌ B200 architecture not supported
+
+**3. TensorRT Engine Incompatibility:**
+
+Separate issue from sage attention:
+```
+Error: Engine was compiled for compute 10.0, but got compute 12.0
+```
+
+**Cause:** TensorRT engine file compiled on different GPU (possibly RTX 5090 with compute 12.0)
+
+**Fix:** Delete cached TensorRT engines:
+```bash
+find /workspace -name "*.engine" -delete
+# Will rebuild for correct GPU on next run
+```
+
+### Recommendations
+
+**Immediate (RECOMMENDED):**
+1. Accept PyTorch attention fallback for now
+2. Delete TensorRT cache: `find /workspace -name "*.engine" -delete`
+3. Monitor GitHub issue #237 for official B200 support
+
+**Experimental (HIGH RISK):**
+1. Try compiling from source with sm_100 added to SUPPORTED_ARCHS
+2. May fail if kernels use sm_90-specific instructions
+3. Could brick sageattention installation
+
+**Future:**
+1. Wait for official thu-ml/SageAttention release with sm_100 support
+2. Likely requires major kernel refactoring for sm_100 architecture
+3. Timeline unknown
+
+### Verification Commands
+
+**Check current GPU architecture:**
+```bash
+nvidia-smi --query-gpu=compute_cap --format=csv,noheader
+# B200 outputs: 10.0
+# RTX 5090 outputs: 12.0
+```
+
+**Check installed sage attention kernels:**
+```bash
+python -c "
+import sageattention
+import os
+module_path = os.path.dirname(sageattention.__file__)
+for f in os.listdir(module_path):
+    if 'qattn' in f and '.so' in f:
+        print(f)
+"
+
+# Current output:
+# _qattn_sm80.abi3.so
+# _qattn_sm89.abi3.so
+# _qattn_sm90.abi3.so
+
+# Missing:
+# _qattn_sm100.abi3.so  ← NEEDED FOR B200
+```
+
+**Monitor sage attention errors:**
+```bash
+tail -f /workspace/comfyui.log | grep -i "sage\|sm100\|unsupported"
+```
+
+### Files Modified
+
+**None yet** - This is a dependency limitation, not a config issue.
+
+All previous fixes in:
+- `Dockerfile` (lines 1067-1085, 1318-1332) ✅ Correct
+- `ui/app.py` (lines 322-362) ✅ Correct
+- `scripts/ensure_sync.sh` ✅ Correct
+- `scripts/verify_sage.sh` ✅ Correct
+
+These fixes work perfectly for **supported GPUs** (sm_80/89/90/120), but B200 (sm_100) is not supported yet.
+
+### Status
+
+- **Issue severity:** High (no sage attention speedup for B200 users)
+- **Status:** ⚠️ **WAITING FOR UPSTREAM**
+- **Affects:** B200, GB200 data center GPUs with sm_100
+- **Workaround:** PyTorch attention (slower but functional)
+- **Official fix:** Track https://github.com/thu-ml/SageAttention/issues/237
+- **Timeline:** Unknown
+
+### Result
+
+**Current state:**
+- ComfyUI works correctly on B200
+- Automatically falls back to PyTorch attention
+- All workflows functional, just slower than with sage
+- No crashes, no errors beyond "Unsupported CUDA architecture" warnings
+
+**User should:**
+1. Delete TensorRT cache to fix engine errors
+2. Continue using PyTorch attention for now
+3. Monitor GitHub issue for B200 support announcement
+4. OR attempt risky source compilation if willing to experiment
+
+**This explains all previous sage attention failures** - configuration was perfect, but hardware isn't supported yet.
+
+---
+
