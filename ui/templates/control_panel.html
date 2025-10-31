@@ -1435,6 +1435,216 @@
                 transform: translateY(0);
             }
         }
+
+        /* ===== Add User Button & Modal Styles ===== */
+
+        /* Add User Button */
+        .btn-add-user {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: rgba(107, 107, 107, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn-add-user:hover {
+            background: rgba(107, 107, 107, 0.2);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.9);
+            transform: translateY(-2px);
+        }
+
+        .btn-add-user:active {
+            transform: translateY(0);
+        }
+
+        /* Modal Overlay */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Modal Content */
+        .modal-content {
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 480px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Modal Header */
+        .modal-header {
+            padding: 24px 24px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 28px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Modal Body */
+        .modal-body {
+            padding: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: rgba(107, 107, 107, 0.5);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .form-hint {
+            display: block;
+            margin-top: 6px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            line-height: 1.4;
+        }
+
+        /* Modal Footer */
+        .modal-footer {
+            padding: 16px 24px 24px;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .modal-footer .btn {
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .modal-footer .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-footer .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .modal-footer .btn-primary {
+            background: linear-gradient(135deg, #6B6B6B, #888);
+            color: white;
+            border: none;
+        }
+
+        .modal-footer .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(107, 107, 107, 0.4);
+        }
+
+        .modal-footer .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .modal-footer .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -1499,6 +1709,9 @@
                     {% endfor %}
                 </select>
             </div>
+            <button class="btn-add-user" onclick="showAddUserModal()" title="Add new user (requires admin token)">
+                + Add User
+            </button>
         </div>
 
         <div class="auto-open-section">
@@ -3235,6 +3448,135 @@
         document.querySelectorAll('.btn').forEach(btn => {
             btn.addEventListener('click', createRipple);
         });
+
+        // ===== Add User Modal Functions =====
+        function showAddUserModal() {
+            const modal = document.getElementById('addUserModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.getElementById('newUsername').value = '';
+                document.getElementById('adminToken').value = '';
+                document.getElementById('newUsername').focus();
+            }
+        }
+
+        function closeAddUserModal() {
+            const modal = document.getElementById('addUserModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        async function addNewUser() {
+            const username = document.getElementById('newUsername').value.trim().toLowerCase();
+            const adminToken = document.getElementById('adminToken').value.trim();
+            const submitBtn = document.querySelector('#addUserModal .btn-primary');
+            const originalText = submitBtn.textContent;
+
+            // Validation
+            if (!username) {
+                showToast('Please enter a username', 'error');
+                return;
+            }
+
+            if (!/^[a-z0-9_]+$/.test(username)) {
+                showToast('Username must be lowercase alphanumeric and underscore only', 'error');
+                return;
+            }
+
+            if (!adminToken) {
+                showToast('Please enter admin token', 'error');
+                return;
+            }
+
+            // Disable button during request
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Adding...';
+
+            try {
+                const response = await fetch('/api/add_user', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        username: username,
+                        admin_token: adminToken
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    closeAddUserModal();
+
+                    // Reload page to update user dropdown
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    showToast(data.error || 'Failed to add user', 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeAddUserModal();
+            }
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('addUserModal');
+            if (event.target === modal) {
+                closeAddUserModal();
+            }
+        });
     </script>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New User</h2>
+                <button class="modal-close" onclick="closeAddUserModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newUsername">Username</label>
+                    <input
+                        type="text"
+                        id="newUsername"
+                        placeholder="e.g., john_doe"
+                        autocomplete="off"
+                        pattern="[a-z0-9_]+"
+                        title="Lowercase letters, numbers, and underscores only"
+                    />
+                    <small class="form-hint">Lowercase letters, numbers, and underscores only</small>
+                </div>
+                <div class="form-group">
+                    <label for="adminToken">Admin Token</label>
+                    <input
+                        type="password"
+                        id="adminToken"
+                        placeholder="Enter admin token"
+                        autocomplete="off"
+                    />
+                    <small class="form-hint">Required to add new users. Set via COMFYUI_ADMIN_KEY environment variable.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAddUserModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="addNewUser()">Add User</button>
+            </div>
+        </div>
+    </div>
+
     </body>
 </html>
