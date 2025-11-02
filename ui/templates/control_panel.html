@@ -3178,16 +3178,19 @@
         
         /* ===== ADVANCED STUNNING ANIMATIONS ===== */
         
-        // Magnetic hover effect for buttons
+        // Magnetic hover effect for buttons (exclude Add User button)
         document.querySelectorAll('.btn, button').forEach(btn => {
+            // Skip magnetic effect for Add User button
+            if (btn.classList.contains('btn-add-user')) return;
+
             btn.addEventListener('mousemove', (e) => {
                 const rect = btn.getBoundingClientRect();
                 const x = e.clientX - rect.left - rect.width / 2;
                 const y = e.clientY - rect.top - rect.height / 2;
-                
+
                 btn.style.transform = `translate(${x * 0.1}px, ${y * 0.1}px) scale(1.05)`;
             });
-            
+
             btn.addEventListener('mouseleave', () => {
                 btn.style.transform = 'translate(0, 0) scale(1)';
             });
