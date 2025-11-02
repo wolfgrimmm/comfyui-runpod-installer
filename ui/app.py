@@ -941,10 +941,9 @@ def startup_stream():
 
 @app.route('/api/add_user', methods=['POST'])
 def add_user():
-    """Add new user with admin token protection"""
+    """Add new user (no authentication required)"""
     data = request.json
     username = data.get('username', '').strip().lower()
-    admin_token = data.get('admin_token', '').strip()
 
     if not username:
         return jsonify({"success": False, "error": "Username required"}), 400
@@ -952,19 +951,6 @@ def add_user():
     # Validate username format (alphanumeric + underscore only)
     if not re.match(r'^[a-z0-9_]+$', username):
         return jsonify({"success": False, "error": "Username must be lowercase alphanumeric and underscore only"}), 400
-
-    # Check admin key from environment
-    env_admin_key = os.environ.get('COMFYUI_ADMIN_KEY')
-
-    # If env key exists, validate against it
-    # If no env key, require ANY token (basic protection)
-    if env_admin_key:
-        if admin_token != env_admin_key:
-            return jsonify({"success": False, "error": "Invalid admin token"}), 403
-    else:
-        # No env key set - require ANY token for basic protection
-        if not admin_token:
-            return jsonify({"success": False, "error": "Admin token required"}), 403
 
     if manager.add_user(username):
         return jsonify({"success": True, "message": f"User '{username}' added successfully"})

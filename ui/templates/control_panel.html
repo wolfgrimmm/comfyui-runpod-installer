@@ -1709,7 +1709,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <button class="btn-add-user" onclick="showAddUserModal()" title="Add new user (requires admin token)">
+            <button class="btn-add-user" onclick="showAddUserModal()" title="Add new user">
                 + Add User
             </button>
         </div>
@@ -3458,7 +3458,6 @@
             if (modal) {
                 modal.style.display = 'flex';
                 document.getElementById('newUsername').value = '';
-                document.getElementById('adminToken').value = '';
                 document.getElementById('newUsername').focus();
             }
         }
@@ -3472,7 +3471,6 @@
 
         async function addNewUser() {
             const username = document.getElementById('newUsername').value.trim().toLowerCase();
-            const adminToken = document.getElementById('adminToken').value.trim();
             const submitBtn = document.querySelector('#addUserModal .btn-primary');
             const originalText = submitBtn.textContent;
 
@@ -3487,11 +3485,6 @@
                 return;
             }
 
-            if (!adminToken) {
-                showToast('Please enter admin token', 'error');
-                return;
-            }
-
             // Disable button during request
             submitBtn.disabled = true;
             submitBtn.textContent = 'Adding...';
@@ -3501,8 +3494,7 @@
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        username: username,
-                        admin_token: adminToken
+                        username: username
                     })
                 });
 
@@ -3562,16 +3554,6 @@
                         title="Lowercase letters, numbers, and underscores only"
                     />
                     <small class="form-hint">Lowercase letters, numbers, and underscores only</small>
-                </div>
-                <div class="form-group">
-                    <label for="adminToken">Admin Token</label>
-                    <input
-                        type="password"
-                        id="adminToken"
-                        placeholder="Enter admin token"
-                        autocomplete="off"
-                    />
-                    <small class="form-hint">Required to add new users. Set via COMFYUI_ADMIN_KEY environment variable.</small>
                 </div>
             </div>
             <div class="modal-footer">
