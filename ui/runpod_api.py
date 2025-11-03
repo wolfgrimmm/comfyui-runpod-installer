@@ -11,7 +11,12 @@ from typing import Dict, List, Optional, Tuple
 
 class RunPodAPI:
     def __init__(self):
-        self.api_key = os.environ.get('RUNPOD_API_KEY')
+        # Try multiple environment variable names for flexibility
+        self.api_key = (
+            os.environ.get('COMFYUI_RUNPOD_API_KEY') or  # Primary
+            os.environ.get('API_KEY_RUNPOD') or          # Alternative
+            os.environ.get('RUNPOD_API_KEY')             # Fallback (if RunPod allows it later)
+        )
         self.endpoint = 'https://api.runpod.io/graphql'
 
     def _query(self, query: str, variables: Optional[Dict] = None) -> Dict:
