@@ -19,6 +19,14 @@ from datetime import datetime, timedelta
 from gdrive_sync import GDriveSync
 from gdrive_oauth import GDriveOAuth
 
+# Try to import RunPod API client
+try:
+    from runpod_api import RunPodAPI
+    RUNPOD_API_AVAILABLE = True
+except ImportError:
+    RUNPOD_API_AVAILABLE = False
+    print("RunPod API not available - install requests for usage tracking")
+
 # Try to import model downloader
 try:
     from model_downloader import ModelDownloader
@@ -978,6 +986,62 @@ def get_user_stats():
     stats['current_gpu'] = manager.gpu_info
     stats['hourly_rate'] = manager.hourly_rate
     return jsonify(stats)
+
+# RunPod Usage Tracking API endpoints
+@app.route('/api/runpod/usage')
+def get_runpod_usage():
+    """Get usage data from RunPod audit logs"""
+    if not RUNPOD_API_AVAILABLE:
+        return jsonify({'error': 'RunPod API not available - install requests module'}), 503
+
+    try:
+        runpod_api = RunPodAPI()
+
+        # Map of RunPod emails to usernames
+        email_to_user = {
+            'serhii.y@webgroup-limited.com': 'serhii',
+            'marcin.k@webgroup-limited.com': 'marcin',
+            'vladislav.k@webgroup-limited.com': 'vlad',
+            'ksenija.s@webgroup-limited.com': 'ksenija',
+            'max.k@webgroup-limited.com': 'max',
+            'ivan.s@webgroup-limited.com': 'ivan',
+            'antonia.v@webgroup-limited.com': 'antonia'
+        }
+
+        # Calculate usage per user
+        usage_stats = runpod_api.calculate_user_usage(email_to_user)
+
+        return jsonify({
+            'success': True,
+            'usage_stats': usage_stats
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/runpod/spending')
+def get_runpod_spending():
+    """Get overall RunPod spending summary"""
+    if not RUNPOD_API_AVAILABLE:
+        return jsonify({'error': 'RunPod API not available'}), 503
+
+    try:
+        runpod_api = RunPodAPI()
+        spending = runpod_api.get_spending_summary()
+
+        return jsonify({
+            'success': True,
+            'spending': spending
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 # Google Drive API endpoints
 @app.route('/api/gdrive/status')
