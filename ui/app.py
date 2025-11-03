@@ -781,6 +781,63 @@ if os.path.exists('/workspace/.gdrive_status'):
 else:
     print(f"  status file: not found")
 
+# Automatic Google Sheets sync (runs daily)
+def auto_sync_to_sheets():
+    """Background thread to automatically sync usage to Google Sheets every 24 hours"""
+    import time
+
+    # Wait 5 minutes after startup before first sync (let everything initialize)
+    time.sleep(300)
+
+    while True:
+        try:
+            if RUNPOD_API_AVAILABLE and SHEETS_SYNC_AVAILABLE:
+                print("📊 Running automatic usage sync to Google Sheets...")
+
+                # Get usage data
+                runpod_api = RunPodAPI()
+                email_to_user = {
+                    'serhii.y@webgroup-limited.com': 'serhii',
+                    'marcin.k@webgroup-limited.com': 'marcin',
+                    'vladislav.k@webgroup-limited.com': 'vlad',
+                    'ksenija.s@webgroup-limited.com': 'ksenija',
+                    'max.k@webgroup-limited.com': 'max',
+                    'ivan.s@webgroup-limited.com': 'ivan',
+                    'antonia.v@webgroup-limited.com': 'antonia'
+                }
+
+                usage_stats = runpod_api.calculate_user_usage(email_to_user)
+
+                # Sync to sheets
+                sheets_sync = SheetsSync()
+                success = sheets_sync.update_usage_data(usage_stats)
+
+                if success:
+                    sheet_url = sheets_sync.get_sheet_url()
+                    print(f"✅ Usage data synced to Google Sheets: {sheet_url}")
+
+                    # Save sheet URL for easy access
+                    with open('/workspace/.sheets_url', 'w') as f:
+                        f.write(sheet_url)
+                else:
+                    print("⚠️ Failed to sync usage data to Google Sheets")
+            else:
+                print("⚠️ Automatic sync disabled - RunPod API or Sheets sync not available")
+
+        except Exception as e:
+            print(f"❌ Error in automatic sheets sync: {e}")
+            import traceback
+            traceback.print_exc()
+
+        # Wait 24 hours before next sync
+        time.sleep(86400)  # 24 hours in seconds
+
+# Start automatic sync in background thread
+if RUNPOD_API_AVAILABLE and SHEETS_SYNC_AVAILABLE:
+    sync_thread = threading.Thread(target=auto_sync_to_sheets, daemon=True)
+    sync_thread.start()
+    print("✅ Automatic Google Sheets sync started (runs every 24 hours)")
+
 @app.route('/health')
 def health():
     """Health check endpoint for monitoring"""
@@ -1053,7 +1110,7 @@ def get_runpod_spending():
 
 @app.route('/api/runpod/sync_to_sheets', methods=['POST'])
 def sync_usage_to_sheets():
-    """Sync RunPod usage data to Google Sheets"""
+    """Sync RunPod usage data to Google Sheets (manual trigger)"""
     if not RUNPOD_API_AVAILABLE:
         return jsonify({'error': 'RunPod API not available'}), 503
 
@@ -1083,6 +1140,11 @@ def sync_usage_to_sheets():
 
         if success:
             sheet_url = sheets_sync.get_sheet_url()
+
+            # Save sheet URL for easy access
+            with open('/workspace/.sheets_url', 'w') as f:
+                f.write(sheet_url)
+
             return jsonify({
                 'success': True,
                 'message': 'Usage data synced to Google Sheets',
@@ -1093,6 +1155,50 @@ def sync_usage_to_sheets():
                 'success': False,
                 'error': 'Failed to sync data to Google Sheets'
             }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/runpod/sheets_url')
+def get_sheets_url():
+    """Get the Google Sheets URL for usage tracking"""
+    # Check if we have a cached URL
+    if os.path.exists('/workspace/.sheets_url'):
+        try:
+            with open('/workspace/.sheets_url', 'r') as f:
+                url = f.read().strip()
+                if url:
+                    return jsonify({'success': True, 'sheet_url': url})
+        except:
+            pass
+
+    # Try to get URL from API
+    if not SHEETS_SYNC_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'error': 'Google Sheets sync not available',
+            'message': 'Run sync first to create the sheet'
+        }), 503
+
+    try:
+        sheets_sync = SheetsSync()
+        if sheets_sync.connect():
+            sheet = sheets_sync.get_or_create_sheet()
+            if sheet:
+                url = sheet.url
+                # Cache it
+                with open('/workspace/.sheets_url', 'w') as f:
+                    f.write(url)
+                return jsonify({'success': True, 'sheet_url': url})
+
+        return jsonify({
+            'success': False,
+            'error': 'Could not get sheet URL',
+            'message': 'Run sync first to create the sheet'
+        })
 
     except Exception as e:
         return jsonify({
