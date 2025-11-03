@@ -37,13 +37,18 @@ class RunPodAPI:
 
         response = requests.post(url, json=payload, headers=headers)
 
-        # Print debug info for errors
+        # Always check response before raising
         if response.status_code != 200:
-            print(f"GraphQL Error Response:")
-            print(f"Status: {response.status_code}")
-            print(f"Body: {response.text}")
-
-        response.raise_for_status()
+            print(f"\n❌ GraphQL Error Response:")
+            print(f"   Status: {response.status_code}")
+            print(f"   Body: {response.text}")
+            print(f"   Query: {query[:200]}...")
+            try:
+                error_json = response.json()
+                print(f"   Errors: {error_json.get('errors', 'No error details')}")
+            except:
+                pass
+            response.raise_for_status()
 
         return response.json()
 
