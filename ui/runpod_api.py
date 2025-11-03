@@ -59,23 +59,19 @@ class RunPodAPI:
         """
         query = """
         query GetAuditLogs($after: String) {
-            myself {
-                auditLogs(first: %d, after: $after) {
-                    edges {
-                        node {
-                            id
-                            actorId
-                            action
-                            timestamp
-                            resourceType
-                            resourceId
-                            metadata
-                        }
-                    }
-                    pageInfo {
-                        hasNextPage
-                        endCursor
-                    }
+            auditLogs(first: %d, after: $after) {
+                edges {
+                    actorId
+                    email
+                    action
+                    timestamp
+                    resourceType
+                    resourceId
+                    value
+                }
+                pageInfo {
+                    hasNextPage
+                    endCursor
                 }
             }
         }
@@ -84,7 +80,7 @@ class RunPodAPI:
         variables = {'after': cursor} if cursor else {'after': None}
         result = self._query(query, variables)
 
-        return result.get('data', {}).get('myself', {}).get('auditLogs', {})
+        return result.get('data', {}).get('auditLogs', {})
 
     def get_all_audit_logs(self, limit: int = 1000) -> List[Dict]:
         """
@@ -101,10 +97,8 @@ class RunPodAPI:
             if not edges:
                 break
 
-            # Extract nodes
-            for edge in edges:
-                node = edge.get('node', {})
-                all_logs.append(node)
+            # Edges are the logs directly (no node wrapper in this API)
+            all_logs.extend(edges)
 
             # Check if there are more pages
             page_info = logs_data.get('pageInfo', {})
