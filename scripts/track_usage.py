@@ -49,6 +49,10 @@ def main():
         print("📡 Connecting to RunPod API...")
         api = RunPodAPI()
 
+        # DEBUG: Introspect the schema first
+        print("🔍 Introspecting auditLogs schema...")
+        api.introspect_audit_logs()
+
         # Calculate usage for all users
         print("📊 Calculating usage statistics...")
         usage_stats = api.calculate_user_usage(EMAIL_TO_USER_MAP)

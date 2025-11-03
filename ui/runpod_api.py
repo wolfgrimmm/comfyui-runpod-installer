@@ -52,6 +52,40 @@ class RunPodAPI:
 
         return response.json()
 
+    def introspect_audit_logs(self) -> Dict:
+        """Introspect the auditLogs field to see its schema"""
+        query = """
+        query IntrospectAuditLogs {
+            __type(name: "Query") {
+                fields {
+                    name
+                    args {
+                        name
+                        type {
+                            name
+                            kind
+                            ofType {
+                                name
+                                kind
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """
+        result = self._query(query)
+
+        # Find auditLogs field
+        for field in result.get('data', {}).get('__type', {}).get('fields', []):
+            if field.get('name') == 'auditLogs':
+                print("\n✅ Found auditLogs field:")
+                print(f"   Arguments: {field.get('args')}")
+                return field
+
+        print("❌ auditLogs field not found")
+        return {}
+
     def get_audit_logs(self, limit: int = 100, cursor: Optional[str] = None) -> Dict:
         """
         Get audit logs from RunPod
