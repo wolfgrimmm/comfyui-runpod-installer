@@ -1,0 +1,47 @@
+name: Track RunPod Usage
+
+on:
+  # Run automatically every day at midnight UTC
+  schedule:
+    - cron: '0 0 * * *'
+
+  # Allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      generate_monthly_report:
+        description: 'Generate monthly report for previous month'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  track-usage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests gspread oauth2client
+
+      - name: Track usage and sync to Google Sheets
+        env:
+          COMFYUI_RUNPOD_API_KEY: ${{ secrets.COMFYUI_RUNPOD_API_KEY }}
+          GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+        run: |
+          python scripts/track_usage.py
+
+      - name: Generate monthly report (if requested)
+        if: ${{ github.event.inputs.generate_monthly_report == 'true' }}
+        env:
+          COMFYUI_RUNPOD_API_KEY: ${{ secrets.COMFYUI_RUNPOD_API_KEY }}
+          GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+        run: |
+          python scripts/generate_monthly_report.py
