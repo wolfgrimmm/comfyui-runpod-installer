@@ -264,3 +264,98 @@ class SheetsSync:
         if self.spreadsheet:
             return self.spreadsheet.url
         return None
+
+    def create_monthly_report(self, usage_stats: Dict[str, Dict], year: int, month: int) -> bool:
+        """
+        Create a separate worksheet for a specific month's usage
+
+        Args:
+            usage_stats: Usage data for the month
+            year: Year (e.g., 2025)
+            month: Month (1-12)
+
+        Returns:
+            True if successful
+        """
+        try:
+            sheet = self.get_or_create_sheet()
+            if not sheet:
+                return False
+
+            from datetime import datetime
+            month_name = datetime(year, month, 1).strftime("%B %Y")
+            worksheet_title = f"{month_name} Report"
+
+            # Try to get existing worksheet or create new one
+            try:
+                worksheet = sheet.worksheet(worksheet_title)
+                print(f"✅ Found existing worksheet: {worksheet_title}")
+            except:
+                worksheet = sheet.add_worksheet(title=worksheet_title, rows=100, cols=10)
+                print(f"📄 Created new worksheet: {worksheet_title}")
+
+            # Prepare data
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # Header row
+            headers = ["User", "Total Hours", "Total Cost ($)", "Sessions", "Generated"]
+
+            # Data rows
+            rows = [headers]
+            total_hours = 0
+            total_cost = 0
+
+            for username, stats in sorted(usage_stats.items()):
+                hours = stats.get('total_hours', 0)
+                cost = stats.get('total_cost', 0)
+                sessions_count = len(stats.get('sessions', []))
+
+                total_hours += hours
+                total_cost += cost
+
+                rows.append([
+                    username,
+                    round(hours, 2),
+                    round(cost, 2),
+                    sessions_count,
+                    current_time
+                ])
+
+            # Add totals row
+            rows.append([])
+            rows.append([
+                "TOTAL",
+                round(total_hours, 2),
+                round(total_cost, 2),
+                "",
+                ""
+            ])
+
+            # Clear and update
+            worksheet.clear()
+            worksheet.update('A1', rows)
+
+            # Format header
+            worksheet.format('A1:E1', {
+                "textFormat": {"bold": True},
+                "backgroundColor": {"red": 0.9, "green": 0.9, "blue": 0.9}
+            })
+
+            # Format totals
+            total_row = len(rows)
+            worksheet.format(f'A{total_row}:E{total_row}', {
+                "textFormat": {"bold": True},
+                "backgroundColor": {"red": 1, "green": 0.95, "blue": 0.8}
+            })
+
+            # Auto-resize
+            worksheet.columns_auto_resize(0, 4)
+
+            print(f"✅ Monthly report created: {month_name}")
+            return True
+
+        except Exception as e:
+            print(f"Error creating monthly report: {e}")
+            import traceback
+            traceback.print_exc()
+            return False

@@ -1164,7 +1164,7 @@ def sync_usage_to_sheets():
 
 @app.route('/api/runpod/sheets_url')
 def get_sheets_url():
-    """Get the Google Sheets URL for usage tracking"""
+    """Get the Google Sheets URL for usage tracking (admin only - not exposed to users)"""
     # Check if we have a cached URL
     if os.path.exists('/workspace/.sheets_url'):
         try:
@@ -1199,6 +1199,158 @@ def get_sheets_url():
             'error': 'Could not get sheet URL',
             'message': 'Run sync first to create the sheet'
         })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/runpod/monthly_report', methods=['POST'])
+def create_monthly_report():
+    """Create a monthly usage report (admin only - not exposed to users)"""
+    if not RUNPOD_API_AVAILABLE:
+        return jsonify({'error': 'RunPod API not available'}), 503
+
+    if not SHEETS_SYNC_AVAILABLE:
+        return jsonify({'error': 'Google Sheets sync not available'}), 503
+
+    try:
+        data = request.json
+        year = data.get('year')
+        month = data.get('month')
+
+        if not year or not month:
+            # Default to previous month
+            from datetime import datetime, timedelta
+            last_month = datetime.now() - timedelta(days=30)
+            year = last_month.year
+            month = last_month.month
+
+        # Get usage data from RunPod
+        runpod_api = RunPodAPI()
+        email_to_user = {
+            'serhii.y@webgroup-limited.com': 'serhii',
+            'marcin.k@webgroup-limited.com': 'marcin',
+            'vladislav.k@webgroup-limited.com': 'vlad',
+            'ksenija.s@webgroup-limited.com': 'ksenija',
+            'max.k@webgroup-limited.com': 'max',
+            'ivan.s@webgroup-limited.com': 'ivan',
+            'antonia.v@webgroup-limited.com': 'antonia'
+        }
+
+        # Get all audit logs
+        all_logs = runpod_api.get_all_audit_logs(limit=5000)
+
+        # Filter logs for specific month
+        from datetime import datetime
+        month_logs = []
+        for log in all_logs:
+            timestamp = log.get('timestamp', '')
+            if timestamp:
+                try:
+                    log_date = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    if log_date.year == year and log_date.month == month:
+                        month_logs.append(log)
+                except:
+                    continue
+
+        # Calculate usage for this month only
+        usage_stats = {}
+        pod_sessions = {}
+
+        for log in month_logs:
+            action = log.get('action', '')
+            actor_id = log.get('actorId', '')
+            timestamp = log.get('timestamp')
+            resource_type = log.get('resourceType', '')
+            resource_id = log.get('resourceId', '')
+
+            if resource_type != 'Pod':
+                continue
+
+            username = email_to_user.get(actor_id, actor_id)
+
+            if username not in usage_stats:
+                usage_stats[username] = {
+                    'total_hours': 0,
+                    'total_cost': 0,
+                    'sessions': []
+                }
+
+            # Track pod creation
+            if action == 'created' or action == 'create':
+                try:
+                    pod_details = runpod_api.get_pod_details(resource_id)
+                    if pod_details:
+                        gpu_type = pod_details.get('machine', {}).get('gpuDisplayName', 'Unknown')
+                        cost_per_hr = pod_details.get('costPerHr', 0.74)
+                    else:
+                        gpu_type = 'Unknown'
+                        cost_per_hr = 0.74
+                except:
+                    gpu_type = 'Unknown'
+                    cost_per_hr = 0.74
+
+                pod_sessions[resource_id] = {
+                    'created_at': timestamp,
+                    'created_by': username,
+                    'gpu_type': gpu_type,
+                    'cost_per_hour': cost_per_hr
+                }
+
+            # Track pod deletion
+            elif action == 'deleted' or action == 'delete':
+                if resource_id in pod_sessions:
+                    session = pod_sessions[resource_id]
+                    created_at = datetime.fromisoformat(session['created_at'].replace('Z', '+00:00'))
+                    deleted_at = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+
+                    duration_hours = (deleted_at - created_at).total_seconds() / 3600
+                    total_cost = duration_hours * session['cost_per_hour']
+
+                    session_data = {
+                        'pod_id': resource_id,
+                        'gpu_type': session['gpu_type'],
+                        'created_at': session['created_at'],
+                        'deleted_at': timestamp,
+                        'duration_hours': round(duration_hours, 2),
+                        'cost_per_hour': session['cost_per_hour'],
+                        'total_cost': round(total_cost, 2)
+                    }
+
+                    usage_stats[session['created_by']]['sessions'].append(session_data)
+                    usage_stats[session['created_by']]['total_hours'] += duration_hours
+                    usage_stats[session['created_by']]['total_cost'] += total_cost
+
+                    del pod_sessions[resource_id]
+
+        # Round totals
+        for username in usage_stats:
+            usage_stats[username]['total_hours'] = round(usage_stats[username]['total_hours'], 2)
+            usage_stats[username]['total_cost'] = round(usage_stats[username]['total_cost'], 2)
+
+        # Create monthly report in sheets
+        sheets_sync = SheetsSync()
+        success = sheets_sync.create_monthly_report(usage_stats, year, month)
+
+        if success:
+            sheet_url = sheets_sync.get_sheet_url()
+            from datetime import datetime
+            month_name = datetime(year, month, 1).strftime("%B %Y")
+
+            return jsonify({
+                'success': True,
+                'message': f'Monthly report created for {month_name}',
+                'sheet_url': sheet_url,
+                'year': year,
+                'month': month
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to create monthly report'
+            }), 500
 
     except Exception as e:
         return jsonify({
