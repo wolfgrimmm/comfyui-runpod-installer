@@ -190,14 +190,19 @@ if [ "$NEED_INSTALL" = "1" ]; then
     # Core packages for UI
     uv pip install flask==3.0.0 psutil requests
 
+    # Google Sheets API for usage tracking
+    uv pip install gspread oauth2client
+
     # CivitAI integration packages
     uv pip install civitai-downloader aiofiles
 
     # ComfyUI requirements - PyTorch 2.8.0 with CUDA 12.9
     # Note: Using cu129 because PyTorch 2.8.0 is only available for cu129
     # The cu129 wheel includes CUDA 12.9 libraries, no toolkit installation needed
+    # CRITICAL: torchvision 0.24.0 required for RTX 5090 (Bug #30)
+    # torchvision 0.23.0 has PTX toolchain errors in torchvision.ops.nms on RTX 5090
     echo "📦 Installing PyTorch 2.8.0 with CUDA 12.9..."
-    pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
+    pip install torch==2.8.0 torchvision==0.24.0+cu129 torchaudio --index-url https://download.pytorch.org/whl/cu129
 
     # Core ComfyUI dependencies
     uv pip install einops torchsde "kornia>=0.7.1" spandrel "safetensors>=0.4.2"
@@ -211,8 +216,10 @@ if [ "$NEED_INSTALL" = "1" ]; then
     # Text processing support (required for tokenization in many models)
     uv pip install sentencepiece
 
-    # ONNX Runtime 1.22.0 - fixes GPU errors (per ComfyUI V54 Oct 3 update)
-    uv pip install onnxruntime-gpu==1.22.0 || pip install onnxruntime-gpu==1.22.0
+    # ONNX Runtime 1.22.1+ - CRITICAL for RTX 5090 and CUDA 12.9 support
+    # Version 1.22.0 has PTX toolchain errors on RTX 5090 (Bug #30)
+    # Version 1.22.1+ includes CUDA 12.9 and sm_120 compute capability support
+    uv pip install "onnxruntime-gpu>=1.22.1" || pip install "onnxruntime-gpu>=1.22.1"
 
     # Install triton for GPU kernel optimization - CRITICAL for Sage Attention + WAN 2.2!
     echo "📦 Installing Triton (ESSENTIAL for 13x speedup with Sage Attention)..."
@@ -1215,8 +1222,8 @@ if [ ! -f "/workspace/ComfyUI/main.py" ]; then
         # Install requirements but skip torch to keep our CUDA 12.9 version
         grep -v "^torch" requirements.txt > /tmp/comfy_req.txt || cp requirements.txt /tmp/comfy_req.txt
         pip install -r /tmp/comfy_req.txt
-        # Ensure we have the right PyTorch for CUDA 12.9
-        pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129 --upgrade
+        # Ensure we have the right PyTorch for CUDA 12.9 with torchvision 0.24.0 (Bug #30)
+        pip install torch==2.8.0 torchvision==0.24.0+cu129 torchaudio --index-url https://download.pytorch.org/whl/cu129 --upgrade
     fi
 fi
 
@@ -1258,6 +1265,14 @@ if [ ! -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
             pip install -r ComfyUI-Manager/requirements.txt 2>/dev/null || true
         fi
     fi
+fi
+
+# Apply GPU-aware TensorRT patch for multi-pod environments (Bug #29)
+# This allows multiple pods with different GPUs (B200, RTX 5090, etc.) to share
+# the same network volume without TensorRT engine conflicts
+if [ -f "/app/scripts/patch_tensorrt_gpu_aware.sh" ]; then
+    echo "🔧 Checking for TensorRT upscaler..."
+    /app/scripts/patch_tensorrt_gpu_aware.sh 2>/dev/null || echo "   ℹ️ TensorRT upscaler not installed (will patch when installed)"
 fi
 
 # Start ComfyUI with appropriate attention mechanism

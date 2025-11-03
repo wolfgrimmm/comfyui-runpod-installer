@@ -27,6 +27,14 @@ except ImportError:
     RUNPOD_API_AVAILABLE = False
     print("RunPod API not available - install requests for usage tracking")
 
+# Try to import Google Sheets sync
+try:
+    from sheets_sync import SheetsSync
+    SHEETS_SYNC_AVAILABLE = True
+except ImportError:
+    SHEETS_SYNC_AVAILABLE = False
+    print("Google Sheets sync not available - install gspread for automatic tracking")
+
 # Try to import model downloader
 try:
     from model_downloader import ModelDownloader
@@ -1036,6 +1044,55 @@ def get_runpod_spending():
             'success': True,
             'spending': spending
         })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/runpod/sync_to_sheets', methods=['POST'])
+def sync_usage_to_sheets():
+    """Sync RunPod usage data to Google Sheets"""
+    if not RUNPOD_API_AVAILABLE:
+        return jsonify({'error': 'RunPod API not available'}), 503
+
+    if not SHEETS_SYNC_AVAILABLE:
+        return jsonify({'error': 'Google Sheets sync not available - install gspread'}), 503
+
+    try:
+        # Get usage data from RunPod
+        runpod_api = RunPodAPI()
+
+        # Map of RunPod emails to usernames
+        email_to_user = {
+            'serhii.y@webgroup-limited.com': 'serhii',
+            'marcin.k@webgroup-limited.com': 'marcin',
+            'vladislav.k@webgroup-limited.com': 'vlad',
+            'ksenija.s@webgroup-limited.com': 'ksenija',
+            'max.k@webgroup-limited.com': 'max',
+            'ivan.s@webgroup-limited.com': 'ivan',
+            'antonia.v@webgroup-limited.com': 'antonia'
+        }
+
+        usage_stats = runpod_api.calculate_user_usage(email_to_user)
+
+        # Sync to Google Sheets
+        sheets_sync = SheetsSync()
+        success = sheets_sync.update_usage_data(usage_stats)
+
+        if success:
+            sheet_url = sheets_sync.get_sheet_url()
+            return jsonify({
+                'success': True,
+                'message': 'Usage data synced to Google Sheets',
+                'sheet_url': sheet_url
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to sync data to Google Sheets'
+            }), 500
 
     except Exception as e:
         return jsonify({
