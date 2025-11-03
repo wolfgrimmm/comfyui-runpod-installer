@@ -18,7 +18,12 @@ from sheets_sync import SheetsSync
 # Email to username mapping (same as track_usage.py)
 EMAIL_TO_USER_MAP = {
     "serhii.y@webgroup-limited.com": "serhii",
-    # Add more users as needed
+    "marcin.k@webgroup-limited.com": "marcin",
+    "vladislav.k@webgroup-limited.com": "vlad",
+    "ksenija.s@webgroup-limited.com": "ksenija",
+    "max.k@webgroup-limited.com": "max",
+    "ivan.s@webgroup-limited.com": "ivan",
+    "antonia.v@webgroup-limited.com": "antonia"
 }
 
 def filter_usage_by_month(usage_stats, year, month):

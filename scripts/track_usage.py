@@ -16,12 +16,14 @@ from runpod_api import RunPodAPI
 from sheets_sync import SheetsSync
 
 # Email to username mapping
-# Add your team members here
 EMAIL_TO_USER_MAP = {
     "serhii.y@webgroup-limited.com": "serhii",
-    # Add more users as needed:
-    # "john@example.com": "john",
-    # "jane@example.com": "jane",
+    "marcin.k@webgroup-limited.com": "marcin",
+    "vladislav.k@webgroup-limited.com": "vlad",
+    "ksenija.s@webgroup-limited.com": "ksenija",
+    "max.k@webgroup-limited.com": "max",
+    "ivan.s@webgroup-limited.com": "ivan",
+    "antonia.v@webgroup-limited.com": "antonia"
 }
 
 def main():
