@@ -69,7 +69,7 @@ class RunPodAPI:
         }
         """ % limit
 
-        variables = {'after': cursor} if cursor else {}
+        variables = {'after': cursor} if cursor else {'after': None}
         result = self._query(query, variables)
 
         return result.get('data', {}).get('myself', {}).get('auditLogs', {})
