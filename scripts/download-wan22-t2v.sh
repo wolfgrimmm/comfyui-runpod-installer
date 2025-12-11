@@ -38,8 +38,9 @@ else
     echo ""
 fi
 
-# Set directories according to the documentation structure
-MODELS_DIR="/workspace/models"
+# Set directories for default ComfyUI structure
+COMFYUI_DIR="/workspace/ComfyUI"
+MODELS_DIR="$COMFYUI_DIR/models"
 DIFFUSION_DIR="$MODELS_DIR/diffusion_models"
 VAE_DIR="$MODELS_DIR/vae"
 LORAS_DIR="$MODELS_DIR/loras"

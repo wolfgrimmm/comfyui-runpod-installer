@@ -4,15 +4,12 @@ FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 WORKDIR /
 
-# Install system dependencies including Python build tools, rclone, and ffmpeg
+# Install system dependencies including Python build tools and ffmpeg
 RUN apt-get update && apt-get install -y \
     git wget curl psmisc lsof unzip \
     python3.11-dev python3.11-venv python3-pip \
     build-essential software-properties-common \
     ffmpeg \
-    && curl -O https://downloads.rclone.org/rclone-current-linux-amd64.deb \
-    && dpkg -i rclone-current-linux-amd64.deb \
-    && rm rclone-current-linux-amd64.deb \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -57,84 +54,6 @@ fi
 
 echo "🚀 RunPod ComfyUI Installer Initializing..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-# Restore rclone config from workspace if it exists
-if [ -f "/workspace/.config/rclone/rclone.conf" ] && [ ! -f "/root/.config/rclone/rclone.conf" ]; then
-    echo "📋 Restoring rclone config from workspace..."
-    mkdir -p /root/.config/rclone
-    cp /workspace/.config/rclone/rclone.conf /root/.config/rclone/
-    if [ -f "/workspace/.config/rclone/service_account.json" ]; then
-        cp /workspace/.config/rclone/service_account.json /root/.config/rclone/
-    fi
-
-    # Fix broken config that points to non-existent service account
-    # BUT ONLY if we don't have the service account file at all
-    if grep -q "service_account_file" /root/.config/rclone/rclone.conf && \
-       [ ! -f "/root/.config/rclone/service_account.json" ] && \
-       [ ! -f "/workspace/.config/rclone/service_account.json" ]; then
-        echo "🔧 Fixing broken service account reference in config..."
-        echo "   WARNING: Config points to service account but file is missing"
-        # Don't delete the line, try to restore the service account instead
-        if [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
-            echo "   Restoring service account from RunPod secret..."
-            echo "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
-            echo "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" > /workspace/.config/rclone/service_account.json
-        else
-            echo "   No RunPod secret available to restore service account"
-        fi
-    fi
-
-    echo "✅ Rclone config restored from workspace"
-fi
-
-# Fix missing Shared Drive ID in rclone config (critical for Service Accounts)
-# Regenerate config completely to ensure it's always correct
-if [ -f "/root/.config/rclone/service_account.json" ]; then
-    echo "🔍 Checking Google Drive configuration..."
-
-    # Detect Shared Drive ID first (need basic config for this)
-    if [ ! -f "/root/.config/rclone/rclone.conf" ]; then
-        # Create minimal config for detection
-        mkdir -p /root/.config/rclone
-        printf '%s\n' '[gdrive]' 'type = drive' 'scope = drive' \
-            'service_account_file = /root/.config/rclone/service_account.json' \
-            'team_drive =' '' > /root/.config/rclone/rclone.conf
-    fi
-
-    # Try to detect Shared Drive ID
-    SHARED_DRIVE_ID=$(rclone backend drives gdrive: 2>/dev/null | grep -oP '"id":\s*"\K[^"]+' | head -1)
-
-    if [ -n "$SHARED_DRIVE_ID" ]; then
-        echo "✅ Found Shared Drive ID: $SHARED_DRIVE_ID"
-
-        # Regenerate complete config with correct team_drive
-        printf '%s\n' '[gdrive]' 'type = drive' 'scope = drive' \
-            'service_account_file = /root/.config/rclone/service_account.json' \
-            "team_drive = \$SHARED_DRIVE_ID" '' > /root/.config/rclone/rclone.conf
-
-        # Copy to workspace for persistence
-        mkdir -p /workspace/.config/rclone
-        cp /root/.config/rclone/rclone.conf /workspace/.config/rclone/rclone.conf
-
-        echo "✅ Shared Drive configuration updated"
-
-        # Test the configuration
-        if rclone lsd gdrive:ComfyUI-Output/ 2>/dev/null | grep -q "output"; then
-            echo "✅ Google Drive connection verified"
-
-            # Run initial sync if sync script exists
-            if [ -f "/app/scripts/sync_to_gdrive.sh" ]; then
-                echo "🔄 Running initial sync to Google Drive..."
-                bash /app/scripts/sync_to_gdrive.sh &
-                echo "✅ Background sync started"
-            fi
-        else
-            echo "⚠️  Google Drive connection test failed"
-        fi
-    else
-        echo "⚠️  No Shared Drive found - using regular Drive (may have quota issues)"
-    fi
-fi
 
 # Configure git (only if not done)
 if ! git config --global --get user.email > /dev/null 2>&1; then
@@ -398,24 +317,24 @@ if [ ! -f "/workspace/ComfyUI/main.py" ]; then
     echo "📦 Installing ComfyUI..."
     cd /workspace
     rm -rf ComfyUI 2>/dev/null || true
-    
+
     if git clone https://github.com/comfyanonymous/ComfyUI.git; then
         echo "✅ ComfyUI cloned successfully"
     else
         echo "⚠️ Regular clone failed, trying shallow clone..."
         git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git
     fi
-    
+
     if [ -f "/workspace/ComfyUI/main.py" ]; then
         echo "✅ ComfyUI installed at /workspace/ComfyUI"
-        
+
         # Install ComfyUI Python requirements
         cd /workspace/ComfyUI
         if [ -f "requirements.txt" ]; then
             echo "📦 Installing ComfyUI requirements..."
             pip install -r requirements.txt 2>/dev/null || true
         fi
-        
+
         # Install ComfyUI Manager
         echo "📦 Installing ComfyUI Manager..."
         mkdir -p /workspace/ComfyUI/custom_nodes
@@ -429,7 +348,7 @@ if [ ! -f "/workspace/ComfyUI/main.py" ]; then
         else
             echo "⚠️ Failed to install ComfyUI Manager"
         fi
-        
+
         # Setup symlinks for models, workflows, input, and output
         cd /workspace
 
@@ -471,7 +390,7 @@ if [ ! -f "/workspace/ComfyUI/main.py" ]; then
     fi
 else
     echo "✅ ComfyUI already installed"
-    
+
     # Ensure Manager is installed even if ComfyUI exists
     if [ ! -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
         echo "📦 Installing ComfyUI Manager..."
@@ -482,388 +401,6 @@ else
             pip install -r ComfyUI-Manager/requirements.txt 2>/dev/null || true
         fi
     fi
-fi
-
-# Auto-configure Google Drive if RunPod secret is set
-echo "🔍 Checking for Google Drive configuration..."
-
-# RunPod prefixes secrets with RUNPOD_SECRET_
-if [ -n "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
-    export GOOGLE_SERVICE_ACCOUNT="$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT"
-    echo "   Found RunPod secret: SERVICE_ACCOUNT (${#GOOGLE_SERVICE_ACCOUNT} characters)"
-elif [ -n "$RUNPOD_SECRET_RCLONE_TOKEN" ]; then
-    export RCLONE_TOKEN="$RUNPOD_SECRET_RCLONE_TOKEN"
-    echo "   Found RunPod secret: RCLONE_TOKEN"
-fi
-
-# Use the new init_sync.sh script for all Google Drive setup
-if [ -f "/app/scripts/init_sync.sh" ]; then
-    echo "🚀 Using new sync initialization system..."
-    /app/scripts/init_sync.sh
-
-    # Check if sync was successfully initialized
-    if [ -f "/workspace/.permanent_sync/status" ]; then
-        SYNC_STATUS=$(cat /workspace/.permanent_sync/status)
-        if [ "$SYNC_STATUS" = "INITIALIZED" ]; then
-            echo "✅ Google Drive sync initialized successfully!"
-            # Mark as configured for backwards compatibility
-            touch /workspace/.gdrive_configured
-            echo "configured" > /workspace/.gdrive_status
-        elif [ "$SYNC_STATUS" = "NO_CREDENTIALS" ]; then
-            echo "⚠️ No Google Drive credentials found"
-            echo "   To enable sync, add GOOGLE_SERVICE_ACCOUNT secret in RunPod"
-        else
-            echo "❌ Google Drive sync initialization failed"
-        fi
-    fi
-
-    # Skip the old configuration code
-    SKIP_OLD_GDRIVE_SETUP=1
-fi
-
-# Only run old setup if new system not available or failed
-if [ -z "$SKIP_OLD_GDRIVE_SETUP" ]; then
-
-    # Option 1: OAuth Token (simplest for users)
-if [ -n "$RCLONE_TOKEN" ]; then
-    echo "🔧 Setting up Google Drive with OAuth token..."
-    mkdir -p /workspace/.config/rclone
-    mkdir -p /root/.config/rclone
-
-    # Parse the token to get team_drive if it exists
-    if echo "$RCLONE_TOKEN" | grep -q '"team_drive"'; then
-        TEAM_DRIVE=$(echo "$RCLONE_TOKEN" | sed -n 's/.*"team_drive"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-    else
-        TEAM_DRIVE=""
-    fi
-
-    # Create rclone config with JUST token, no service account
-    cat > /root/.config/rclone/rclone.conf << RCLONE_EOF
-[gdrive]
-type = drive
-scope = drive
-token = $RCLONE_TOKEN
-team_drive = $TEAM_DRIVE
-
-RCLONE_EOF
-
-    # Also save to workspace for persistence
-    cp /root/.config/rclone/rclone.conf /workspace/.config/rclone/rclone.conf
-
-    # Test and mark as configured
-    if rclone lsd gdrive: 2>/dev/null; then
-        touch /workspace/.gdrive_configured
-        echo "configured" > /workspace/.gdrive_status
-        echo "✅ Google Drive configured with OAuth token!"
-    else
-        echo "❌ Failed to configure with OAuth token"
-    fi
-fi
-
-    # Option 2: Service Account (enterprise users)
-if [ -n "$GOOGLE_SERVICE_ACCOUNT" ]; then
-    echo "🔧 Setting up Google Drive with Service Account..."
-    echo "   Service account JSON detected (${#GOOGLE_SERVICE_ACCOUNT} characters)"
-    
-    # Create rclone config directories
-    mkdir -p /workspace/.config/rclone
-    mkdir -p /root/.config/rclone
-    
-    # Save service account JSON
-    echo "$GOOGLE_SERVICE_ACCOUNT" > /workspace/.config/rclone/service_account.json
-    echo "$GOOGLE_SERVICE_ACCOUNT" > /root/.config/rclone/service_account.json
-    chmod 600 /workspace/.config/rclone/service_account.json
-    chmod 600 /root/.config/rclone/service_account.json
-    
-    # Create initial rclone config
-    cat > /workspace/.config/rclone/rclone.conf << 'RCLONE_EOF'
-[gdrive]
-type = drive
-scope = drive
-service_account_file = /root/.config/rclone/service_account.json
-team_drive = 
-
-RCLONE_EOF
-    
-    cp /workspace/.config/rclone/rclone.conf /root/.config/rclone/rclone.conf
-    
-    # Check for Shared Drives and auto-configure
-    echo "🔍 Checking for Shared Drives..."
-    SHARED_DRIVES=$(rclone backend drives gdrive: 2>/dev/null)
-    if [ -n "$SHARED_DRIVES" ] && [ "$SHARED_DRIVES" != "[]" ]; then
-        # Extract first Shared Drive ID
-        DRIVE_ID=$(echo "$SHARED_DRIVES" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
-        DRIVE_NAME=$(echo "$SHARED_DRIVES" | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
-        
-        if [ -n "$DRIVE_ID" ]; then
-            echo "✅ Found Shared Drive: $DRIVE_NAME ($DRIVE_ID)"
-            
-            # Update config with Shared Drive ID
-            cat > /workspace/.config/rclone/rclone.conf << RCLONE_EOF
-[gdrive]
-type = drive
-scope = drive
-service_account_file = /root/.config/rclone/service_account.json
-team_drive = $DRIVE_ID
-
-RCLONE_EOF
-            cp /workspace/.config/rclone/rclone.conf /root/.config/rclone/rclone.conf
-            echo "✅ Configured to use Shared Drive: $DRIVE_NAME"
-        fi
-    else
-        echo "ℹ️ No Shared Drives found, using service account's own Drive"
-    fi
-    
-    # Test configuration
-    echo "🔍 Testing rclone configuration..."
-    if rclone lsd gdrive: 2>/tmp/rclone_error.txt; then
-        echo "✅ Google Drive configured successfully"
-        
-        # Create folder structure
-        echo "Creating Google Drive folders..."
-        rclone mkdir gdrive:ComfyUI-Output
-        rclone mkdir gdrive:ComfyUI-Output/output
-        rclone mkdir gdrive:ComfyUI-Output/loras
-        rclone mkdir gdrive:ComfyUI-Output/workflows
-        
-        # Mark as configured
-        touch /workspace/.gdrive_configured
-        
-        # Save configuration status for UI
-        echo "configured" > /workspace/.gdrive_status
-        
-        # Kill any existing sync processes first
-        pkill -f "rclone_sync_loop" 2>/dev/null || true
-
-        # Store sync script in persistent location so it survives restarts
-        mkdir -p /workspace/.sync
-        cat > /workspace/.sync/rclone_sync_loop.sh << 'SYNC_SCRIPT'
-#!/bin/bash
-while true; do
-    sleep 60  # Sync every minute
-    echo "[$(date)] Starting sync cycle..." >> /tmp/rclone_sync.log
-
-    # Function to resolve directory path (follows symlinks)
-    resolve_dir() {
-        local path="$1"
-        if [ -L "$path" ]; then
-            # It's a symlink, follow it
-            readlink -f "$path"
-        elif [ -d "$path" ]; then
-            # It's a real directory
-            echo "$path"
-        else
-            # Doesn't exist
-            echo ""
-        fi
-    }
-
-    # Sync OUTPUT directory - ALWAYS use /workspace/output (the real location)
-    # ComfyUI/output should just be a symlink pointing there
-    OUTPUT_DIR="/workspace/output"
-
-    if [ -n "$OUTPUT_DIR" ] && [ -d "$OUTPUT_DIR" ]; then
-        echo "  Copying output from: $OUTPUT_DIR" >> /tmp/rclone_sync.log
-        # Use COPY not SYNC for outputs - never delete from Drive!
-        rclone copy "$OUTPUT_DIR" "gdrive:ComfyUI-Output/output" \
-            --exclude "*.tmp" \
-            --exclude "*.partial" \
-            --exclude "**/temp_*" \
-            --transfers 4 \
-            --checkers 2 \
-            --bwlimit 50M \
-            --min-age 30s \
-            --no-update-modtime \
-            --ignore-existing >> /tmp/rclone_sync.log 2>&1
-    else
-        echo "  Warning: No output directory found" >> /tmp/rclone_sync.log
-    fi
-
-    # Sync INPUT directory - ALWAYS use /workspace/input (the real location)
-    INPUT_DIR="/workspace/input"
-
-    if [ -n "$INPUT_DIR" ] && [ -d "$INPUT_DIR" ]; then
-        echo "  Syncing input from: $INPUT_DIR" >> /tmp/rclone_sync.log
-        # Use copy for inputs (don't delete from Drive)
-        rclone copy "$INPUT_DIR" "gdrive:ComfyUI-Output/input" \
-            --transfers 4 \
-            --checkers 2 \
-            --bwlimit 50M \
-            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
-    fi
-
-    # Sync WORKFLOWS directory - ALWAYS use /workspace/workflows (the real location)
-    WORKFLOWS_DIR="/workspace/workflows"
-
-    if [ -n "$WORKFLOWS_DIR" ] && [ -d "$WORKFLOWS_DIR" ]; then
-        echo "  Syncing workflows from: $WORKFLOWS_DIR" >> /tmp/rclone_sync.log
-        # Workflows can use sync since we want Drive to match local
-        rclone sync "$WORKFLOWS_DIR" "gdrive:ComfyUI-Output/workflows" \
-            --transfers 4 \
-            --checkers 2 \
-            --bwlimit 50M \
-            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
-    fi
-
-    # Sync loras folder
-    if [ -d "/workspace/models/loras" ]; then
-        echo "  Syncing loras from: /workspace/models/loras" >> /tmp/rclone_sync.log
-        rclone sync /workspace/models/loras "gdrive:ComfyUI-Output/loras" \
-            --transfers 4 \
-            --checkers 2 \
-            --bwlimit 50M \
-            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
-    fi
-
-    echo "  Sync cycle completed" >> /tmp/rclone_sync.log
-done
-SYNC_SCRIPT
-        chmod +x /workspace/.sync/rclone_sync_loop.sh
-
-        # Also copy to /tmp for immediate use
-        cp /workspace/.sync/rclone_sync_loop.sh /tmp/rclone_sync_loop.sh
-        chmod +x /tmp/rclone_sync_loop.sh
-
-        # Start auto-sync in background
-        /workspace/.sync/rclone_sync_loop.sh &
-
-        echo "✅ Auto-sync started (every 60 seconds, persists across restarts)"
-    else
-        echo "❌ Google Drive configuration failed!"
-        echo "   Error details:"
-        cat /tmp/rclone_error.txt 2>/dev/null
-        echo ""
-        echo "   Possible issues:"
-        echo "   1. Service account JSON may be invalid"
-        echo "   2. Google Drive folder not shared with service account"
-        echo "   3. Check that folder 'ComfyUI-Output' exists and is shared"
-        echo ""
-        echo "   Service account email from JSON:"
-        echo "$GOOGLE_SERVICE_ACCOUNT" | grep -o '"client_email"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || echo "Could not extract email"
-        
-        # Still save that we attempted configuration for UI
-        echo "failed" > /workspace/.gdrive_status
-    fi
-    else
-        if [ -z "$GOOGLE_SERVICE_ACCOUNT" ] && [ -z "$RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT" ]; then
-        echo "ℹ️ Google Drive sync not configured"
-        echo "   No Google service account credentials found"
-        echo ""
-        echo "   To enable automatic sync:"
-        echo "   1. Add GOOGLE_SERVICE_ACCOUNT secret in RunPod dashboard"
-        echo "   2. The secret will be available as RUNPOD_SECRET_GOOGLE_SERVICE_ACCOUNT"
-        echo "   3. Restart the pod after adding the secret"
-        echo ""
-            echo "   Checking for RunPod secrets:"
-            env | grep RUNPOD_SECRET_ | head -5
-        fi
-    fi
-fi  # End of SKIP_OLD_GDRIVE_SETUP
-
-# The new init_sync.sh handles all sync startup
-# Keeping this section only for backwards compatibility if init_sync.sh doesn't exist
-if [ -f "/workspace/.gdrive_configured" ] && [ ! -f "/app/scripts/init_sync.sh" ]; then
-    echo "✅ Google Drive already configured (using legacy sync)"
-
-    # ALWAYS restart sync on pod start (it doesn't persist across restarts)
-    echo "🔄 Starting auto-sync..."
-
-    # Kill any existing sync first
-    pkill -f "rclone_sync_loop" 2>/dev/null || true
-
-    # Store sync script in persistent location
-    mkdir -p /workspace/.sync
-    cat > /workspace/.sync/rclone_sync_loop.sh << 'SYNC_SCRIPT'
-#!/bin/bash
-while true; do
-    sleep 60  # Sync every minute
-    echo "[$(date)] Starting sync cycle..." >> /tmp/rclone_sync.log
-
-    # Function to resolve directory path (follows symlinks)
-    resolve_dir() {
-        local path="$1"
-        if [ -L "$path" ]; then
-            # It's a symlink, follow it
-            readlink -f "$path"
-        elif [ -d "$path" ]; then
-            # It's a real directory
-            echo "$path"
-        else
-            # Doesn't exist
-            echo ""
-        fi
-    }
-
-    # Sync OUTPUT directory - ALWAYS use /workspace/output (the real location)
-    # ComfyUI/output should just be a symlink pointing there
-    OUTPUT_DIR="/workspace/output"
-
-    if [ -n "$OUTPUT_DIR" ] && [ -d "$OUTPUT_DIR" ]; then
-        echo "  Copying output from: $OUTPUT_DIR" >> /tmp/rclone_sync.log
-        # Use COPY not SYNC for outputs - never delete from Drive!
-        rclone copy "$OUTPUT_DIR" "gdrive:ComfyUI-Output/output" \
-            --exclude "*.tmp" \
-            --exclude "*.partial" \
-            --exclude "**/temp_*" \
-            --transfers 4 \
-            --checkers 2 \
-            --bwlimit 50M \
-            --min-age 30s \
-            --no-update-modtime \
-            --ignore-existing >> /tmp/rclone_sync.log 2>&1
-    else
-        echo "  Warning: No output directory found" >> /tmp/rclone_sync.log
-    fi
-
-    # Sync INPUT directory - ALWAYS use /workspace/input (the real location)
-    INPUT_DIR="/workspace/input"
-
-    if [ -n "$INPUT_DIR" ] && [ -d "$INPUT_DIR" ]; then
-        echo "  Syncing input from: $INPUT_DIR" >> /tmp/rclone_sync.log
-        # Use copy for inputs (don't delete from Drive)
-        rclone copy "$INPUT_DIR" "gdrive:ComfyUI-Output/input" \
-            --transfers 4 \
-            --checkers 2 \
-            --bwlimit 50M \
-            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
-    fi
-
-    # Sync WORKFLOWS directory - ALWAYS use /workspace/workflows (the real location)
-    WORKFLOWS_DIR="/workspace/workflows"
-
-    if [ -n "$WORKFLOWS_DIR" ] && [ -d "$WORKFLOWS_DIR" ]; then
-        echo "  Syncing workflows from: $WORKFLOWS_DIR" >> /tmp/rclone_sync.log
-        # Workflows can use sync since we want Drive to match local
-        rclone sync "$WORKFLOWS_DIR" "gdrive:ComfyUI-Output/workflows" \
-            --transfers 4 \
-            --checkers 2 \
-            --bwlimit 50M \
-            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
-    fi
-
-    # Sync loras folder
-    if [ -d "/workspace/models/loras" ]; then
-        echo "  Syncing loras from: /workspace/models/loras" >> /tmp/rclone_sync.log
-        rclone sync /workspace/models/loras "gdrive:ComfyUI-Output/loras" \
-            --transfers 4 \
-            --checkers 2 \
-            --bwlimit 50M \
-            --no-update-modtime >> /tmp/rclone_sync.log 2>&1
-    fi
-
-    echo "  Sync cycle completed" >> /tmp/rclone_sync.log
-done
-SYNC_SCRIPT
-    chmod +x /workspace/.sync/rclone_sync_loop.sh
-
-    # Also copy to /tmp for immediate use
-    cp /workspace/.sync/rclone_sync_loop.sh /tmp/rclone_sync_loop.sh
-    chmod +x /tmp/rclone_sync_loop.sh
-
-    # Start auto-sync in background
-    /workspace/.sync/rclone_sync_loop.sh &
-
-    echo "✅ Auto-sync started (will persist across restarts)"
 fi
 
 echo "✅ Environment prepared"
@@ -964,35 +501,6 @@ else
     python3 -m venv /workspace/venv
     source /workspace/venv/bin/activate
     pip install --upgrade pip wheel setuptools
-fi
-
-# Ensure Google Drive sync is running (run after init.sh)
-echo "🔄 Ensuring Google Drive sync is active..."
-if [ -f "/app/scripts/ensure_sync.sh" ]; then
-    # Use the robust ensure_sync script that handles all cases
-    /app/scripts/ensure_sync.sh
-elif [ -f "/app/scripts/init_sync.sh" ]; then
-    # Fallback to init_sync
-    /app/scripts/init_sync.sh > /tmp/sync_init.log 2>&1
-
-    # Double-check sync is running
-    sleep 2
-    if pgrep -f "sync_loop\|permanent_sync" > /dev/null; then
-        echo "✅ Google Drive sync is running"
-    else
-        echo "⚠️ Sync not running, attempting quick fix..."
-        if [ -f "/app/scripts/quick_fix.sh" ]; then
-            /app/scripts/quick_fix.sh > /tmp/quick_fix.log 2>&1
-        fi
-    fi
-else
-    echo "⚠️ Sync initialization scripts not found"
-fi
-
-# Start sync monitor to restart sync if it dies
-if [ -f "/app/scripts/monitor_sync.sh" ]; then
-    echo "👁️ Starting sync monitor..."
-    /app/scripts/monitor_sync.sh > /tmp/sync_monitor.log 2>&1 &
 fi
 
 # Start Control Panel UI
@@ -1428,7 +936,6 @@ COPY config /app/config
 COPY ui /app/ui
 # NOTE: ComfyViewer removed - users can install ComfyUI-Gallery custom node instead
 RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
-RUN chmod +x /app/scripts/init_sync.sh 2>/dev/null || true
 
 # ComfyViewer removed - users can install ComfyUI-Gallery custom node from ComfyUI Manager
 # ComfyUI-Gallery provides a better integrated gallery experience directly in ComfyUI
@@ -1436,7 +943,6 @@ RUN chmod +x /app/scripts/init_sync.sh 2>/dev/null || true
 # Environment
 ENV PYTHONUNBUFFERED=1
 ENV HF_HOME=/workspace
-ENV ENABLE_SYNC=false
 
 # Ports
 EXPOSE 7777 8188 8888

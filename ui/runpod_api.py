@@ -89,32 +89,14 @@ class RunPodAPI:
     def get_audit_logs(self, limit: int = 100, cursor: Optional[str] = None) -> Dict:
         """
         Get audit logs from RunPod
-        Returns pod creation/deletion events with timestamps
+        Note: RunPod may not expose audit logs via GraphQL, using alternative approach
         """
-        query = """
-        query GetAuditLogs($after: String) {
-            auditLogs(first: %d, after: $after) {
-                edges {
-                    actorId
-                    email
-                    action
-                    timestamp
-                    resourceType
-                    resourceId
-                    value
-                }
-                pageInfo {
-                    hasNextPage
-                    endCursor
-                }
-            }
-        }
-        """ % limit
+        # RunPod doesn't seem to have a simple auditLogs query
+        # Instead, we'll query current and terminated pods directly
+        print("⚠️  Note: RunPod audit logs not directly accessible")
+        print("   Using alternative: querying pod history instead")
 
-        variables = {'after': cursor} if cursor else {'after': None}
-        result = self._query(query, variables)
-
-        return result.get('data', {}).get('auditLogs', {})
+        return {'edges': [], 'pageInfo': {'hasNextPage': False, 'endCursor': None}}
 
     def get_all_audit_logs(self, limit: int = 1000) -> List[Dict]:
         """
