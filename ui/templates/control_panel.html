@@ -30,7 +30,7 @@
         <script src="https://unpkg.com/@rive-app/canvas@2.7.0"></script>
 
         <!-- OGL - Minimal WebGL library for DarkVeil background -->
-        <script src="https://cdn.jsdelivr.net/npm/ogl@1.0.8/dist/ogl.umd.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/ogl/dist/ogl.umd.js"></script>
 
         <!-- Lottie Player for easy integration -->
         <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
@@ -1982,10 +1982,19 @@
                             <option value="" selected disabled>
                                 Select User
                             </option>
-                            {% endif %}
-                            {% for user in users %}
-                            <option value="{{ user }}" {% if user == current_user %}selected{% endif %}>
-                                {{ user }}{% if user == 'serhii' %} (Admin){% endif %}
+                            {% endif %} {% for user in users %}
+                            <option
+                                value="{{ user }}"
+                                {%
+                                if
+                                user=""
+                                ="current_user"
+                                %}selected{%
+                                endif
+                                %}
+                            >
+                                {{ user }}{% if user == 'serhii' %} (Admin){%
+                                endif %}
                             </option>
                             {% endfor %}
                         </select>
