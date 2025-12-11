@@ -1269,7 +1269,8 @@
                 padding: 20px;
                 width: 100%;
                 animation: fadeIn 1s ease-out 0.5s both;
-                z-index: 0;
+                z-index: 5;
+                pointer-events: auto;
             }
 
             .footer-links {
@@ -1995,15 +1996,7 @@
 
                 <div class="profile-section">
                     <div class="select-wrapper">
-                        <select
-                            id="username"
-                            {%
-                            if
-                            running
-                            %}disabled{%
-                            endif
-                            %}
-                        >
+                        <select id="username" {% if running %}disabled{% endif %}>
                             {% if not current_user %}
                             <option value="" selected disabled>
                                 Select User
@@ -2037,17 +2030,7 @@
                         class="btn btn-primary btn-advanced magnetic"
                         id="primaryBtn"
                         onclick="startComfyUI()"
-                        {%
-                        if
-                        running
-                        %}style="display: none;"
-                        {%
-                        elif
-                        not
-                        current_user
-                        %}disabled{%
-                        endif
-                        %}
+                        {% if running %}style="display: none;"{% elif not current_user %}disabled{% endif %}
                     >
                         Launch ComfyUI
                     </button>
