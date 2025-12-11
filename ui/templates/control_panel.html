@@ -41,21 +41,21 @@
             @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
 
             :root {
-                /* Purple/blue theme matching DarkVeil background */
+                /* Dark gray panel with purple accents */
                 --primary: #8b5cf6;
                 --primary-glow: rgba(139, 92, 246, 0.4);
                 --accent: #a78bfa;
                 --accent-secondary: #7c3aed;
-                --glass-bg: rgba(20, 10, 40, 0.7);
-                --glass-border: rgba(139, 92, 246, 0.2);
+                --glass-bg: rgba(0, 0, 0, 0.85);
+                --glass-border: rgba(255, 255, 255, 0.1);
                 --text-primary: rgba(255, 255, 255, 0.95);
                 --text-secondary: rgba(255, 255, 255, 0.7);
-                --text-tertiary: rgba(167, 139, 250, 0.7);
+                --text-tertiary: rgba(255, 255, 255, 0.5);
                 --blur-strength: 20px;
                 --animation-speed: 0.3s;
                 --hover-transform: translateY(-4px);
-                --shadow-color: rgba(91, 33, 182, 0.3);
-                --shadow-color-light: rgba(139, 92, 246, 0.15);
+                --shadow-color: rgba(0, 0, 0, 0.4);
+                --shadow-color-light: rgba(0, 0, 0, 0.2);
 
                 /* Apple-style border radius system */
                 --radius-xl: 20px; /* Large containers, cards */
@@ -377,11 +377,11 @@
             }
 
             .container {
-                background: rgba(15, 10, 35, 0.6);
+                background: rgba(0, 0, 0, 0.75);
                 backdrop-filter: blur(30px) brightness(0.9);
                 -webkit-backdrop-filter: blur(30px) brightness(0.9);
-                border: 1px solid rgba(139, 92, 246, 0.15);
-                border-top: 1px solid rgba(167, 139, 250, 0.25);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-top: 1px solid rgba(255, 255, 255, 0.15);
                 border-radius: var(--radius-xl);
                 padding: 48px;
                 width: 100%;
@@ -437,10 +437,10 @@
             .action-btn {
                 width: 44px;
                 height: 44px;
-                background: rgba(139, 92, 246, 0.1);
+                background: rgba(255, 255, 255, 0.05);
                 backdrop-filter: blur(10px);
                 -webkit-backdrop-filter: blur(10px);
-                border: 1px solid rgba(139, 92, 246, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.1);
                 border-radius: var(--radius-md);
                 display: flex;
                 align-items: center;
@@ -449,10 +449,10 @@
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 position: relative;
                 box-shadow:
-                    0 6px 20px rgba(91, 33, 182, 0.15),
+                    0 6px 20px rgba(0, 0, 0, 0.15),
                     0 2px 6px rgba(0, 0, 0, 0.1),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-                    inset 0 -1px 0 rgba(139, 92, 246, 0.2);
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
                 overflow: hidden;
             }
 
@@ -593,10 +593,10 @@
             }
 
             .status-card {
-                background: rgba(139, 92, 246, 0.08);
+                background: rgba(255, 255, 255, 0.03);
                 backdrop-filter: blur(25px) saturate(180%);
                 -webkit-backdrop-filter: blur(25px) saturate(180%);
-                border: 1px solid rgba(139, 92, 246, 0.15);
+                border: 1px solid rgba(255, 255, 255, 0.08);
                 border-radius: var(--radius-xl);
                 padding: 20px;
                 margin-bottom: 32px;
@@ -777,10 +777,10 @@
             select {
                 width: 100%;
                 padding: 16px 48px;
-                background: rgba(139, 92, 246, 0.1);
+                background: rgba(255, 255, 255, 0.05);
                 backdrop-filter: blur(10px);
                 -webkit-backdrop-filter: blur(10px);
-                border: 2px solid rgba(139, 92, 246, 0.2);
+                border: 2px solid rgba(255, 255, 255, 0.1);
                 border-radius: var(--radius-lg);
                 font-size: 15px;
                 color: var(--text-primary);
@@ -790,24 +790,24 @@
                 font-weight: 500;
                 cursor: pointer;
                 appearance: none;
-                background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a78bfa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+                background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
                 background-repeat: no-repeat;
                 background-position: right 16px center;
                 background-size: 20px;
             }
 
             select:focus {
-                border-color: rgba(139, 92, 246, 0.4);
-                background-color: rgba(139, 92, 246, 0.15);
+                border-color: rgba(139, 92, 246, 0.5);
+                background-color: rgba(255, 255, 255, 0.08);
                 box-shadow:
                     0 0 0 4px rgba(139, 92, 246, 0.15),
-                    0 10px 30px rgba(139, 92, 246, 0.2);
+                    0 10px 30px rgba(0, 0, 0, 0.2);
             }
 
             select:hover {
-                border-color: rgba(139, 92, 246, 0.5);
-                background-color: rgba(139, 92, 246, 0.12);
-                box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+                border-color: rgba(139, 92, 246, 0.4);
+                background-color: rgba(255, 255, 255, 0.07);
+                box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
             }
 
             select option {
@@ -858,7 +858,7 @@
                 height: 20px;
                 cursor: pointer;
                 accent-color: #8b5cf6;
-                border: 2px solid rgba(139, 92, 246, 0.3);
+                border: 2px solid rgba(255, 255, 255, 0.2);
                 border-radius: var(--radius-xs);
             }
 
@@ -1687,10 +1687,10 @@
             .btn-add-user {
                 margin-top: 12px;
                 padding: 8px 16px;
-                background: rgba(139, 92, 246, 0.1);
-                border: 1px solid rgba(139, 92, 246, 0.25);
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
                 border-radius: 8px;
-                color: rgba(167, 139, 250, 0.9);
+                color: rgba(255, 255, 255, 0.6);
                 font-size: 13px;
                 font-weight: 500;
                 cursor: pointer;
@@ -1699,11 +1699,11 @@
             }
 
             .btn-add-user:hover {
-                background: rgba(139, 92, 246, 0.2);
-                border-color: rgba(139, 92, 246, 0.4);
-                color: rgba(255, 255, 255, 0.95);
+                background: rgba(139, 92, 246, 0.15);
+                border-color: rgba(139, 92, 246, 0.3);
+                color: rgba(255, 255, 255, 0.9);
                 transform: translateY(-2px);
-                box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+                box-shadow: 0 4px 15px rgba(139, 92, 246, 0.15);
             }
 
             .btn-add-user:active {
