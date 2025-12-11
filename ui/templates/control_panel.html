@@ -41,21 +41,21 @@
             @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
 
             :root {
-                /* Dark gray panel with purple accents */
+                /* Light, airy glass design with purple accents */
                 --primary: #8b5cf6;
-                --primary-glow: rgba(139, 92, 246, 0.4);
+                --primary-glow: rgba(139, 92, 246, 0.3);
                 --accent: #a78bfa;
                 --accent-secondary: #7c3aed;
-                --glass-bg: rgba(0, 0, 0, 0.85);
-                --glass-border: rgba(255, 255, 255, 0.1);
-                --text-primary: rgba(255, 255, 255, 0.95);
-                --text-secondary: rgba(255, 255, 255, 0.7);
-                --text-tertiary: rgba(255, 255, 255, 0.5);
-                --blur-strength: 20px;
+                --glass-bg: rgba(255, 255, 255, 0.1);
+                --glass-border: rgba(255, 255, 255, 0.18);
+                --text-primary: rgba(255, 255, 255, 0.9);
+                --text-secondary: rgba(255, 255, 255, 0.6);
+                --text-tertiary: rgba(255, 255, 255, 0.4);
+                --blur-strength: 30px;
                 --animation-speed: 0.3s;
                 --hover-transform: translateY(-4px);
-                --shadow-color: rgba(0, 0, 0, 0.4);
-                --shadow-color-light: rgba(0, 0, 0, 0.2);
+                --shadow-color: rgba(0, 0, 0, 0.12);
+                --shadow-color-light: rgba(0, 0, 0, 0.06);
 
                 /* Apple-style border radius system */
                 --radius-xl: 20px; /* Large containers, cards */
@@ -377,17 +377,17 @@
             }
 
             .container {
-                background: rgba(0, 0, 0, 0.75);
-                backdrop-filter: blur(30px) brightness(0.9);
-                -webkit-backdrop-filter: blur(30px) brightness(0.9);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-top: 1px solid rgba(255, 255, 255, 0.15);
+                background: rgba(255, 255, 255, 0.08);
+                backdrop-filter: blur(50px) saturate(150%);
+                -webkit-backdrop-filter: blur(50px) saturate(150%);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-top: 1px solid rgba(255, 255, 255, 0.25);
                 border-radius: var(--radius-xl);
                 padding: 48px;
                 width: 100%;
                 max-width: 520px;
                 box-shadow:
-                    0 20px 40px var(--shadow-color),
+                    0 25px 50px rgba(0, 0, 0, 0.08),
                     inset 0 1px 0 rgba(255, 255, 255, 0.15);
                 position: relative;
                 z-index: 1;
@@ -437,10 +437,10 @@
             .action-btn {
                 width: 44px;
                 height: 44px;
-                background: rgba(255, 255, 255, 0.05);
+                background: rgba(255, 255, 255, 0.08);
                 backdrop-filter: blur(10px);
                 -webkit-backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.12);
                 border-radius: var(--radius-md);
                 display: flex;
                 align-items: center;
@@ -474,7 +474,7 @@
             }
 
             .action-btn:hover {
-                background: rgba(255, 255, 255, 0.05);
+                background: rgba(255, 255, 255, 0.08);
                 border-color: rgba(255, 255, 255, 0.15);
                 transform: translateY(-2px);
                 box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
@@ -593,10 +593,10 @@
             }
 
             .status-card {
-                background: rgba(255, 255, 255, 0.03);
-                backdrop-filter: blur(25px) saturate(180%);
-                -webkit-backdrop-filter: blur(25px) saturate(180%);
-                border: 1px solid rgba(255, 255, 255, 0.08);
+                background: rgba(255, 255, 255, 0.06);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.12);
                 border-radius: var(--radius-xl);
                 padding: 20px;
                 margin-bottom: 32px;
@@ -777,7 +777,7 @@
             select {
                 width: 100%;
                 padding: 16px 48px;
-                background: rgba(255, 255, 255, 0.05);
+                background: rgba(255, 255, 255, 0.08);
                 backdrop-filter: blur(10px);
                 -webkit-backdrop-filter: blur(10px);
                 border: 2px solid rgba(255, 255, 255, 0.1);
@@ -909,7 +909,7 @@
             }
 
             .add-user-section button:hover {
-                background: rgba(255, 255, 255, 0.05);
+                background: rgba(255, 255, 255, 0.08);
                 border-color: rgba(255, 255, 255, 0.15);
                 transform: translateY(-2px);
             }
@@ -1687,8 +1687,8 @@
             .btn-add-user {
                 margin-top: 12px;
                 padding: 8px 16px;
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.12);
                 border-radius: 8px;
                 color: rgba(255, 255, 255, 0.6);
                 font-size: 13px;
@@ -1738,7 +1738,7 @@
             /* Modal Content */
             .modal-content {
                 background: rgba(20, 20, 20, 0.95);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.12);
                 border-radius: 16px;
                 width: 90%;
                 max-width: 480px;
@@ -1819,8 +1819,8 @@
             .form-group input {
                 width: 100%;
                 padding: 12px 16px;
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.12);
                 border-radius: 8px;
                 color: rgba(255, 255, 255, 0.95);
                 font-size: 14px;
@@ -1862,9 +1862,9 @@
             }
 
             .modal-footer .btn-secondary {
-                background: rgba(255, 255, 255, 0.05);
+                background: rgba(255, 255, 255, 0.08);
                 color: rgba(255, 255, 255, 0.7);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.12);
             }
 
             .modal-footer .btn-secondary:hover {
@@ -1990,10 +1990,11 @@
                             <option value="" selected disabled>
                                 Select User
                             </option>
-                            {% endif %}
-                            {% for user in users %}
-                            <option value="{{ user }}" {% if user == current_user %}selected{% endif %}>
-                                {{ user }}{% if user == 'serhii' %} (Admin){% endif %}
+                            {% endif %} {% for user in users %}
+                            <option
+                                value="{{ user }}" {% if user == current_user %}selected{% endif %}>
+                                {{ user }}{% if user == 'serhii' %} (Admin){%
+                                endif %}
                             </option>
                             {% endfor %}
                         </select>
