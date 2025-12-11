@@ -425,22 +425,22 @@
 
             /* Removed light spot effect */
 
+            .header-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                margin-bottom: 20px;
+            }
+
             .quick-actions {
-                position: absolute;
-                top: 20px;
-                right: 20px;
                 display: flex;
                 gap: 8px;
-                z-index: 10;
             }
 
             .left-actions {
-                position: absolute;
-                top: 20px;
-                left: 20px;
-                z-index: 10;
+                display: flex;
             }
-
 
             .left-actions .action-btn svg {
                 animation: none;
@@ -550,14 +550,9 @@
                 opacity: 1;
             }
 
-            .header {
-                text-align: center;
-                margin-bottom: 28px;
-                position: relative;
-            }
-
             .logo {
-                margin-bottom: 16px;
+                flex: 1;
+                text-align: center;
             }
 
             .logo h1 {
@@ -836,8 +831,6 @@
             select:has(option:disabled:checked) {
                 color: rgba(255, 255, 255, 0.4);
             }
-
-
 
             @keyframes checkboxShine {
                 0% {
@@ -1914,40 +1907,59 @@
 
         <div class="main-wrapper" style="position: relative; z-index: 10">
             <div class="container glow-effect floating">
-                <div class="left-actions">
-                    <button class="action-btn" onclick="showAddUserModal()" title="Add new user">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="quick-actions">
-                    <button
-                        class="action-btn"
-                        onclick="openJupyterLab()"
-                        id="jupyterLabBtn"
-                        title="Open JupyterLab"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/>
-                        </svg>
-                    </button>
-                    <button class="action-btn" onclick="openModelManager()">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
+                <div class="header-row">
+                    <div class="left-actions">
+                        <button
+                            class="action-btn"
+                            onclick="showAddUserModal()"
+                            title="Add new user"
                         >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                            />
-                        </svg>
-                    </button>
-                </div>
-                <div class="header">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z"
+                                />
+                            </svg>
+                        </button>
+                    </div>
                     <div class="logo">
                         <h1 id="title-text"></h1>
+                    </div>
+                    <div class="quick-actions">
+                        <button
+                            class="action-btn"
+                            onclick="openJupyterLab()"
+                            id="jupyterLabBtn"
+                            title="Open JupyterLab"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"
+                                />
+                            </svg>
+                        </button>
+                        <button class="action-btn" onclick="openModelManager()">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                                />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="status-card">
@@ -1977,14 +1989,30 @@
 
                 <div class="profile-section">
                     <div class="select-wrapper">
-                        <select id="username" {% if running %}disabled{% endif %}>
+                        <select
+                            id="username"
+                            {%
+                            if
+                            running
+                            %}disabled{%
+                            endif
+                            %}
+                        >
                             {% if not current_user %}
                             <option value="" selected disabled>
                                 Select User
                             </option>
                             {% endif %} {% for user in users %}
                             <option
-                                value="{{ user }}" {% if user == current_user %}selected{% endif %}>
+                                value="{{ user }}"
+                                {%
+                                if
+                                user=""
+                                ="current_user"
+                                %}selected{%
+                                endif
+                                %}
+                            >
                                 {{ user }}{% if user == 'serhii' %} (Admin){%
                                 endif %}
                             </option>
@@ -1998,7 +2026,17 @@
                         class="btn btn-primary btn-advanced magnetic"
                         id="primaryBtn"
                         onclick="startComfyUI()"
-                        {% if running %}style="display: none;"{% elif not current_user %}disabled{% endif %}
+                        {%
+                        if
+                        running
+                        %}style="display: none;"
+                        {%
+                        elif
+                        not
+                        current_user
+                        %}disabled{%
+                        endif
+                        %}
                     >
                         Launch ComfyUI
                     </button>
