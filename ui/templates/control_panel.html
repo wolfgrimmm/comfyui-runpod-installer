@@ -1982,10 +1982,19 @@
                             <option value="" selected disabled>
                                 Select User
                             </option>
-                            {% endif %}
-                            {% for user in users %}
-                            <option value="{{ user }}" {% if user == current_user %}selected{% endif %}>
-                                {{ user }}{% if user == 'serhii' %} (Admin){% endif %}
+                            {% endif %} {% for user in users %}
+                            <option
+                                value="{{ user }}"
+                                {%
+                                if
+                                user=""
+                                ="current_user"
+                                %}selected{%
+                                endif
+                                %}
+                            >
+                                {{ user }}{% if user == 'serhii' %} (Admin){%
+                                endif %}
                             </option>
                             {% endfor %}
                         </select>
@@ -2412,12 +2421,14 @@
                 // 3. DarkVeil WebGL Background - Neural network generated shader
                 (function initDarkVeil() {
                     const canvas = document.getElementById('darkVeilCanvas');
-                    if (!canvas || typeof OGL === 'undefined') {
+                    // OGL exports as lowercase 'ogl' in UMD build
+                    const oglLib = window.OGL || window.ogl;
+                    if (!canvas || !oglLib) {
                         console.warn('DarkVeil: Canvas or OGL not available');
                         return;
                     }
 
-                    const { Renderer, Program, Mesh, Triangle, Vec2 } = OGL;
+                    const { Renderer, Program, Mesh, Triangle, Vec2 } = oglLib;
 
                     // DarkVeil shader configuration
                     const config = {
