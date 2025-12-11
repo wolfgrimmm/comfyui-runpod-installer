@@ -1037,43 +1037,110 @@
 
             .btn-primary {
                 grid-column: 1 / -1;
-                background: rgba(139, 92, 246, 0.2);
-                backdrop-filter: blur(20px);
-                -webkit-backdrop-filter: blur(20px);
+                background:
+                    linear-gradient(
+                        135deg,
+                        rgba(139, 92, 246, 0.4),
+                        rgba(124, 58, 237, 0.25)
+                    ),
+                    linear-gradient(
+                        45deg,
+                        rgba(255, 255, 255, 0.15) 0%,
+                        transparent 50%,
+                        rgba(255, 255, 255, 0.08) 100%
+                    );
+                backdrop-filter: blur(25px) saturate(180%) brightness(120%)
+                    contrast(110%);
+                -webkit-backdrop-filter: blur(25px) saturate(180%)
+                    brightness(120%) contrast(110%);
                 color: white;
-                border: 1px solid rgba(139, 92, 246, 0.3);
-                box-shadow: none;
+                border: 1px solid rgba(139, 92, 246, 0.5);
+                box-shadow:
+                    0 8px 20px rgba(91, 33, 182, 0.3),
+                    0 4px 10px rgba(0, 0, 0, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                    inset 0 -1px 0 rgba(139, 92, 246, 0.3);
+                position: relative;
+                overflow: hidden;
             }
 
+            /* Removed button light spot effects for cleaner look */
+
             .btn-primary:hover:not(:disabled) {
-                transform: translateY(-2px);
-                background: rgba(139, 92, 246, 0.3);
-                border-color: rgba(139, 92, 246, 0.5);
-                box-shadow: 0 4px 20px rgba(139, 92, 246, 0.2);
+                transform: translateY(-3px) scale(1.02);
+                box-shadow:
+                    0 0 30px rgba(139, 92, 246, 0.4),
+                    0 20px 40px rgba(91, 33, 182, 0.3),
+                    0 10px 20px rgba(0, 0, 0, 0.3);
+                background: linear-gradient(
+                    135deg,
+                    rgba(139, 92, 246, 0.5),
+                    rgba(124, 58, 237, 0.35)
+                );
+                border-color: rgba(167, 139, 250, 0.6);
             }
+
             .btn-success {
                 grid-column: 1 / -1;
-                background: rgba(34, 211, 238, 0.15);
-                backdrop-filter: blur(20px);
-                -webkit-backdrop-filter: blur(20px);
+                background:
+                    linear-gradient(
+                        135deg,
+                        rgba(34, 211, 238, 0.35),
+                        rgba(139, 92, 246, 0.25)
+                    ),
+                    linear-gradient(
+                        45deg,
+                        rgba(255, 255, 255, 0.15) 0%,
+                        transparent 50%,
+                        rgba(255, 255, 255, 0.08) 100%
+                    );
+                backdrop-filter: blur(25px) saturate(180%) brightness(120%)
+                    contrast(110%);
+                -webkit-backdrop-filter: blur(25px) saturate(180%)
+                    brightness(120%) contrast(110%);
                 color: white;
-                border: 1px solid rgba(34, 211, 238, 0.3);
-                box-shadow: none;
+                border: 1px solid rgba(34, 211, 238, 0.5);
+                box-shadow:
+                    0 8px 20px rgba(34, 211, 238, 0.2),
+                    0 4px 10px rgba(0, 0, 0, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                    inset 0 -1px 0 rgba(34, 211, 238, 0.2);
             }
 
             .btn-success:hover:not(:disabled) {
-                transform: translateY(-2px);
-                background: rgba(34, 211, 238, 0.25);
-                border-color: rgba(34, 211, 238, 0.5);
-                box-shadow: 0 4px 20px rgba(34, 211, 238, 0.15);
+                transform: translateY(-3px) scale(1.02);
+                box-shadow: 0 0 25px rgba(34, 211, 238, 0.3);
+                background: linear-gradient(
+                    135deg,
+                    rgba(34, 211, 238, 0.5),
+                    rgba(139, 92, 246, 0.35)
+                );
             }
+
             .btn-secondary {
-                background: rgba(255, 255, 255, 0.08);
-                backdrop-filter: blur(20px);
-                -webkit-backdrop-filter: blur(20px);
-                color: rgba(255, 255, 255, 0.9);
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                box-shadow: none;
+                background:
+                    linear-gradient(
+                        135deg,
+                        rgba(107, 107, 107, 0.3),
+                        rgba(107, 107, 107, 0.15)
+                    ),
+                    linear-gradient(
+                        45deg,
+                        rgba(255, 255, 255, 0.2) 0%,
+                        transparent 50%,
+                        rgba(255, 255, 255, 0.1) 100%
+                    );
+                backdrop-filter: blur(25px) saturate(180%) brightness(120%)
+                    contrast(110%);
+                -webkit-backdrop-filter: blur(25px) saturate(180%)
+                    brightness(120%) contrast(110%);
+                color: white;
+                border: 1px solid rgba(107, 107, 107, 0.4);
+                box-shadow:
+                    0 8px 20px rgba(0, 0, 0, 0.3),
+                    0 4px 10px rgba(0, 0, 0, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+                    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
                 padding: 12px 20px;
                 font-size: 14px;
                 min-height: 44px;
@@ -1081,8 +1148,8 @@
 
             .btn-secondary:hover:not(:disabled) {
                 transform: translateY(-2px);
-                background: rgba(255, 255, 255, 0.12);
-                border-color: rgba(255, 255, 255, 0.25);
+                box-shadow: 0 8px 25px rgba(107, 107, 107, 0.15);
+                background: linear-gradient(135deg, #6b6b6b, #7b7b7b);
             }
 
             .btn:disabled {
@@ -1114,15 +1181,20 @@
             }
 
             .btn-loading {
-                background: rgba(255, 255, 255, 0.05) !important;
-                color: rgba(255, 255, 255, 0.4) !important;
-                border-color: rgba(255, 255, 255, 0.1) !important;
+                background: linear-gradient(
+                    135deg,
+                    rgba(100, 100, 100, 0.3),
+                    rgba(80, 80, 80, 0.2)
+                ) !important;
+                color: rgba(255, 255, 255, 0.5) !important;
+                border-color: rgba(150, 150, 150, 0.3) !important;
                 cursor: wait !important;
                 pointer-events: none;
             }
 
             .btn-loading:hover {
                 transform: none !important;
+                box-shadow: none !important;
             }
 
             .resource-monitor {
