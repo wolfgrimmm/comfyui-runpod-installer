@@ -839,14 +839,7 @@
                 color: rgba(255, 255, 255, 0.4);
             }
 
-            .auto-open-section {
-                margin: 12px 0;
-                padding: 10px 0;
-            }
 
-            .auto-open-section::before {
-                display: none;
-            }
 
             @keyframes checkboxShine {
                 0% {
@@ -2007,19 +2000,6 @@
                     </div>
                 </div>
 
-                <div class="auto-open-section">
-                    <label class="checkbox-label">
-                        <input
-                            type="checkbox"
-                            id="autoOpenCheckbox"
-                            class="checkbox-input"
-                        />
-                        <span class="checkbox-text"
-                            >Auto-open ComfyUI when ready</span
-                        >
-                    </label>
-                </div>
-
                 <div class="actions-grid" id="actionsGrid">
                     <button
                         class="btn btn-primary btn-advanced magnetic"
@@ -2758,14 +2738,10 @@
                             showLottieSuccess();
                         }
 
-                        // Auto-open if checkbox is checked
-                        const autoOpenCheckbox = document.getElementById('autoOpenCheckbox');
-                        if (autoOpenCheckbox && autoOpenCheckbox.checked) {
-                            // Small delay to let user see the success state
-                            setTimeout(() => {
-                                openComfyUI();
-                            }, 500);
-                        }
+                        // Auto-open ComfyUI when ready
+                        setTimeout(() => {
+                            openComfyUI();
+                        }, 500);
                     } else {
                         // Button already exists, just update its class to green
                         const existingBtn = document.getElementById('openBtn');
