@@ -2009,19 +2009,10 @@
                             <option value="" selected disabled>
                                 Select User
                             </option>
-                            {% endif %} {% for user in users %}
-                            <option
-                                value="{{ user }}"
-                                {%
-                                if
-                                user=""
-                                ="current_user"
-                                %}selected{%
-                                endif
-                                %}
-                            >
-                                {{ user }}{% if user == 'serhii' %} (Admin){%
-                                endif %}
+                            {% endif %}
+                            {% for user in users %}
+                            <option value="{{ user }}" {% if user == current_user %}selected{% endif %}>
+                                {{ user }}{% if user == 'serhii' %} (Admin){% endif %}
                             </option>
                             {% endfor %}
                         </select>
