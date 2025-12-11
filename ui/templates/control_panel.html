@@ -41,18 +41,21 @@
             @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
 
             :root {
-                --primary: #6b6b6b;
-                --primary-glow: #6b6b6b40;
-                --glass-bg: rgba(0, 0, 0, 0.9);
-                --glass-border: rgba(255, 255, 255, 0.08);
+                /* Purple/blue theme matching DarkVeil background */
+                --primary: #8b5cf6;
+                --primary-glow: rgba(139, 92, 246, 0.4);
+                --accent: #a78bfa;
+                --accent-secondary: #7c3aed;
+                --glass-bg: rgba(20, 10, 40, 0.7);
+                --glass-border: rgba(139, 92, 246, 0.2);
                 --text-primary: rgba(255, 255, 255, 0.95);
                 --text-secondary: rgba(255, 255, 255, 0.7);
-                --text-tertiary: rgba(255, 255, 255, 0.5);
+                --text-tertiary: rgba(167, 139, 250, 0.7);
                 --blur-strength: 20px;
                 --animation-speed: 0.3s;
                 --hover-transform: translateY(-4px);
-                --shadow-color: rgba(0, 0, 0, 0.4);
-                --shadow-color-light: rgba(0, 0, 0, 0.2);
+                --shadow-color: rgba(91, 33, 182, 0.3);
+                --shadow-color-light: rgba(139, 92, 246, 0.15);
 
                 /* Apple-style border radius system */
                 --radius-xl: 20px; /* Large containers, cards */
@@ -374,11 +377,11 @@
             }
 
             .container {
-                background: rgba(0, 0, 0, 0.4);
-                backdrop-filter: blur(30px) brightness(0.8);
-                -webkit-backdrop-filter: blur(30px) brightness(0.8);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-top: 1px solid rgba(255, 255, 255, 0.2);
+                background: rgba(15, 10, 35, 0.6);
+                backdrop-filter: blur(30px) brightness(0.9);
+                -webkit-backdrop-filter: blur(30px) brightness(0.9);
+                border: 1px solid rgba(139, 92, 246, 0.15);
+                border-top: 1px solid rgba(167, 139, 250, 0.25);
                 border-radius: var(--radius-xl);
                 padding: 48px;
                 width: 100%;
@@ -434,10 +437,10 @@
             .action-btn {
                 width: 44px;
                 height: 44px;
-                background: rgba(255, 255, 255, 0.03);
+                background: rgba(139, 92, 246, 0.1);
                 backdrop-filter: blur(10px);
                 -webkit-backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(139, 92, 246, 0.2);
                 border-radius: var(--radius-md);
                 display: flex;
                 align-items: center;
@@ -446,10 +449,10 @@
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 position: relative;
                 box-shadow:
-                    0 6px 20px rgba(0, 0, 0, 0.15),
+                    0 6px 20px rgba(91, 33, 182, 0.15),
                     0 2px 6px rgba(0, 0, 0, 0.1),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-                    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                    inset 0 -1px 0 rgba(139, 92, 246, 0.2);
                 overflow: hidden;
             }
 
@@ -590,10 +593,10 @@
             }
 
             .status-card {
-                background: rgba(255, 255, 255, 0.03);
+                background: rgba(139, 92, 246, 0.08);
                 backdrop-filter: blur(25px) saturate(180%);
                 -webkit-backdrop-filter: blur(25px) saturate(180%);
-                border: 1px solid rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(139, 92, 246, 0.15);
                 border-radius: var(--radius-xl);
                 padding: 20px;
                 margin-bottom: 32px;
@@ -774,10 +777,10 @@
             select {
                 width: 100%;
                 padding: 16px 48px;
-                background: rgba(255, 255, 255, 0.05);
+                background: rgba(139, 92, 246, 0.1);
                 backdrop-filter: blur(10px);
                 -webkit-backdrop-filter: blur(10px);
-                border: 2px solid var(--glass-border);
+                border: 2px solid rgba(139, 92, 246, 0.2);
                 border-radius: var(--radius-lg);
                 font-size: 15px;
                 color: var(--text-primary);
@@ -787,24 +790,24 @@
                 font-weight: 500;
                 cursor: pointer;
                 appearance: none;
-                background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+                background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a78bfa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
                 background-repeat: no-repeat;
                 background-position: right 16px center;
                 background-size: 20px;
             }
 
             select:focus {
-                border-color: rgba(107, 107, 107, 0.3);
-                background-color: rgba(255, 255, 255, 0.03);
+                border-color: rgba(139, 92, 246, 0.4);
+                background-color: rgba(139, 92, 246, 0.15);
                 box-shadow:
-                    0 0 0 4px rgba(107, 107, 107, 0.1),
-                    0 10px 30px rgba(107, 107, 107, 0.1);
+                    0 0 0 4px rgba(139, 92, 246, 0.15),
+                    0 10px 30px rgba(139, 92, 246, 0.2);
             }
 
             select:hover {
-                border-color: rgba(107, 107, 107, 0.4);
-                background-color: rgba(255, 255, 255, 0.03);
-                box-shadow: 0 0 20px rgba(107, 107, 107, 0.3);
+                border-color: rgba(139, 92, 246, 0.5);
+                background-color: rgba(139, 92, 246, 0.12);
+                box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
             }
 
             select option {
@@ -854,8 +857,8 @@
                 width: 20px;
                 height: 20px;
                 cursor: pointer;
-                accent-color: #10b981;
-                border: 2px solid var(--glass-border);
+                accent-color: #8b5cf6;
+                border: 2px solid rgba(139, 92, 246, 0.3);
                 border-radius: var(--radius-xs);
             }
 
@@ -1037,26 +1040,26 @@
                 background:
                     linear-gradient(
                         135deg,
-                        rgba(231, 51, 29, 0.3),
-                        rgba(231, 51, 29, 0.15)
+                        rgba(139, 92, 246, 0.4),
+                        rgba(124, 58, 237, 0.25)
                     ),
                     linear-gradient(
                         45deg,
-                        rgba(255, 255, 255, 0.2) 0%,
+                        rgba(255, 255, 255, 0.15) 0%,
                         transparent 50%,
-                        rgba(255, 255, 255, 0.1) 100%
+                        rgba(255, 255, 255, 0.08) 100%
                     );
                 backdrop-filter: blur(25px) saturate(180%) brightness(120%)
                     contrast(110%);
                 -webkit-backdrop-filter: blur(25px) saturate(180%)
                     brightness(120%) contrast(110%);
                 color: white;
-                border: 1px solid rgba(231, 51, 29, 0.4);
+                border: 1px solid rgba(139, 92, 246, 0.5);
                 box-shadow:
-                    0 8px 20px rgba(0, 0, 0, 0.3),
+                    0 8px 20px rgba(91, 33, 182, 0.3),
                     0 4px 10px rgba(0, 0, 0, 0.2),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-                    inset 0 -1px 0 rgba(107, 107, 107, 0.3);
+                    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                    inset 0 -1px 0 rgba(139, 92, 246, 0.3);
                 position: relative;
                 overflow: hidden;
             }
@@ -1066,15 +1069,15 @@
             .btn-primary:hover:not(:disabled) {
                 transform: translateY(-3px) scale(1.02);
                 box-shadow:
-                    0 0 30px rgba(231, 51, 29, 0.25),
-                    0 20px 40px rgba(0, 0, 0, 0.4),
+                    0 0 30px rgba(139, 92, 246, 0.4),
+                    0 20px 40px rgba(91, 33, 182, 0.3),
                     0 10px 20px rgba(0, 0, 0, 0.3);
                 background: linear-gradient(
                     135deg,
-                    rgba(107, 107, 107, 0.4),
-                    rgba(107, 107, 107, 0.3)
+                    rgba(139, 92, 246, 0.5),
+                    rgba(124, 58, 237, 0.35)
                 );
-                border-color: var(--primary);
+                border-color: rgba(167, 139, 250, 0.6);
             }
 
             .btn-success {
@@ -1082,32 +1085,36 @@
                 background:
                     linear-gradient(
                         135deg,
-                        rgba(16, 185, 129, 0.3),
-                        rgba(16, 185, 129, 0.15)
+                        rgba(34, 211, 238, 0.35),
+                        rgba(139, 92, 246, 0.25)
                     ),
                     linear-gradient(
                         45deg,
-                        rgba(255, 255, 255, 0.2) 0%,
+                        rgba(255, 255, 255, 0.15) 0%,
                         transparent 50%,
-                        rgba(255, 255, 255, 0.1) 100%
+                        rgba(255, 255, 255, 0.08) 100%
                     );
                 backdrop-filter: blur(25px) saturate(180%) brightness(120%)
                     contrast(110%);
                 -webkit-backdrop-filter: blur(25px) saturate(180%)
                     brightness(120%) contrast(110%);
                 color: white;
-                border: 1px solid rgba(16, 185, 129, 0.4);
+                border: 1px solid rgba(34, 211, 238, 0.5);
                 box-shadow:
-                    0 8px 20px rgba(0, 0, 0, 0.3),
+                    0 8px 20px rgba(34, 211, 238, 0.2),
                     0 4px 10px rgba(0, 0, 0, 0.2),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-                    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+                    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                    inset 0 -1px 0 rgba(34, 211, 238, 0.2);
             }
 
             .btn-success:hover:not(:disabled) {
                 transform: translateY(-3px) scale(1.02);
-                box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
-                background: linear-gradient(135deg, #34d399, #10b981);
+                box-shadow: 0 0 25px rgba(34, 211, 238, 0.3);
+                background: linear-gradient(
+                    135deg,
+                    rgba(34, 211, 238, 0.5),
+                    rgba(139, 92, 246, 0.35)
+                );
             }
 
             .btn-secondary {
@@ -1680,10 +1687,10 @@
             .btn-add-user {
                 margin-top: 12px;
                 padding: 8px 16px;
-                background: rgba(107, 107, 107, 0.1);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                background: rgba(139, 92, 246, 0.1);
+                border: 1px solid rgba(139, 92, 246, 0.25);
                 border-radius: 8px;
-                color: rgba(255, 255, 255, 0.7);
+                color: rgba(167, 139, 250, 0.9);
                 font-size: 13px;
                 font-weight: 500;
                 cursor: pointer;
@@ -1692,10 +1699,11 @@
             }
 
             .btn-add-user:hover {
-                background: rgba(107, 107, 107, 0.2);
-                border-color: rgba(255, 255, 255, 0.2);
-                color: rgba(255, 255, 255, 0.9);
+                background: rgba(139, 92, 246, 0.2);
+                border-color: rgba(139, 92, 246, 0.4);
+                color: rgba(255, 255, 255, 0.95);
                 transform: translateY(-2px);
+                box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
             }
 
             .btn-add-user:active {
