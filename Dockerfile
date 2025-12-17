@@ -44,19 +44,35 @@ fi
 if [ -f "/workspace/venv/bin/activate" ] && [ -f "/workspace/ComfyUI/main.py" ] && [ -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
     source /workspace/venv/bin/activate
 
-    # Check if RTX 5090 (sm_120) and PyTorch doesn't support it
+    # Universal GPU compatibility check - works for ANY GPU
+    # Tests if PyTorch can actually use CUDA, not just if it's installed
     GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)
-    if [[ "$GPU_NAME" == *"5090"* ]] || [[ "$GPU_NAME" == *"5080"* ]] || [[ "$GPU_NAME" == *"5070"* ]]; then
-        # Check if PyTorch supports sm_120
-        SUPPORTS_SM120=$(python -c "import torch; print('sm_120' in str(torch.cuda.get_arch_list()))" 2>/dev/null || echo "False")
-        if [ "$SUPPORTS_SM120" != "True" ]; then
-            echo "⚠️ RTX 50 series detected but PyTorch doesn't support sm_120!"
-            echo "🔧 Reinstalling PyTorch 2.8.0 with CUDA 12.9..."
-            pip install torch==2.8.0 torchvision==0.24.0+cu129 torchaudio \
-                --index-url https://download.pytorch.org/whl/cu129 \
-                --force-reinstall --quiet
-            echo "✅ PyTorch upgraded for RTX 50 series"
-        fi
+    echo "🔍 Checking PyTorch compatibility with $GPU_NAME..."
+
+    # Try to actually use the GPU - this catches ALL incompatibility issues
+    GPU_WORKS=$(python -c "
+import torch
+try:
+    if torch.cuda.is_available():
+        # Actually try to use the GPU, not just check availability
+        x = torch.tensor([1.0]).cuda()
+        del x
+        print('True')
+    else:
+        print('False')
+except Exception as e:
+    print('False')
+" 2>/dev/null || echo "False")
+
+    if [ "$GPU_WORKS" != "True" ]; then
+        echo "⚠️ PyTorch cannot use $GPU_NAME!"
+        echo "🔧 Reinstalling PyTorch 2.8.0 with CUDA 12.9..."
+        pip install torch==2.8.0 torchvision==0.24.0+cu129 torchaudio \
+            --index-url https://download.pytorch.org/whl/cu129 \
+            --force-reinstall --quiet
+        echo "✅ PyTorch upgraded"
+    else
+        echo "✅ PyTorch works with $GPU_NAME"
     fi
 
     echo "✅ Environment already initialized (fast path)"

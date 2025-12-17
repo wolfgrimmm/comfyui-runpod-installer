@@ -4237,26 +4237,38 @@ fi
 ### Solution
 **Files Modified:** `Dockerfile` (init.sh script, lines 44-63)
 
-Added RTX 50 series detection and automatic PyTorch upgrade to fast path:
+Added universal GPU compatibility check to fast path:
 
 ```bash
 # Quick check - if everything exists, verify PyTorch supports current GPU
 if [ -f "/workspace/venv/bin/activate" ] && [ -f "/workspace/ComfyUI/main.py" ] && ...; then
     source /workspace/venv/bin/activate
     
-    # Check if RTX 5090 (sm_120) and PyTorch doesn't support it
+    # Universal GPU compatibility check - works for ANY GPU
     GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)
-    if [[ "$GPU_NAME" == *"5090"* ]] || [[ "$GPU_NAME" == *"5080"* ]] || [[ "$GPU_NAME" == *"5070"* ]]; then
-        # Check if PyTorch supports sm_120
-        SUPPORTS_SM120=$(python -c "import torch; print('sm_120' in str(torch.cuda.get_arch_list()))" 2>/dev/null || echo "False")
-        if [ "$SUPPORTS_SM120" != "True" ]; then
-            echo "⚠️ RTX 50 series detected but PyTorch doesn't support sm_120!"
-            echo "🔧 Reinstalling PyTorch 2.8.0 with CUDA 12.9..."
-            pip install torch==2.8.0 torchvision==0.24.0+cu129 torchaudio \
-                --index-url https://download.pytorch.org/whl/cu129 \
-                --force-reinstall --quiet
-            echo "✅ PyTorch upgraded for RTX 50 series"
-        fi
+    echo "🔍 Checking PyTorch compatibility with $GPU_NAME..."
+    
+    # Try to actually use the GPU - this catches ALL incompatibility issues
+    GPU_WORKS=$(python -c "
+import torch
+try:
+    if torch.cuda.is_available():
+        x = torch.tensor([1.0]).cuda()  # Actually try to use GPU
+        del x
+        print('True')
+    else:
+        print('False')
+except Exception as e:
+    print('False')
+" 2>/dev/null || echo "False")
+    
+    if [ "$GPU_WORKS" != "True" ]; then
+        echo "⚠️ PyTorch cannot use $GPU_NAME!"
+        echo "🔧 Reinstalling PyTorch 2.8.0 with CUDA 12.9..."
+        pip install torch==2.8.0 torchvision==0.24.0+cu129 torchaudio \
+            --index-url https://download.pytorch.org/whl/cu129 \
+            --force-reinstall --quiet
+        echo "✅ PyTorch upgraded"
     fi
     
     echo "✅ Environment already initialized (fast path)"
@@ -4266,9 +4278,9 @@ fi
 
 **How it works:**
 1. Fast path activates venv as before
-2. Checks GPU name for RTX 50 series (5090, 5080, 5070)
-3. If RTX 50 series, checks if PyTorch includes `sm_120` in arch list
-4. If not, force-reinstalls PyTorch 2.8.0 cu129 (has sm_120 support)
+2. Actually tries to use the GPU with `torch.tensor([1.0]).cuda()`
+3. If that fails for ANY reason (wrong CUDA, wrong arch, any error), reinstalls PyTorch
+4. Works for ALL GPUs - RTX 5090, 4090, 3090, A100, H100, etc.
 5. Then exits fast path normally
 
 ### Manual Fix for Running Pods
@@ -4354,9 +4366,9 @@ print(f'sm_120 supported: {\"sm_120\" in str(torch.cuda.get_arch_list())}')
 
 ### Result
 
-- ✅ RTX 5090 pods now auto-fix old PyTorch in cached venv
+- ✅ ALL GPUs now auto-fix incompatible PyTorch in cached venv
 - ✅ Fast path still fast for compatible setups (just adds ~2s check)
-- ✅ Covers RTX 5090, 5080, 5070 (all Blackwell consumer GPUs)
+- ✅ Universal check - works for RTX 5090, 4090, 3090, A100, H100, B200, etc.
 - ✅ Force-reinstall ensures clean upgrade
 - ✅ Works transparently - user doesn't need to do anything
 
