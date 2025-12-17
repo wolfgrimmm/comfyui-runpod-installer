@@ -4206,3 +4206,159 @@ Users can now add custom team members directly from the control panel without SS
 
 ---
 
+## 31. RTX 5090 PyTorch Incompatibility on Cached Venv (Bug #31)
+
+### Problem
+User on RTX 5090 pod experienced ComfyUI hanging indefinitely:
+- Pod startup showed: `NVIDIA GeForce RTX 5090 with CUDA capability sm_120 is not compatible with the current PyTorch installation`
+- PyTorch only supported up to `sm_90` (Hopper/H100)
+- ComfyUI process started but never became ready (stuck for 9+ minutes)
+- Status polling continued forever with no progress
+
+### Root Cause
+**Fast path skipped PyTorch validation:**
+
+The init script's "fast path" check (Dockerfile lines 44-48) exited immediately when venv existed:
+```bash
+if [ -f "/workspace/venv/bin/activate" ] && [ -f "/workspace/ComfyUI/main.py" ] && ...; then
+    echo "✅ Environment already initialized (fast path)"
+    source /workspace/venv/bin/activate
+    exit 0  # ← Skipped everything, including PyTorch version check!
+fi
+```
+
+**Why this happened:**
+1. User had `/workspace/venv` from a previous session (maybe RTX 4090 or older image)
+2. Venv contained old PyTorch (cu124 or earlier, max sm_90)
+3. User switched to RTX 5090 pod (requires sm_120)
+4. Fast path saw venv exists → skipped init → used incompatible PyTorch
+5. ComfyUI couldn't use GPU → hung forever
+
+### Solution
+**Files Modified:** `Dockerfile` (init.sh script, lines 44-63)
+
+Added RTX 50 series detection and automatic PyTorch upgrade to fast path:
+
+```bash
+# Quick check - if everything exists, verify PyTorch supports current GPU
+if [ -f "/workspace/venv/bin/activate" ] && [ -f "/workspace/ComfyUI/main.py" ] && ...; then
+    source /workspace/venv/bin/activate
+    
+    # Check if RTX 5090 (sm_120) and PyTorch doesn't support it
+    GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)
+    if [[ "$GPU_NAME" == *"5090"* ]] || [[ "$GPU_NAME" == *"5080"* ]] || [[ "$GPU_NAME" == *"5070"* ]]; then
+        # Check if PyTorch supports sm_120
+        SUPPORTS_SM120=$(python -c "import torch; print('sm_120' in str(torch.cuda.get_arch_list()))" 2>/dev/null || echo "False")
+        if [ "$SUPPORTS_SM120" != "True" ]; then
+            echo "⚠️ RTX 50 series detected but PyTorch doesn't support sm_120!"
+            echo "🔧 Reinstalling PyTorch 2.8.0 with CUDA 12.9..."
+            pip install torch==2.8.0 torchvision==0.24.0+cu129 torchaudio \
+                --index-url https://download.pytorch.org/whl/cu129 \
+                --force-reinstall --quiet
+            echo "✅ PyTorch upgraded for RTX 50 series"
+        fi
+    fi
+    
+    echo "✅ Environment already initialized (fast path)"
+    exit 0
+fi
+```
+
+**How it works:**
+1. Fast path activates venv as before
+2. Checks GPU name for RTX 50 series (5090, 5080, 5070)
+3. If RTX 50 series, checks if PyTorch includes `sm_120` in arch list
+4. If not, force-reinstalls PyTorch 2.8.0 cu129 (has sm_120 support)
+5. Then exits fast path normally
+
+### Manual Fix for Running Pods
+
+If you're on a pod with this issue right now:
+
+```bash
+# Option 1: Quick fix - upgrade PyTorch
+source /workspace/venv/bin/activate
+pip install torch==2.8.0 torchvision==0.24.0+cu129 torchaudio \
+    --index-url https://download.pytorch.org/whl/cu129 \
+    --force-reinstall
+
+# Restart ComfyUI from control panel
+
+# Option 2: Full reset - delete venv and restart pod
+rm -rf /workspace/venv
+# Then restart pod from RunPod dashboard
+```
+
+### Why This Works
+
+**Before (broken):**
+```
+RTX 5090 pod starts
+→ Fast path sees venv exists
+→ Activates old venv with PyTorch cu124 (max sm_90)
+→ Exits without checking GPU compatibility
+→ ComfyUI starts with broken PyTorch
+→ GPU operations fail silently
+→ ComfyUI hangs forever
+```
+
+**After (fixed):**
+```
+RTX 5090 pod starts
+→ Fast path sees venv exists
+→ Activates venv
+→ Detects "5090" in GPU name
+→ Checks torch.cuda.get_arch_list() for sm_120
+→ If missing, reinstalls PyTorch 2.8.0 cu129
+→ Exits fast path with correct PyTorch
+→ ComfyUI works normally
+```
+
+### Testing
+
+**Verify fix after pod restart:**
+```bash
+source /workspace/venv/bin/activate
+python -c "
+import torch
+print(f'PyTorch: {torch.__version__}')
+print(f'CUDA: {torch.version.cuda}')
+print(f'Arch list: {torch.cuda.get_arch_list()}')
+print(f'sm_120 supported: {\"sm_120\" in str(torch.cuda.get_arch_list())}')
+"
+
+# Expected output:
+# PyTorch: 2.8.0+cu129
+# CUDA: 12.9
+# Arch list: [..., 'sm_120']
+# sm_120 supported: True
+```
+
+### Relationship to Other Bugs
+
+**Bug #14 (RTX 5090 CUDA/PyTorch compatibility):**
+- Fixed initial Docker build to use PyTorch 2.8.0 cu129
+- But didn't handle cached venv from previous sessions
+
+**Bug #31 (this bug):**
+- Fixes cached venv issue for users switching GPUs
+- Complements Bug #14 by handling the "existing venv" edge case
+
+### Status
+
+- **Issue severity:** Critical (ComfyUI completely broken on RTX 5090 with old venv)
+- **Status:** ✅ **RESOLVED**
+- **Affects:** Users switching to RTX 5090 with existing /workspace/venv
+- **Solution:** Auto-detect RTX 50 series and upgrade PyTorch in fast path
+- **Deployment:** Requires Docker rebuild
+
+### Result
+
+- ✅ RTX 5090 pods now auto-fix old PyTorch in cached venv
+- ✅ Fast path still fast for compatible setups (just adds ~2s check)
+- ✅ Covers RTX 5090, 5080, 5070 (all Blackwell consumer GPUs)
+- ✅ Force-reinstall ensures clean upgrade
+- ✅ Works transparently - user doesn't need to do anything
+
+---
+

@@ -40,11 +40,26 @@ if [ -n "$VIRTUAL_ENV" ]; then
     export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/cuda/bin"
 fi
 
-# Quick check - if everything exists, exit fast
+# Quick check - if everything exists, verify PyTorch supports current GPU
 if [ -f "/workspace/venv/bin/activate" ] && [ -f "/workspace/ComfyUI/main.py" ] && [ -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
-    echo "✅ Environment already initialized (fast path)"
-    # Make sure we activate the correct venv
     source /workspace/venv/bin/activate
+
+    # Check if RTX 5090 (sm_120) and PyTorch doesn't support it
+    GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)
+    if [[ "$GPU_NAME" == *"5090"* ]] || [[ "$GPU_NAME" == *"5080"* ]] || [[ "$GPU_NAME" == *"5070"* ]]; then
+        # Check if PyTorch supports sm_120
+        SUPPORTS_SM120=$(python -c "import torch; print('sm_120' in str(torch.cuda.get_arch_list()))" 2>/dev/null || echo "False")
+        if [ "$SUPPORTS_SM120" != "True" ]; then
+            echo "⚠️ RTX 50 series detected but PyTorch doesn't support sm_120!"
+            echo "🔧 Reinstalling PyTorch 2.8.0 with CUDA 12.9..."
+            pip install torch==2.8.0 torchvision==0.24.0+cu129 torchaudio \
+                --index-url https://download.pytorch.org/whl/cu129 \
+                --force-reinstall --quiet
+            echo "✅ PyTorch upgraded for RTX 50 series"
+        fi
+    fi
+
+    echo "✅ Environment already initialized (fast path)"
     exit 0
 elif [ ! -f "/workspace/venv/bin/activate" ] && [ -f "/workspace/ComfyUI/main.py" ]; then
     echo "⚠️ Venv missing or incomplete - will rebuild venv..."
