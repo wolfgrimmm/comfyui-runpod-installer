@@ -66,16 +66,16 @@ except Exception as e:
 
     if [ "$GPU_WORKS" != "True" ]; then
         echo "⚠️ PyTorch cannot use $GPU_NAME!"
-        echo "🔧 Reinstalling PyTorch 2.9.0 with CUDA 12.9..."
-        pip install torch==2.9.0 torchvision==0.24.0+cu129 torchaudio==2.9.0 \
+        echo "🔧 Reinstalling PyTorch stack with CUDA 12.9..."
+
+        # Install all PyTorch packages together with exact versions to avoid conflicts
+        # torch 2.9.1 + torchvision 0.24.1 + torchaudio 2.9.1 + xformers (matching)
+        pip install torch==2.9.1 torchvision==0.24.1+cu129 torchaudio==2.9.1+cu129 xformers \
             --index-url https://download.pytorch.org/whl/cu129 \
             --force-reinstall --quiet
 
-        # CRITICAL: xformers is built for specific PyTorch version
-        # Must reinstall after PyTorch upgrade to avoid std::bad_alloc crash
-        # xformers 0.0.33+ supports PyTorch 2.9.x
-        echo "🔧 Reinstalling xformers for PyTorch 2.9.0..."
-        pip install -U xformers --index-url https://download.pytorch.org/whl/cu129 --force-reinstall --quiet
+        # Fix numpy version for opencv compatibility
+        pip install "numpy<2.3.0,>=2.0.0" --quiet
 
         echo "✅ PyTorch + xformers upgraded"
     else
