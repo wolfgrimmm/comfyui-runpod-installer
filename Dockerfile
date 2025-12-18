@@ -73,8 +73,9 @@ except Exception as e:
 
         # CRITICAL: xformers is built for specific PyTorch version
         # Must reinstall after PyTorch upgrade to avoid std::bad_alloc crash
+        # xformers 0.0.33+ supports PyTorch 2.9.x
         echo "🔧 Reinstalling xformers for PyTorch 2.9.0..."
-        pip install xformers --force-reinstall --quiet
+        pip install -U xformers --index-url https://download.pytorch.org/whl/cu129 --force-reinstall --quiet
 
         echo "✅ PyTorch + xformers upgraded"
     else
