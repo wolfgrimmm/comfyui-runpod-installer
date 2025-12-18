@@ -70,7 +70,13 @@ except Exception as e:
         pip install torch==2.9.0 torchvision==0.24.0+cu129 torchaudio==2.9.0 \
             --index-url https://download.pytorch.org/whl/cu129 \
             --force-reinstall --quiet
-        echo "✅ PyTorch upgraded"
+
+        # CRITICAL: xformers is built for specific PyTorch version
+        # Must reinstall after PyTorch upgrade to avoid std::bad_alloc crash
+        echo "🔧 Reinstalling xformers for PyTorch 2.9.0..."
+        pip install xformers --force-reinstall --quiet
+
+        echo "✅ PyTorch + xformers upgraded"
     else
         echo "✅ PyTorch works with $GPU_NAME"
     fi
