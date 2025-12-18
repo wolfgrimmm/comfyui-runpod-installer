@@ -68,16 +68,21 @@ except Exception as e:
         echo "⚠️ PyTorch cannot use $GPU_NAME!"
         echo "🔧 Reinstalling PyTorch stack with CUDA 12.9..."
 
-        # Install all PyTorch packages together with exact versions to avoid conflicts
-        # torch 2.9.1 + torchvision 0.24.1 + torchaudio 2.9.1 + xformers (matching)
-        pip install torch==2.9.1 torchvision==0.24.1+cu129 torchaudio==2.9.1+cu129 xformers \
+        # CRITICAL: Must use PyTorch 2.8.0 to match pre-compiled xformers/sageattention wheels
+        # PyTorch 2.9.x causes std::bad_alloc crash with these wheels (Bug #33)
+        pip install torch==2.8.0 torchvision torchaudio \
             --index-url https://download.pytorch.org/whl/cu129 \
             --force-reinstall --quiet
 
-        # Fix numpy version for opencv compatibility
-        pip install "numpy<2.3.0,>=2.0.0" --quiet
+        # Pre-compiled xformers with RTX 5090 (sm_120) support - built for PyTorch 2.8.0
+        echo "🔧 Installing pre-compiled xformers..."
+        pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/xformers-0.0.33+c159edc0.d20250906-cp39-abi3-linux_x86_64.whl --quiet
 
-        echo "✅ PyTorch + xformers upgraded"
+        # Pre-compiled sageattention 2.2.0.post4 with RTX 5090 support - built for PyTorch 2.8.0
+        echo "🔧 Installing pre-compiled sageattention..."
+        pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0.post4-cp39-abi3-linux_x86_64.whl --quiet
+
+        echo "✅ PyTorch + xformers + sageattention upgraded"
     else
         echo "✅ PyTorch works with $GPU_NAME"
     fi
@@ -154,12 +159,10 @@ if [ "$NEED_INSTALL" = "1" ]; then
     uv pip install civitai-downloader aiofiles
 
     # ComfyUI requirements - PyTorch 2.8.0 with CUDA 12.9
-    # Note: Using cu129 because PyTorch 2.8.0 is only available for cu129
-    # The cu129 wheel includes CUDA 12.9 libraries, no toolkit installation needed
-    # CRITICAL: torchvision 0.24.0 required for RTX 5090 (Bug #30)
-    # torch 2.9.0 + torchvision 0.24.0 are matching versions
-    echo "📦 Installing PyTorch 2.9.0 with CUDA 12.9..."
-    pip install torch==2.9.0 torchvision==0.24.0+cu129 torchaudio==2.9.0 --index-url https://download.pytorch.org/whl/cu129
+    # CRITICAL: Must use PyTorch 2.8.0 to match pre-compiled xformers/sageattention wheels (Bug #33)
+    # PyTorch 2.9.x causes std::bad_alloc crash with MonsterMMORPG wheels
+    echo "📦 Installing PyTorch 2.8.0 with CUDA 12.9..."
+    pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
 
     # Core ComfyUI dependencies
     uv pip install einops torchsde "kornia>=0.7.1" spandrel "safetensors>=0.4.2"
@@ -224,11 +227,12 @@ if [ "$NEED_INSTALL" = "1" ]; then
     uv pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/flash_attn-2.8.2-cp311-cp311-linux_x86_64.whl || \
     pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/flash_attn-2.8.2-cp311-cp311-linux_x86_64.whl
 
-    # 3. Sage Attention 2.2.0 - CRITICAL for WAN 2.2 (13x speedup!)
+    # 3. Sage Attention 2.2.0.post4 - CRITICAL for WAN 2.2 (13x speedup!)
     # Using abi3 wheel (universal binary, works with Python 3.9+)
-    echo "📦 Installing Sage Attention 2.2.0 (pre-compiled with sm_120 support)..."
-    uv pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-cp39-abi3-linux_x86_64.whl || \
-    pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0-cp39-abi3-linux_x86_64.whl
+    # MUST use .post4 version - older 2.2.0 crashes with std::bad_alloc (Bug #33)
+    echo "📦 Installing Sage Attention 2.2.0.post4 (pre-compiled with sm_120 support)..."
+    uv pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0.post4-cp39-abi3-linux_x86_64.whl || \
+    pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0.post4-cp39-abi3-linux_x86_64.whl
 
     # 4. insightface 0.7.3 - For ReActor face swap
     echo "📦 Installing insightface 0.7.3 (pre-compiled with sm_120 support)..."
@@ -768,8 +772,8 @@ if [ ! -f "/workspace/ComfyUI/main.py" ]; then
         # Install requirements but skip torch to keep our CUDA 12.9 version
         grep -v "^torch" requirements.txt > /tmp/comfy_req.txt || cp requirements.txt /tmp/comfy_req.txt
         pip install -r /tmp/comfy_req.txt
-        # Ensure we have the right PyTorch for CUDA 12.9 with torchvision 0.24.0 (Bug #30)
-        pip install torch==2.9.0 torchvision==0.24.0+cu129 torchaudio==2.9.0 --index-url https://download.pytorch.org/whl/cu129 --upgrade
+        # Ensure we have PyTorch 2.8.0 for CUDA 12.9 (Bug #33 - must match pre-compiled wheels)
+        pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129 --upgrade
     fi
 fi
 

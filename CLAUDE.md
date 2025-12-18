@@ -4374,3 +4374,135 @@ print(f'sm_120 supported: {\"sm_120\" in str(torch.cuda.get_arch_list())}')
 
 ---
 
+
+## 33. PyTorch/xformers/SageAttention Version Compatibility Crisis (Bug #33)
+
+### Problem
+After upgrading PyTorch to fix RTX 5090 compatibility, ComfyUI crashed with multiple errors:
+1. `std::bad_alloc` crash when importing sageattention
+2. xformers built for wrong PyTorch version
+3. Version conflicts between torch, torchvision, torchaudio
+4. numpy version conflicts with opencv
+
+**Error messages:**
+```
+WARNING[XFORMERS]: xFormers can't load C++/CUDA extensions. xFormers was built for:
+    PyTorch 2.8.0+cu129 with CUDA 1209 (you have 2.9.0+cu129)
+    Python  3.10.12 (you have 3.11.14)
+terminate called after throwing an instance of 'std::bad_alloc'
+  what():  std::bad_alloc
+```
+
+### Root Cause
+**Version mismatch chain:**
+1. torchvision 0.24.0 requires torch 2.9.0 (not 2.8.0)
+2. Upgraded to torch 2.9.1 to match torchvision
+3. Pre-compiled xformers wheel was built for PyTorch 2.8.0
+4. Pre-compiled sageattention 2.2.0 wheel was built for PyTorch 2.8.0
+5. Both crashed with `std::bad_alloc` when loaded with PyTorch 2.9.x
+
+**The critical insight:**
+- MonsterMMORPG's pre-compiled wheels (xformers, sageattention) are built for **PyTorch 2.8.0**
+- These wheels contain CUDA kernels compiled for specific PyTorch ABI
+- Using them with PyTorch 2.9.x causes immediate crash
+
+### Solution
+
+**The working combination (from MonsterMMORPG's V61 installer):**
+```bash
+# PyTorch 2.8.0 (NOT 2.9.x)
+pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
+
+# Pre-compiled xformers for PyTorch 2.8.0 with RTX 5090 support
+pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/xformers-0.0.33+c159edc0.d20250906-cp39-abi3-linux_x86_64.whl
+
+# Pre-compiled sageattention 2.2.0.post4 for PyTorch 2.8.0 with RTX 5090 support
+pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0.post4-cp39-abi3-linux_x86_64.whl
+```
+
+**Key points:**
+1. **torch 2.8.0** - Must use this version to match pre-compiled wheels
+2. **xformers 0.0.33** - Pre-compiled with sm_120 (RTX 5090) support
+3. **sageattention 2.2.0.post4** - Pre-compiled with sm_120 support (NOT 2.2.0, use .post4)
+4. All wheels are `cp39-abi3` (Python 3.9+ ABI compatible)
+
+### Files Modified
+
+**Dockerfile** - Updated fast path to use correct versions:
+```bash
+# In fast path when GPU incompatibility detected:
+pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129 --force-reinstall
+
+# Pre-compiled wheels with RTX 5090 support
+pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/xformers-0.0.33+c159edc0.d20250906-cp39-abi3-linux_x86_64.whl
+pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0.post4-cp39-abi3-linux_x86_64.whl
+```
+
+### What NOT To Do
+
+1. **Don't use torch 2.9.x** - Pre-compiled wheels crash
+2. **Don't use sageattention from PyPI** - Only has version 1.0.6, much slower
+3. **Don't build sageattention from source** - Requires CUDA 12.8+ toolkit (system level)
+4. **Don't mix wheel versions** - All must be built for same PyTorch version
+
+### Manual Fix for Running Pods
+
+If venv is corrupted:
+```bash
+# Nuke and rebuild
+deactivate
+rm -rf /workspace/venv
+python3.11 -m venv /workspace/venv
+source /workspace/venv/bin/activate
+pip install --upgrade pip wheel setuptools
+
+# Install correct stack
+pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
+pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/xformers-0.0.33+c159edc0.d20250906-cp39-abi3-linux_x86_64.whl
+pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0.post4-cp39-abi3-linux_x86_64.whl
+cd /workspace/ComfyUI && pip install -r requirements.txt
+```
+
+### Verification
+
+```bash
+source /workspace/venv/bin/activate
+python -c "
+import torch
+print(f'PyTorch: {torch.__version__}')
+
+import xformers
+print(f'xformers: {xformers.__version__}')
+
+from sageattention import sageattn
+print('sageattention: OK (2.2.0.post4)')
+
+# Test GPU
+x = torch.tensor([1.0]).cuda()
+print(f'GPU test: OK')
+"
+```
+
+**Expected output:**
+```
+PyTorch: 2.8.0+cu129
+xformers: 0.0.33+c159edc0.d20250906
+sageattention: OK (2.2.0.post4)
+GPU test: OK
+```
+
+### Credits
+
+Solution based on MonsterMMORPG's ComfyUI V61 installer which correctly uses:
+- PyTorch 2.8.0 cu129
+- Pre-compiled wheels from HuggingFace with RTX 5090 support
+
+### Status
+
+- **Issue severity:** Critical (ComfyUI crashes immediately on startup)
+- **Status:** ✅ **RESOLVED**
+- **Affects:** All RTX 5090 users, potentially other GPUs with version mismatches
+- **Solution:** Use PyTorch 2.8.0 + MonsterMMORPG pre-compiled wheels
+- **Key learning:** Pre-compiled CUDA wheels are ABI-specific to PyTorch version
+
+---
