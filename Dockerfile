@@ -582,7 +582,27 @@ if lsof -i:8888 > /dev/null 2>&1; then
 fi
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Ready! Visit port 7777 to manage ComfyUI"
+
+# Auto-start ComfyUI if COMFYUI_USER and COMFYUI_AUTO_START are set
+if [ -n "$COMFYUI_USER" ] && [ "$COMFYUI_AUTO_START" = "true" ]; then
+    echo "🚀 Auto-starting ComfyUI for user: $COMFYUI_USER"
+
+    # Wait for control panel to be ready
+    for i in {1..30}; do
+        if curl -s http://localhost:7777/health > /dev/null 2>&1; then
+            break
+        fi
+        sleep 1
+    done
+
+    # Call the start API
+    curl -X POST http://localhost:7777/api/start \
+        -H "Content-Type: application/json" \
+        -d "{\"username\": \"$COMFYUI_USER\"}" \
+        > /dev/null 2>&1 && echo "✅ ComfyUI started for $COMFYUI_USER" || echo "⚠️ Failed to auto-start ComfyUI"
+else
+    echo "Ready! Visit port 7777 to manage ComfyUI"
+fi
 
 # Keep container running
 sleep infinity
@@ -817,12 +837,19 @@ if [ ! -d "/workspace/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
     fi
 fi
 
-# Apply GPU-aware TensorRT patch for multi-pod environments (Bug #29)
-# This allows multiple pods with different GPUs (B200, RTX 5090, etc.) to share
-# the same network volume without TensorRT engine conflicts
+# Setup GPU-specific TensorRT directories using symlinks
+# This is the PRIMARY mechanism for multi-GPU support (more reliable than code patching)
+# Each GPU type (4090, 5090, B200, etc.) gets its own cache directory
+# /workspace/ComfyUI/models/tensorrt/upscaler -> /workspace/.tensorrt_cache/{compute_cap}/upscaler
+echo "🔧 Setting up GPU-specific TensorRT directories..."
+if [ -f "/app/scripts/setup_tensorrt_gpu_dirs.sh" ]; then
+    /app/scripts/setup_tensorrt_gpu_dirs.sh 2>&1 || echo "   ℹ️ TensorRT directory setup skipped (non-critical)"
+fi
+
+# Legacy: Apply GPU-aware TensorRT code patch (kept for backwards compatibility)
+# The symlink approach above is more reliable, but this patch adds extra safety
 if [ -f "/app/scripts/patch_tensorrt_gpu_aware.sh" ]; then
-    echo "🔧 Checking for TensorRT upscaler..."
-    /app/scripts/patch_tensorrt_gpu_aware.sh 2>/dev/null || echo "   ℹ️ TensorRT upscaler not installed (will patch when installed)"
+    /app/scripts/patch_tensorrt_gpu_aware.sh 2>/dev/null || true
 fi
 
 # Start ComfyUI with appropriate attention mechanism
