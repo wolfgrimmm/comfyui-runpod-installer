@@ -852,8 +852,7 @@
                         >
                             <div class="status-dot"></div>
                             <span id="statusText"
-                                >{% if running %}Running{% else %}Offline{%
-                                endif %}</span
+                                >{% if running %}Running{% else %}Offline{% endif %}</span
                             >
                         </div>
                     </div>
@@ -869,13 +868,7 @@
                             class="icon-btn"
                             onclick="restartService()"
                             title="Restart"
-                            {%
-                            if
-                            not
-                            running
-                            %}disabled{%
-                            endif
-                            %}
+                            {% if not running %}disabled{% endif %}
                         >
                             <i data-lucide="refresh-cw"></i>
                         </button>
@@ -919,12 +912,7 @@
                                         <select
                                             class="user-select"
                                             id="username"
-                                            {%
-                                            if
-                                            running
-                                            %}disabled{%
-                                            endif
-                                            %}
+                                            {% if running %}disabled{% endif %}
                                         >
                                             {% if not current_user %}
                                             <option value="" selected disabled>
@@ -933,13 +921,7 @@
                                             {% endif %} {% for user in users %}
                                             <option
                                                 value="{{ user }}"
-                                                {%
-                                                if
-                                                user=""
-                                                ="current_user"
-                                                %}selected{%
-                                                endif
-                                                %}
+                                                {% if user == current_user %}selected{% endif %}
                                             >
                                                 {{ user }}
                                             </option>
@@ -983,13 +965,7 @@
                                     class="primary-btn"
                                     id="primaryBtn"
                                     onclick="startComfyUI()"
-                                    {%
-                                    if
-                                    not
-                                    current_user
-                                    %}disabled{%
-                                    endif
-                                    %}
+                                    {% if not current_user %}disabled{% endif %}
                                 >
                                     <i data-lucide="play"></i>
                                     <span>Launch ComfyUI</span>
@@ -1029,8 +1005,7 @@
                                         class="stat-value {% if not running %}inactive{% endif %}"
                                         id="sessionTime"
                                     >
-                                        {% if running %}0m{% else %}--:--{%
-                                        endif %}
+                                        {% if running %}0m{% else %}--:--{% endif %}
                                     </div>
                                 </div>
                                 <div class="stat-card">
@@ -1046,8 +1021,7 @@
                                         class="stat-value {% if not running %}inactive{% endif %}"
                                         id="gpuUsage"
                                     >
-                                        {% if running %}Active{% else %}--%{%
-                                        endif %}
+                                        {% if running %}Active{% else %}--%{% endif %}
                                     </div>
                                 </div>
                             </div>
