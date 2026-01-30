@@ -854,7 +854,8 @@
                         >
                             <div class="status-dot"></div>
                             <span id="statusText"
-                                >{% if running %}Running{% else %}Offline{% endif %}</span
+                                >{% if running %}Running{% else %}Offline{%
+                                endif %}</span
                             >
                         </div>
                     </div>
@@ -870,7 +871,13 @@
                             class="icon-btn"
                             onclick="restartService()"
                             title="Restart"
-                            {% if not running %}disabled{% endif %}
+                            {%
+                            if
+                            not
+                            running
+                            %}disabled{%
+                            endif
+                            %}
                         >
                             <i data-lucide="refresh-cw"></i>
                         </button>
@@ -914,7 +921,12 @@
                                         <select
                                             class="user-select"
                                             id="username"
-                                            {% if running %}disabled{% endif %}
+                                            {%
+                                            if
+                                            running
+                                            %}disabled{%
+                                            endif
+                                            %}
                                         >
                                             {% if not current_user %}
                                             <option value="" selected disabled>
@@ -923,7 +935,13 @@
                                             {% endif %} {% for user in users %}
                                             <option
                                                 value="{{ user }}"
-                                                {% if user == current_user %}selected{% endif %}
+                                                {%
+                                                if
+                                                user=""
+                                                ="current_user"
+                                                %}selected{%
+                                                endif
+                                                %}
                                             >
                                                 {{ user }}
                                             </option>
@@ -967,7 +985,13 @@
                                     class="primary-btn"
                                     id="primaryBtn"
                                     onclick="startComfyUI()"
-                                    {% if not current_user %}disabled{% endif %}
+                                    {%
+                                    if
+                                    not
+                                    current_user
+                                    %}disabled{%
+                                    endif
+                                    %}
                                 >
                                     <i data-lucide="play"></i>
                                     <span>Launch ComfyUI</span>
@@ -1007,7 +1031,8 @@
                                         class="stat-value {% if not running %}inactive{% endif %}"
                                         id="sessionTime"
                                     >
-                                        {% if running %}0m{% else %}--:--{% endif %}
+                                        {% if running %}0m{% else %}--:--{%
+                                        endif %}
                                     </div>
                                 </div>
                                 <div class="stat-card">
@@ -1023,7 +1048,8 @@
                                         class="stat-value {% if not running %}inactive{% endif %}"
                                         id="gpuUsage"
                                     >
-                                        {% if running %}Active{% else %}--%{% endif %}
+                                        {% if running %}Active{% else %}--%{%
+                                        endif %}
                                     </div>
                                 </div>
                             </div>
@@ -1147,6 +1173,7 @@
             let counterInterval = null;
             let lastStartTime = null;
             let startTime = {% if running and start_time %}{{ start_time * 1000 }}{% else %}null{% endif %};
+            let logEventSource = null;
 
             // Console logging
             function logToConsole(message, type = '') {
@@ -1156,7 +1183,67 @@
                 log.className = 'log ' + type;
                 log.textContent = `[${timestamp}] ${message}`;
                 consoleBody.appendChild(log);
+                // Keep only last 200 logs in DOM
+                while (consoleBody.children.length > 200) {
+                    consoleBody.removeChild(consoleBody.firstChild);
+                }
                 consoleBody.scrollTop = consoleBody.scrollHeight;
+            }
+
+            // Determine log type from message content
+            function getLogType(message) {
+                const msg = message.toLowerCase();
+                if (msg.includes('error') || msg.includes('failed') || msg.includes('exception')) return 'error';
+                if (msg.includes('warning') || msg.includes('warn')) return 'warning';
+                if (msg.includes('success') || msg.includes('ready') || msg.includes('loaded')) return 'success';
+                if (msg.includes('import') || msg.includes('loading')) return 'info';
+                return '';
+            }
+
+            // Start streaming ComfyUI logs
+            function startLogStream() {
+                if (logEventSource) {
+                    logEventSource.close();
+                }
+
+                logEventSource = new EventSource('/api/logs/stream');
+
+                logEventSource.onmessage = function(event) {
+                    try {
+                        const log = JSON.parse(event.data);
+                        const type = getLogType(log.message);
+                        const consoleBody = document.getElementById('consoleBody');
+                        const logDiv = document.createElement('div');
+                        logDiv.className = 'log ' + type;
+                        logDiv.textContent = `[${log.time}] ${log.message}`;
+                        consoleBody.appendChild(logDiv);
+                        // Keep only last 200 logs in DOM
+                        while (consoleBody.children.length > 200) {
+                            consoleBody.removeChild(consoleBody.firstChild);
+                        }
+                        consoleBody.scrollTop = consoleBody.scrollHeight;
+                    } catch (e) {
+                        console.error('Error parsing log:', e);
+                    }
+                };
+
+                logEventSource.onerror = function(e) {
+                    console.log('Log stream disconnected, will retry...');
+                    setTimeout(() => {
+                        if (logEventSource) {
+                            logEventSource.close();
+                            startLogStream();
+                        }
+                    }, 3000);
+                };
+            }
+
+            // Stop streaming logs
+            function stopLogStream() {
+                if (logEventSource) {
+                    logEventSource.close();
+                    logEventSource = null;
+                }
             }
 
             // Toast notifications
@@ -1342,6 +1429,9 @@
                     if (data.success) {
                         logToConsole('ComfyUI process started, waiting for initialization...', 'success');
                         showToast('ComfyUI starting...', 'info');
+
+                        // Start streaming ComfyUI logs
+                        startLogStream();
 
                         // Start polling for ready state
                         checkInterval = setInterval(async () => {
@@ -1575,10 +1665,14 @@
             setInterval(updateUptime, 60000);
             updateUptime();
 
-            // Load GPU info
+            // Load GPU info and start log stream if running
             fetch('/api/status').then(r => r.json()).then(data => {
                 if (data.gpu_info) {
                     document.getElementById('gpuInfo').textContent = data.gpu_info;
+                }
+                // Start log stream if ComfyUI is running
+                if (data.running) {
+                    startLogStream();
                 }
             }).catch(() => {});
 

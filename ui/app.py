@@ -65,6 +65,8 @@ class ComfyUIManager:
             os.environ.get("HOURLY_RATE", "0.74")
         )  # Default RunPod rate
         self.startup_logs = queue.Queue()  # Store startup logs
+        self.comfyui_logs = []  # Store recent ComfyUI logs for streaming
+        self.max_logs = 500  # Keep last 500 log lines
         self.startup_progress = {"stage": "idle", "message": "", "percent": 0}
         self.log_thread = None
 
@@ -180,6 +182,14 @@ class ComfyUIManager:
                     line = line.decode("utf-8", errors="ignore").strip()
                     if not line:
                         continue
+
+                    # Store log line for streaming to frontend
+                    timestamp = time.strftime("%H:%M:%S")
+                    log_entry = {"time": timestamp, "message": line}
+                    self.comfyui_logs.append(log_entry)
+                    # Keep only last N logs
+                    if len(self.comfyui_logs) > self.max_logs:
+                        self.comfyui_logs = self.comfyui_logs[-self.max_logs :]
 
                     # Parse progress from ComfyUI output with better custom node tracking
                     if "Loading" in line and "custom nodes" in line.lower():
@@ -908,6 +918,12 @@ def classic_ui():
     return render_template("index.html", **status)
 
 
+@app.route("/v4")
+def control_panel_v4():
+    """V4 Control Panel - new design preview"""
+    return render_template("control_panel_v4.html")
+
+
 @app.route("/api/start", methods=["POST"])
 def start_comfyui():
     """Start ComfyUI for user"""
@@ -1096,6 +1112,56 @@ def startup_stream():
         return jsonify(
             {"error": "Failed to create event stream", "message": str(e)}
         ), 500
+
+
+@app.route("/api/logs")
+def get_logs():
+    """Get recent ComfyUI logs"""
+    # Get query params
+    since_index = request.args.get("since", 0, type=int)
+
+    # Return logs since the given index
+    logs = (
+        manager.comfyui_logs[since_index:]
+        if since_index < len(manager.comfyui_logs)
+        else []
+    )
+
+    return jsonify(
+        {
+            "logs": logs,
+            "total": len(manager.comfyui_logs),
+            "next_index": len(manager.comfyui_logs),
+        }
+    )
+
+
+@app.route("/api/logs/stream")
+def stream_logs():
+    """Stream ComfyUI logs via Server-Sent Events"""
+
+    def generate():
+        last_index = len(manager.comfyui_logs)
+
+        # Send initial logs
+        if manager.comfyui_logs:
+            for log in manager.comfyui_logs[-50:]:  # Send last 50 logs initially
+                yield f"data: {json.dumps(log)}\n\n"
+
+        # Then stream new logs as they come
+        while True:
+            current_len = len(manager.comfyui_logs)
+            if current_len > last_index:
+                for log in manager.comfyui_logs[last_index:current_len]:
+                    yield f"data: {json.dumps(log)}\n\n"
+                last_index = current_len
+            time.sleep(0.3)  # Check for new logs every 300ms
+
+    response = Response(generate(), mimetype="text/event-stream")
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["X-Accel-Buffering"] = "no"
+    response.headers["Connection"] = "keep-alive"
+    return response
 
 
 @app.route("/api/add_user", methods=["POST"])
