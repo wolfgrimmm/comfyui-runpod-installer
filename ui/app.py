@@ -729,9 +729,19 @@ class ComfyUIManager:
             )
             if result.returncode == 0:
                 gpu_data = result.stdout.strip().split(", ")
+                gpu_name = gpu_data[0] if len(gpu_data) > 0 else "Unknown"
+                # Convert MiB to GB for cleaner display
+                memory_str = gpu_data[1] if len(gpu_data) > 1 else "Unknown"
+                if "MiB" in memory_str:
+                    try:
+                        mib_value = int(memory_str.replace(" MiB", "").strip())
+                        gb_value = round(mib_value / 1024)
+                        memory_str = f"{gb_value} GB"
+                    except:
+                        pass
                 self.gpu_info = {
-                    "name": gpu_data[0] if len(gpu_data) > 0 else "Unknown",
-                    "memory": gpu_data[1] if len(gpu_data) > 1 else "Unknown",
+                    "name": gpu_name,
+                    "memory": memory_str,
                 }
             else:
                 self.gpu_info = {"name": "Unknown", "memory": "Unknown"}
