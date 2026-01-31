@@ -44,7 +44,7 @@
                 background: #000;
             }
 
-            /* Dark Veil WebGL Background */
+            /* Dark Veil WebGL Background with CSS fallback */
             #dark-veil-canvas {
                 position: fixed;
                 top: 0;
@@ -53,13 +53,16 @@
                 height: 100%;
                 z-index: 0;
                 pointer-events: none;
+                /* CSS fallback gradient if WebGL fails */
+                background:
+                    radial-gradient(ellipse at 20% 30%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+                    radial-gradient(ellipse at 80% 70%, rgba(236, 72, 153, 0.1) 0%, transparent 50%),
+                    radial-gradient(ellipse at 50% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+                    #0a0a0a;
             }
 
             .bg {
-                position: fixed;
-                inset: 0;
-                background: #000;
-                z-index: -1;
+                display: none; /* Not needed with canvas fallback */
             }
 
             /* Content wrapper */
