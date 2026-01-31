@@ -4648,3 +4648,104 @@ If you have existing pods with mixed TensorRT engines:
 - **Key learning:** Filesystem-level solutions are more robust than code patching
 
 ---
+
+## 35. ComfyUI-Florence2 Node Incompatibility with Newer Transformers (Bug #35)
+
+### Problem
+User reported Florence2 node failing with two different errors after updating:
+1. First error: `'Florence2LanguageConfig' object has no attribute 'forced_bos_token_id'`
+2. After git pull: `TypeError: Florence2ForConditionalGeneration.__init__() got an unexpected keyword argument 'dtype'`
+
+Both errors occurred when trying to use the Florence2 vision-language model in ComfyUI workflows.
+
+### Root Cause
+
+**Transformers library version incompatibility:**
+
+The ComfyUI-Florence2 node was designed for transformers version 4.44.x. Newer versions of the transformers library changed internal APIs:
+
+1. **`forced_bos_token_id` error:** The `Florence2LanguageConfig` class in newer transformers removed or renamed the `forced_bos_token_id` attribute
+2. **`dtype` error:** The `Florence2ForConditionalGeneration.__init__()` signature changed, no longer accepting `dtype` as a keyword argument
+
+**Version timeline:**
+- transformers 4.44.0: Florence2 works correctly
+- transformers 4.45+: Breaking API changes introduced
+- transformers 4.50+: Additional breaking changes
+
+### Solution
+
+**Files Modified:** `Dockerfile` (line 205)
+
+Pinned transformers to version 4.44.0:
+
+```dockerfile
+# OLD (unpinned - pulled latest):
+uv pip install transformers diffusers accelerate
+
+# NEW (pinned for Florence2 compatibility):
+# Pin transformers to 4.44.0 for Florence2 compatibility (Bug #35)
+# Newer versions cause: 'Florence2LanguageConfig' object has no attribute 'forced_bos_token_id'
+# and 'unexpected keyword argument dtype' errors
+uv pip install "transformers==4.44.0" diffusers accelerate
+```
+
+### Manual Fix for Running Pods
+
+If you're on a pod with this error:
+```bash
+source /workspace/venv/bin/activate
+pip install transformers==4.44.0
+# Restart ComfyUI from control panel
+```
+
+### Verification
+
+```bash
+source /workspace/venv/bin/activate
+python -c "import transformers; print(f'transformers: {transformers.__version__}')"
+# Should output: transformers: 4.44.0
+
+# Test Florence2 import
+python -c "
+from transformers import AutoModelForCausalLM, AutoProcessor
+print('Florence2 imports work correctly')
+"
+```
+
+### Affected Nodes
+
+- **ComfyUI-Florence2** - Primary affected node
+- Any custom node using Florence2 models from HuggingFace
+- Nodes depending on `transformers.models.auto.modeling_auto.AutoModelForCausalLM` with Florence2
+
+### Why This Works
+
+transformers 4.44.0 is the last version before the Florence2 API changes were introduced. By pinning to this version:
+- ✅ `Florence2LanguageConfig.forced_bos_token_id` attribute exists
+- ✅ `Florence2ForConditionalGeneration.__init__()` accepts `dtype` parameter
+- ✅ All other models continue to work (Stable Diffusion, CLIP, etc.)
+- ✅ Compatible with diffusers and accelerate libraries
+
+### Trade-offs
+
+- ⚠️ Some newer models may require transformers 4.45+ (rare)
+- ⚠️ Security patches in newer versions not included
+- ✅ Most ComfyUI workflows use older, well-tested models
+- ✅ Florence2 is widely used for image captioning workflows
+
+### Status
+
+- **Issue severity:** High (blocks Florence2-based workflows)
+- **Status:** ✅ **RESOLVED**
+- **Affects:** All users with ComfyUI-Florence2 node and newer transformers
+- **Solution:** Pin transformers to version 4.44.0
+- **Deployment:** Dockerfile updated, requires Docker rebuild
+
+### Result
+
+- ✅ Florence2 node works correctly with pinned transformers
+- ✅ Image captioning workflows functional
+- ✅ No breaking changes for other nodes
+- ✅ Compatible with all existing workflows
+
+---

@@ -957,7 +957,18 @@
                                                 Select user
                                             </option>
                                             {% endif %} {% for user in users %}
-                                            <option value="{{ user }}" {% if user == current_user %}selected{% endif %}>{{ user }}</option>
+                                            <option
+                                                value="{{ user }}"
+                                                {%
+                                                if
+                                                user=""
+                                                ="current_user"
+                                                %}selected{%
+                                                endif
+                                                %}
+                                            >
+                                                {{ user }}
+                                            </option>
                                             {% endfor %}
                                         </select>
                                         <i data-lucide="chevron-down"></i>
@@ -1061,7 +1072,7 @@
                                         class="stat-value {% if not running %}inactive{% endif %}"
                                         id="gpuUsage"
                                     >
-                                        {% if running %}Active{% else %}--%{%
+                                        {% if running %}Active{% else %}--{%
                                         endif %}
                                     </div>
                                 </div>

@@ -202,7 +202,10 @@ if [ "$NEED_INSTALL" = "1" ]; then
     # Core ComfyUI dependencies
     uv pip install einops torchsde "kornia>=0.7.1" spandrel "safetensors>=0.4.2"
     uv pip install aiohttp pyyaml Pillow tqdm scipy
-    uv pip install transformers diffusers accelerate
+    # Pin transformers to 4.44.0 for Florence2 compatibility (Bug #35)
+    # Newer versions cause: 'Florence2LanguageConfig' object has no attribute 'forced_bos_token_id'
+    # and 'unexpected keyword argument dtype' errors
+    uv pip install "transformers==4.44.0" diffusers accelerate
     uv pip install opencv-python
 
     # Video processing support (required by ComfyUI for video input)
@@ -288,7 +291,8 @@ if [ "$NEED_INSTALL" = "1" ]; then
     uv pip install GitPython PyGithub==1.59.1
 
     # ComfyUI required dependencies
-    uv pip install alembic pydantic-settings blend-modes deepdiff pynvml
+    # Use nvidia-ml-py instead of deprecated pynvml
+    uv pip install alembic pydantic-settings blend-modes deepdiff nvidia-ml-py
 
     # Jupyter
     uv pip install jupyterlab ipywidgets notebook
