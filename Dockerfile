@@ -74,6 +74,10 @@ except Exception as e:
             --index-url https://download.pytorch.org/whl/cu129 \
             --force-reinstall --quiet
 
+        # Pre-compiled flash-attn - REQUIRED for sageattention to work
+        echo "🔧 Installing pre-compiled flash-attn..."
+        pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/flash_attn-2.8.2-cp311-cp311-linux_x86_64.whl --quiet
+
         # Pre-compiled xformers with RTX 5090 (sm_120) support - built for PyTorch 2.8.0
         echo "🔧 Installing pre-compiled xformers..."
         pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/xformers-0.0.33+c159edc0.d20250906-cp39-abi3-linux_x86_64.whl --quiet
@@ -82,9 +86,40 @@ except Exception as e:
         echo "🔧 Installing pre-compiled sageattention..."
         pip install https://huggingface.co/MonsterMMORPG/Wan_GGUF/resolve/main/sageattention-2.2.0.post4-cp39-abi3-linux_x86_64.whl --quiet
 
-        echo "✅ PyTorch + xformers + sageattention upgraded"
+        echo "✅ PyTorch + flash-attn + xformers + sageattention upgraded"
     else
         echo "✅ PyTorch works with $GPU_NAME"
+    fi
+
+    # Check if GPU changed - need to update attention settings
+    LAST_GPU=""
+    if [ -f "/workspace/.last_gpu_name" ]; then
+        LAST_GPU=$(cat /workspace/.last_gpu_name)
+    fi
+
+    if [ "$GPU_NAME" != "$LAST_GPU" ]; then
+        echo "🔄 GPU changed ($LAST_GPU -> $GPU_NAME), clearing GPU caches..."
+        echo "$GPU_NAME" > /workspace/.last_gpu_name
+
+        # Clear Triton cache - CRITICAL for sage attention to detect correct GPU
+        echo "   🧹 Clearing Triton cache..."
+        rm -rf /workspace/.triton ~/.triton /root/.triton /tmp/triton* 2>/dev/null || true
+
+        # Clear PyTorch kernel cache
+        echo "   🧹 Clearing PyTorch kernel cache..."
+        rm -rf ~/.cache/torch/kernels /workspace/.cache/torch/kernels 2>/dev/null || true
+
+        # Re-run attention mechanism detection for new GPU
+        if python -c "import sageattention" 2>/dev/null; then
+            echo "   🚀 Sage Attention enabled for $GPU_NAME"
+            echo "export COMFYUI_ATTENTION_MECHANISM=sage" > /workspace/venv/.env_settings
+        elif python -c "import xformers" 2>/dev/null; then
+            echo "   ✅ xformers enabled for $GPU_NAME"
+            echo "export COMFYUI_ATTENTION_MECHANISM=xformers" > /workspace/venv/.env_settings
+        else
+            echo "   ⚠️ Using default attention for $GPU_NAME"
+            echo "export COMFYUI_ATTENTION_MECHANISM=default" > /workspace/venv/.env_settings
+        fi
     fi
 
     echo "✅ Environment already initialized (fast path)"
@@ -602,6 +637,13 @@ if [ -n "$COMFYUI_USER" ] && [ "$COMFYUI_AUTO_START" = "true" ]; then
         > /dev/null 2>&1 && echo "✅ ComfyUI started for $COMFYUI_USER" || echo "⚠️ Failed to auto-start ComfyUI"
 else
     echo "Ready! Visit port 7777 to manage ComfyUI"
+fi
+
+# Setup GPU-specific TensorRT directories (must run BEFORE sleep infinity)
+# This allows multiple GPUs (4090, 5090, B200, etc.) to share the same network volume
+echo "🔧 Setting up GPU-specific TensorRT directories..."
+if [ -f "/app/scripts/setup_tensorrt_gpu_dirs.sh" ]; then
+    /app/scripts/setup_tensorrt_gpu_dirs.sh 2>&1 || echo "   ℹ️ TensorRT directory setup skipped"
 fi
 
 # Keep container running

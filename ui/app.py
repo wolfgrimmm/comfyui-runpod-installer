@@ -1003,6 +1003,13 @@ def get_status():
     status = manager.get_status()
     # Add startup progress to status
     status["startup_progress"] = manager.startup_progress
+    # Add GPU info as a formatted string for the UI
+    if manager.gpu_info:
+        gpu_name = manager.gpu_info.get("name", "Unknown")
+        gpu_memory = manager.gpu_info.get("memory", "Unknown")
+        status["gpu_info"] = f"{gpu_name} ({gpu_memory})"
+    else:
+        status["gpu_info"] = "GPU information unavailable"
     return jsonify(status)
 
 

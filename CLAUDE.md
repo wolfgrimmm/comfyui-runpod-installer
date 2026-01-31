@@ -4506,3 +4506,145 @@ Solution based on MonsterMMORPG's ComfyUI V61 installer which correctly uses:
 - **Key learning:** Pre-compiled CUDA wheels are ABI-specific to PyTorch version
 
 ---
+
+## 34. TensorRT Engines Not Automatically GPU-Specific in Multi-Pod Environment (Bug #34)
+
+### Problem
+User reported TensorRT upscaler errors when running multiple pods with different GPUs simultaneously:
+- Error: "The engine plan file is generated on an incompatible device, expecting compute 8.9 got compute 12.0"
+- Multiple users with different GPUs (4090, 5090, B200) share the same network volume
+- TensorRT engines compiled on one GPU fail on another GPU
+- Previous code-patching solution (Bug #29) was fragile and required manual intervention
+
+**User requirement:** "it has to be automated. people will run this network volume from many videocards again and again at the same time. once we created a pod tensor folder should listen for its videocard folder"
+
+### Root Cause
+
+The previous solution (Bug #29) patched Python code to modify `self.engine_path`, but this approach was:
+1. **Fragile** - Regex-based patching could miss cases or break with node updates
+2. **Not automatic** - Required ComfyUI restart for patch to apply
+3. **Single point of failure** - If patch didn't apply, all engines mixed together
+
+All GPUs were writing to the same directory:
+```
+/workspace/ComfyUI/models/tensorrt/upscaler/
+├── model_A.trt  ← Built on 4090 (compute 8.9)
+├── model_B.trt  ← Built on 5090 (compute 12.0) - OVERWRITES!
+└── model_C.trt  ← Built on B200 (compute 10.0) - OVERWRITES!
+```
+
+### Solution
+
+**New approach: Filesystem-level symlinks (more robust than code patching)**
+
+Created `scripts/setup_tensorrt_gpu_dirs.sh` that:
+1. Detects current GPU compute capability via PyTorch
+2. Creates GPU-specific cache directory: `/workspace/.tensorrt_cache/{compute_cap}/upscaler/`
+3. Replaces `/workspace/ComfyUI/models/tensorrt/upscaler` with a symlink to GPU-specific folder
+4. Automatically migrates existing engines to appropriate folder
+
+**New directory structure:**
+```
+/workspace/.tensorrt_cache/
+├── sm_89/upscaler/     ← RTX 4090 engines (compute 8.9)
+├── sm_100/upscaler/    ← B200 engines (compute 10.0)
+└── sm_120/upscaler/    ← RTX 5090 engines (compute 12.0)
+
+/workspace/ComfyUI/models/tensorrt/upscaler -> /workspace/.tensorrt_cache/{current_gpu}/upscaler
+```
+
+**Files Created:**
+- `scripts/setup_tensorrt_gpu_dirs.sh` - Main setup script
+
+**Files Modified:**
+- `Dockerfile` (lines 840-853) - Integrated into startup sequence before ComfyUI starts
+
+### How It Works
+
+1. **On every ComfyUI startup:**
+   - Script detects GPU compute capability (e.g., `sm_89` for RTX 4090)
+   - Checks if `/workspace/ComfyUI/models/tensorrt/upscaler` is a symlink
+   - If it's a regular directory, migrates engines and converts to symlink
+   - If symlink points to wrong GPU, updates it
+   - Creates GPU-specific cache directory if needed
+
+2. **Concurrent multi-GPU usage:**
+   - Pod 1 (RTX 4090): symlink → `/workspace/.tensorrt_cache/sm_89/upscaler/`
+   - Pod 2 (RTX 5090): symlink → `/workspace/.tensorrt_cache/sm_120/upscaler/`
+   - Pod 3 (B200): symlink → `/workspace/.tensorrt_cache/sm_100/upscaler/`
+   - Each pod has its own isolated TensorRT cache
+
+3. **Automatic engine compilation:**
+   - First run on RTX 4090: compiles engines to `sm_89/` folder
+   - Switch to RTX 5090: compiles engines to `sm_120/` folder (doesn't touch 4090's)
+   - Switch back to RTX 4090: uses pre-compiled engines from `sm_89/` (instant, no rebuild)
+
+### Startup Output Example
+
+```
+==============================================
+TensorRT GPU-Aware Directory Setup
+==============================================
+Detected GPU: NVIDIA GeForce RTX 5090
+Compute Capability: sm_120
+
+Setting up TensorRT directories...
+  Base: /workspace/ComfyUI/models/tensorrt
+  GPU-specific cache: /workspace/.tensorrt_cache/sm_120/upscaler
+
+Symlink created:
+  /workspace/ComfyUI/models/tensorrt/upscaler -> /workspace/.tensorrt_cache/sm_120/upscaler
+
+Directory structure:
+  /workspace/.tensorrt_cache/
+  |-- sm_89/ (4 engines)
+  |-- sm_120/ (ACTIVE - 2 engines)
+
+==============================================
+TensorRT GPU-Aware Setup Complete!
+==============================================
+```
+
+### Benefits Over Previous Solution (Bug #29)
+
+| Aspect | Bug #29 (Code Patch) | Bug #34 (Symlinks) |
+|--------|---------------------|-------------------|
+| Reliability | Fragile regex patching | Filesystem-level, always works |
+| Automatic | Needs restart to apply | Works immediately |
+| Node updates | May break on updates | Survives node updates |
+| Multiple locations | Only patches one file | Works for any TensorRT path |
+| Concurrency | Can fail if both pods start | Safe concurrent access |
+
+### Testing
+
+**Verify setup is working:**
+```bash
+# Check symlink
+ls -la /workspace/ComfyUI/models/tensorrt/upscaler
+# Should show: upscaler -> /workspace/.tensorrt_cache/sm_XX/upscaler
+
+# Check GPU-specific directories
+ls -la /workspace/.tensorrt_cache/
+
+# Run on different GPU, check symlink updates
+```
+
+### Manual Fix for Running Pods
+
+If you have existing pods with mixed TensorRT engines:
+```bash
+# Run the setup script manually
+/app/scripts/setup_tensorrt_gpu_dirs.sh
+
+# Restart ComfyUI from control panel
+```
+
+### Status
+
+- **Issue severity:** High (blocks multi-GPU TensorRT usage)
+- **Status:** ✅ **RESOLVED**
+- **Affects:** All users with multiple GPU types on shared network volume
+- **Solution:** Symlink-based GPU-specific directories
+- **Key learning:** Filesystem-level solutions are more robust than code patching
+
+---

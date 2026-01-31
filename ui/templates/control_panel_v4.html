@@ -1,0 +1,1383 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>RunDeck - ComfyUI Control Panel</title>
+
+        <!-- Fonts -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&family=Space+Grotesk:wght@500;600;700&display=swap"
+            rel="stylesheet"
+        />
+
+        <!-- Lucide Icons -->
+        <script src="https://unpkg.com/lucide@latest"></script>
+
+        <style>
+            /* ============================================
+           CSS VARIABLES / DESIGN TOKENS
+           ============================================ */
+            :root {
+                --color-primary: #8b5cf6;
+                --color-primary-hover: #a78bfa;
+                --color-success: #22c55e;
+                --color-error: #ef4444;
+                --color-warning: #f59e0b;
+                --color-cyan: #06b6d4;
+
+                --bg-dark: #000000;
+                --bg-veil: rgba(0, 0, 0, 0.6);
+                --bg-card: rgba(255, 255, 255, 0.03);
+                --bg-card-hover: rgba(255, 255, 255, 0.06);
+                --bg-console: #0d0d0d;
+
+                --border-subtle: rgba(255, 255, 255, 0.06);
+                --border-default: rgba(255, 255, 255, 0.08);
+                --border-hover: rgba(255, 255, 255, 0.12);
+
+                --text-primary: rgba(255, 255, 255, 0.9);
+                --text-secondary: rgba(255, 255, 255, 0.6);
+                --text-tertiary: rgba(255, 255, 255, 0.4);
+
+                --radius-sm: 8px;
+                --radius-md: 10px;
+                --radius-lg: 12px;
+                --radius-xl: 14px;
+                --radius-2xl: 16px;
+                --radius-3xl: 20px;
+                --radius-full: 100px;
+
+                --font-heading: "Space Grotesk", sans-serif;
+                --font-body: "Inter", sans-serif;
+                --font-mono: "JetBrains Mono", monospace;
+            }
+
+            *,
+            *::before,
+            *::after {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            html,
+            body {
+                height: 100%;
+                font-family: var(--font-body);
+                background: var(--bg-dark);
+                color: var(--text-primary);
+                overflow: hidden;
+            }
+
+            .app-container {
+                position: relative;
+                width: 100%;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            .background-layer {
+                position: absolute;
+                inset: 0;
+                background:
+                    linear-gradient(
+                        135deg,
+                        rgba(139, 92, 246, 0.15) 0%,
+                        transparent 50%
+                    ),
+                    linear-gradient(
+                        225deg,
+                        rgba(236, 72, 153, 0.1) 0%,
+                        transparent 50%
+                    ),
+                    var(--bg-dark);
+                z-index: 0;
+            }
+
+            .content-wrapper {
+                position: relative;
+                z-index: 1;
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+            }
+
+            /* ============================================
+           HEADER
+           ============================================ */
+            .header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 24px 40px;
+                border-bottom: 1px solid var(--border-subtle);
+            }
+
+            .header-left {
+                display: flex;
+                align-items: center;
+                gap: 24px;
+            }
+
+            .logo-section {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .logo-dot {
+                width: 10px;
+                height: 10px;
+                background: var(--color-primary);
+                border-radius: 50%;
+            }
+
+            .logo-name {
+                font-family: var(--font-heading);
+                font-size: 14px;
+                font-weight: 600;
+                letter-spacing: 2px;
+                color: var(--text-primary);
+            }
+
+            .status-pill {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 5px 10px;
+                border-radius: var(--radius-full);
+                font-size: 12px;
+                font-weight: 500;
+                transition: all 0.3s ease;
+            }
+
+            .status-pill.online {
+                background: rgba(34, 197, 94, 0.125);
+                color: var(--color-success);
+            }
+
+            .status-pill.offline {
+                background: rgba(255, 255, 255, 0.08);
+                color: var(--text-secondary);
+            }
+
+            .status-dot {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+            }
+
+            .status-pill.online .status-dot {
+                background: var(--color-success);
+                box-shadow: 0 0 8px var(--color-success);
+                animation: pulse 2s infinite;
+            }
+
+            .status-pill.offline .status-dot {
+                background: var(--text-secondary);
+            }
+
+            @keyframes pulse {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.5;
+                }
+            }
+
+            .header-right {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .action-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 36px;
+                height: 36px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid var(--border-subtle);
+                border-radius: var(--radius-md);
+                color: var(--text-secondary);
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .action-btn:hover {
+                background: var(--bg-card-hover);
+                border-color: var(--border-hover);
+                color: var(--text-primary);
+            }
+
+            .action-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            /* ============================================
+           MAIN CONTENT
+           ============================================ */
+            .main-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+                padding: 32px 40px;
+                overflow: hidden;
+            }
+
+            .top-row {
+                display: flex;
+                gap: 24px;
+                flex: 1;
+                min-height: 0;
+            }
+
+            /* ============================================
+           LEFT PANEL
+           ============================================ */
+            .left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+                padding: 24px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid var(--border-subtle);
+                border-radius: var(--radius-3xl);
+            }
+
+            .title-section {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+            }
+
+            .title-text {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .title-text h1 {
+                font-family: var(--font-heading);
+                font-size: 24px;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin-bottom: 6px;
+            }
+
+            .title-text p {
+                font-size: 14px;
+                color: var(--text-secondary);
+            }
+
+            .user-dropdown {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 12px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid var(--border-subtle);
+                border-radius: var(--radius-md);
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .user-dropdown:hover {
+                background: var(--bg-card-hover);
+                border-color: var(--border-hover);
+            }
+
+            .user-avatar {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 24px;
+                height: 24px;
+                background: var(--color-primary);
+                border-radius: 50%;
+                font-size: 11px;
+                font-weight: 600;
+                color: white;
+            }
+
+            .user-avatar.offline {
+                background: rgba(255, 255, 255, 0.08);
+                color: var(--text-secondary);
+            }
+
+            .user-name {
+                font-size: 13px;
+                font-weight: 500;
+                color: var(--text-primary);
+                min-width: 80px;
+            }
+
+            .user-name.offline {
+                color: var(--text-secondary);
+            }
+
+            .user-dropdown svg {
+                width: 14px;
+                height: 14px;
+                color: var(--text-secondary);
+            }
+
+            /* Actions */
+            .actions-section {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .primary-action {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                height: 56px;
+                background: var(--color-primary);
+                border: none;
+                border-radius: var(--radius-xl);
+                font-family: var(--font-heading);
+                font-size: 16px;
+                font-weight: 600;
+                color: white;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .primary-action:hover {
+                background: var(--color-primary-hover);
+                transform: translateY(-1px);
+            }
+
+            .primary-action svg {
+                width: 20px;
+                height: 20px;
+            }
+
+            .primary-action.loading {
+                background: rgba(139, 92, 246, 0.5);
+                pointer-events: none;
+            }
+
+            .secondary-row {
+                display: flex;
+                gap: 12px;
+            }
+
+            .secondary-btn {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                height: 48px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-lg);
+                font-size: 14px;
+                font-weight: 500;
+                color: var(--text-secondary);
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .secondary-btn:hover:not(:disabled) {
+                background: var(--bg-card-hover);
+                color: var(--text-primary);
+            }
+
+            .secondary-btn:disabled {
+                opacity: 0.4;
+                cursor: not-allowed;
+            }
+
+            .secondary-btn svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            .secondary-btn.stop {
+                background: rgba(239, 68, 68, 0.08);
+                border-color: rgba(239, 68, 68, 0.2);
+                color: var(--color-error);
+            }
+
+            .secondary-btn.stop:hover:not(:disabled) {
+                background: rgba(239, 68, 68, 0.15);
+            }
+
+            /* Stats */
+            .stats-section {
+                display: flex;
+                gap: 12px;
+            }
+
+            .stat-card {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                padding: 16px;
+                background: rgba(255, 255, 255, 0.025);
+                border: 1px solid var(--border-subtle);
+                border-radius: var(--radius-2xl);
+            }
+
+            .stat-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .stat-label {
+                font-size: 12px;
+                color: var(--text-secondary);
+            }
+
+            .stat-icon {
+                width: 14px;
+                height: 14px;
+            }
+
+            .stat-icon.timer {
+                color: var(--color-primary);
+            }
+            .stat-icon.gpu {
+                color: var(--color-success);
+            }
+            .stat-icon.inactive {
+                color: var(--text-tertiary);
+            }
+
+            .stat-value {
+                font-family: var(--font-heading);
+                font-size: 24px;
+                font-weight: 600;
+                color: var(--text-primary);
+            }
+
+            .stat-value.inactive {
+                color: var(--text-tertiary);
+            }
+
+            .gpu-bar {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                padding: 12px 0;
+                background: rgba(255, 255, 255, 0.015);
+                border-radius: var(--radius-sm);
+            }
+
+            .gpu-bar svg {
+                width: 14px;
+                height: 14px;
+                color: var(--text-tertiary);
+            }
+
+            .gpu-bar span {
+                font-size: 12px;
+                color: var(--text-tertiary);
+            }
+
+            /* ============================================
+           RIGHT PANEL
+           ============================================ */
+            .right-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                gap: 12px;
+            }
+
+            .links-row {
+                display: flex;
+                gap: 12px;
+                flex: 1;
+            }
+
+            .link-item {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                padding: 20px 16px;
+                background: rgba(255, 255, 255, 0.025);
+                border: 1px solid var(--border-subtle);
+                border-radius: var(--radius-lg);
+                text-decoration: none;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .link-item:hover {
+                background: var(--bg-card-hover);
+                border-color: var(--border-hover);
+                transform: translateY(-2px);
+            }
+
+            .link-item svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            .link-item span {
+                font-size: 14px;
+                font-weight: 500;
+                color: var(--text-primary);
+            }
+
+            .link-item.pod-creator svg {
+                color: var(--color-primary);
+            }
+            .link-item.s3-browser svg {
+                color: var(--color-success);
+            }
+            .link-item.jupyter svg {
+                color: var(--color-warning);
+            }
+            .link-item.model-manager svg {
+                color: var(--color-cyan);
+            }
+
+            /* ============================================
+           CONSOLE PANEL
+           ============================================ */
+            .console-panel {
+                height: 280px;
+                display: flex;
+                flex-direction: column;
+                background: var(--bg-console);
+                border: 1px solid var(--border-subtle);
+                border-radius: var(--radius-2xl);
+                overflow: hidden;
+            }
+
+            .console-header {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 12px 16px;
+                background: rgba(255, 255, 255, 0.02);
+                border-bottom: 1px solid var(--border-subtle);
+            }
+
+            .console-header svg {
+                width: 14px;
+                height: 14px;
+                color: var(--text-tertiary);
+            }
+
+            .console-header span {
+                font-size: 12px;
+                font-weight: 500;
+                color: var(--text-secondary);
+            }
+
+            .console-body {
+                flex: 1;
+                padding: 16px;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+
+            .log-line {
+                font-family: var(--font-mono);
+                font-size: 11px;
+                line-height: 1.5;
+                color: var(--text-secondary);
+            }
+
+            .log-line.success {
+                color: var(--color-success);
+            }
+            .log-line.info {
+                color: var(--color-primary);
+            }
+            .log-line.error {
+                color: var(--color-error);
+            }
+
+            .console-body::-webkit-scrollbar {
+                width: 6px;
+            }
+
+            .console-body::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            .console-body::-webkit-scrollbar-thumb {
+                background: var(--border-default);
+                border-radius: 3px;
+            }
+
+            /* ============================================
+           DROPDOWN MENU
+           ============================================ */
+            .user-dropdown-wrapper {
+                position: relative;
+            }
+
+            .dropdown-menu {
+                position: absolute;
+                top: calc(100% + 4px);
+                right: 0;
+                min-width: 200px;
+                background: rgba(20, 20, 20, 0.98);
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-lg);
+                padding: 8px;
+                opacity: 0;
+                visibility: hidden;
+                transform: translateY(-8px);
+                transition: all 0.2s ease;
+                z-index: 100;
+                backdrop-filter: blur(20px);
+            }
+
+            .dropdown-menu.open {
+                opacity: 1;
+                visibility: visible;
+                transform: translateY(0);
+            }
+
+            .dropdown-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 12px;
+                border-radius: var(--radius-sm);
+                font-size: 13px;
+                color: var(--text-primary);
+                cursor: pointer;
+                transition: all 0.15s ease;
+            }
+
+            .dropdown-item:hover {
+                background: rgba(255, 255, 255, 0.06);
+            }
+
+            .dropdown-item.active {
+                background: rgba(139, 92, 246, 0.15);
+                color: var(--color-primary);
+            }
+
+            .dropdown-divider {
+                height: 1px;
+                background: var(--border-default);
+                margin: 8px 0;
+            }
+
+            .dropdown-item.add-user {
+                color: var(--color-primary);
+            }
+
+            .dropdown-item svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            /* ============================================
+           TOAST
+           ============================================ */
+            .toast-container {
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                z-index: 1000;
+            }
+
+            .toast {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 14px 18px;
+                background: rgba(20, 20, 20, 0.95);
+                border: 1px solid var(--border-default);
+                border-radius: var(--radius-lg);
+                backdrop-filter: blur(20px);
+                animation: slideIn 0.3s ease;
+            }
+
+            .toast.success {
+                border-color: var(--color-success);
+            }
+            .toast.error {
+                border-color: var(--color-error);
+            }
+
+            .toast svg {
+                width: 18px;
+                height: 18px;
+            }
+            .toast.success svg {
+                color: var(--color-success);
+            }
+            .toast.error svg {
+                color: var(--color-error);
+            }
+            .toast span {
+                font-size: 13px;
+            }
+
+            @keyframes slideIn {
+                from {
+                    opacity: 0;
+                    transform: translateX(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+
+            /* ============================================
+           RESPONSIVE
+           ============================================ */
+            @media (max-width: 1200px) {
+                .top-row {
+                    flex-direction: column;
+                }
+                .right-panel {
+                    flex-direction: row;
+                }
+                .links-row {
+                    flex: none;
+                }
+            }
+
+            @media (max-width: 768px) {
+                .header {
+                    padding: 16px 24px;
+                }
+                .main-content {
+                    padding: 16px 24px;
+                }
+                .right-panel {
+                    flex-direction: column;
+                }
+                .console-panel {
+                    height: 200px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="app-container">
+            <div class="background-layer"></div>
+
+            <div class="content-wrapper">
+                <!-- Header -->
+                <header class="header">
+                    <div class="header-left">
+                        <div class="logo-section">
+                            <div class="logo-dot"></div>
+                            <span class="logo-name">RUNDECK</span>
+                        </div>
+                        <div class="status-pill offline" id="statusPill">
+                            <div class="status-dot"></div>
+                            <span id="statusText">Offline</span>
+                        </div>
+                    </div>
+                    <div class="header-right">
+                        <button class="action-btn" title="Settings">
+                            <i data-lucide="settings"></i>
+                        </button>
+                        <button
+                            class="action-btn"
+                            title="Refresh"
+                            onclick="checkStatus()"
+                        >
+                            <i data-lucide="refresh-cw"></i>
+                        </button>
+                        <button class="action-btn" title="Help">
+                            <i data-lucide="help-circle"></i>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Main Content -->
+                <main class="main-content">
+                    <div class="top-row">
+                        <!-- Left Panel -->
+                        <div class="left-panel">
+                            <div class="title-section">
+                                <div class="title-text">
+                                    <h1 id="panelTitle">Pod is offline</h1>
+                                    <p id="panelSubtitle">
+                                        Start the pod to use ComfyUI
+                                    </p>
+                                </div>
+                                <div class="user-dropdown-wrapper">
+                                    <div
+                                        class="user-dropdown"
+                                        id="userDropdown"
+                                        onclick="toggleUserMenu()"
+                                    >
+                                        <div
+                                            class="user-avatar offline"
+                                            id="userAvatar"
+                                        >
+                                            <i data-lucide="user"></i>
+                                        </div>
+                                        <span
+                                            class="user-name offline"
+                                            id="userName"
+                                            >Select user</span
+                                        >
+                                        <i data-lucide="chevron-down"></i>
+                                    </div>
+                                    <div
+                                        class="dropdown-menu"
+                                        id="userMenu"
+                                    ></div>
+                                </div>
+                            </div>
+
+                            <div class="actions-section">
+                                <button
+                                    class="primary-action"
+                                    id="primaryAction"
+                                    onclick="handlePrimaryAction()"
+                                >
+                                    <i data-lucide="play"></i>
+                                    <span id="primaryActionText"
+                                        >Start ComfyUI</span
+                                    >
+                                </button>
+                                <div class="secondary-row">
+                                    <button
+                                        class="secondary-btn"
+                                        id="restartBtn"
+                                        onclick="restartComfyUI()"
+                                        disabled
+                                    >
+                                        <i data-lucide="rotate-ccw"></i>
+                                        <span>Restart</span>
+                                    </button>
+                                    <button
+                                        class="secondary-btn stop"
+                                        id="stopBtn"
+                                        onclick="stopComfyUI()"
+                                        disabled
+                                    >
+                                        <i data-lucide="square"></i>
+                                        <span>Stop</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="stats-section">
+                                <div class="stat-card">
+                                    <div class="stat-header">
+                                        <span class="stat-label"
+                                            >Session Time</span
+                                        >
+                                        <i
+                                            data-lucide="timer"
+                                            class="stat-icon inactive"
+                                            id="timerIcon"
+                                        ></i>
+                                    </div>
+                                    <span
+                                        class="stat-value inactive"
+                                        id="sessionTime"
+                                        >--:--</span
+                                    >
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-header">
+                                        <i
+                                            data-lucide="cpu"
+                                            class="stat-icon inactive"
+                                            id="gpuIcon"
+                                        ></i>
+                                        <span class="stat-label">GPU</span>
+                                    </div>
+                                    <span
+                                        class="stat-value inactive"
+                                        id="gpuUsage"
+                                        >--%</span
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="gpu-bar">
+                                <i data-lucide="cpu"></i>
+                                <span id="gpuName">Detecting GPU...</span>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel -->
+                        <div class="right-panel">
+                            <div class="links-row">
+                                <a
+                                    class="link-item pod-creator"
+                                    href="https://www.runpod.io/console/pods"
+                                    target="_blank"
+                                >
+                                    <i data-lucide="plus"></i>
+                                    <span>Pod Creator</span>
+                                </a>
+                                <a
+                                    class="link-item s3-browser"
+                                    href="#"
+                                    onclick="
+                                        showToast(
+                                            'S3 Browser not configured',
+                                            'error',
+                                        )
+                                    "
+                                >
+                                    <i data-lucide="folder"></i>
+                                    <span>S3 Browser</span>
+                                </a>
+                            </div>
+                            <div class="links-row">
+                                <a
+                                    class="link-item jupyter"
+                                    href="/proxy/8888"
+                                    target="_blank"
+                                >
+                                    <i data-lucide="notebook-text"></i>
+                                    <span>JupyterLab</span>
+                                </a>
+                                <a
+                                    class="link-item model-manager"
+                                    href="/models"
+                                    target="_blank"
+                                >
+                                    <i data-lucide="boxes"></i>
+                                    <span>Model Manager</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Console Panel -->
+                    <div class="console-panel">
+                        <div class="console-header">
+                            <i data-lucide="terminal"></i>
+                            <span>Console Output</span>
+                        </div>
+                        <div class="console-body" id="consoleBody">
+                            <div class="log-line">
+                                [System] Waiting for ComfyUI to start...
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <div class="toast-container" id="toastContainer"></div>
+        </div>
+
+        <script>
+            // State
+            const state = {
+                isRunning: false,
+                isLoading: false,
+                currentUser: null,
+                users: [],
+                sessionStartTime: null,
+            };
+
+            // Elements
+            const el = {
+                statusPill: document.getElementById("statusPill"),
+                statusText: document.getElementById("statusText"),
+                panelTitle: document.getElementById("panelTitle"),
+                panelSubtitle: document.getElementById("panelSubtitle"),
+                userAvatar: document.getElementById("userAvatar"),
+                userName: document.getElementById("userName"),
+                userMenu: document.getElementById("userMenu"),
+                primaryAction: document.getElementById("primaryAction"),
+                primaryActionText: document.getElementById("primaryActionText"),
+                restartBtn: document.getElementById("restartBtn"),
+                stopBtn: document.getElementById("stopBtn"),
+                sessionTime: document.getElementById("sessionTime"),
+                gpuUsage: document.getElementById("gpuUsage"),
+                gpuName: document.getElementById("gpuName"),
+                timerIcon: document.getElementById("timerIcon"),
+                gpuIcon: document.getElementById("gpuIcon"),
+                consoleBody: document.getElementById("consoleBody"),
+            };
+
+            // Initialize
+            document.addEventListener("DOMContentLoaded", () => {
+                lucide.createIcons();
+                loadUsers();
+                checkStatus();
+                setInterval(checkStatus, 3000);
+                setInterval(updateSessionTime, 1000);
+
+                document.addEventListener("click", (e) => {
+                    if (!e.target.closest(".user-dropdown-wrapper")) {
+                        el.userMenu.classList.remove("open");
+                    }
+                });
+            });
+
+            // API
+            async function loadUsers() {
+                try {
+                    const res = await fetch("/api/users");
+                    const data = await res.json();
+                    state.users = data.users || [];
+                    state.currentUser = data.current_user;
+                    renderUserMenu();
+                    updateUserDisplay();
+                } catch (e) {
+                    console.error("Failed to load users:", e);
+                }
+            }
+
+            async function checkStatus() {
+                try {
+                    const res = await fetch("/api/status");
+                    const data = await res.json();
+
+                    const wasRunning = state.isRunning;
+                    state.isRunning = data.running && data.ready;
+
+                    if (data.start_time)
+                        state.sessionStartTime = data.start_time * 1000;
+                    if (data.current_user) {
+                        state.currentUser = data.current_user;
+                        updateUserDisplay();
+                    }
+                    if (data.gpu_info) el.gpuName.textContent = data.gpu_info;
+
+                    updateUI();
+
+                    if (!wasRunning && state.isRunning) {
+                        playSuccessSound();
+                        showToast("ComfyUI is ready!", "success");
+                    }
+                } catch (e) {
+                    console.error("Status check failed:", e);
+                }
+            }
+
+            async function startComfyUI() {
+                if (!state.currentUser) {
+                    showToast("Please select a user first", "error");
+                    return;
+                }
+
+                state.isLoading = true;
+                updateUI();
+                addLog("Starting ComfyUI...", "info");
+
+                try {
+                    const res = await fetch("/api/start", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ username: state.currentUser }),
+                    });
+
+                    const data = await res.json();
+
+                    if (data.success) {
+                        state.sessionStartTime = Date.now();
+                        addLog("ComfyUI process started", "success");
+                    } else {
+                        addLog(`Failed: ${data.error}`, "error");
+                        showToast(data.error || "Failed to start", "error");
+                    }
+                } catch (e) {
+                    addLog(`Error: ${e.message}`, "error");
+                    showToast("Failed to start ComfyUI", "error");
+                } finally {
+                    state.isLoading = false;
+                    updateUI();
+                }
+            }
+
+            async function stopComfyUI() {
+                try {
+                    addLog("Stopping ComfyUI...", "info");
+                    const res = await fetch("/api/stop", { method: "POST" });
+                    const data = await res.json();
+
+                    if (data.success) {
+                        state.isRunning = false;
+                        state.sessionStartTime = null;
+                        addLog("ComfyUI stopped", "success");
+                        showToast("ComfyUI stopped", "success");
+                        updateUI();
+                    }
+                } catch (e) {
+                    showToast("Failed to stop", "error");
+                }
+            }
+
+            async function restartComfyUI() {
+                addLog("Restarting...", "info");
+                await stopComfyUI();
+                setTimeout(() => startComfyUI(), 2000);
+            }
+
+            // UI Updates
+            function updateUI() {
+                // Status
+                el.statusPill.className = state.isRunning
+                    ? "status-pill online"
+                    : "status-pill offline";
+                el.statusText.textContent = state.isRunning
+                    ? "Running"
+                    : "Offline";
+
+                // Title
+                if (state.isRunning && state.currentUser) {
+                    el.panelTitle.textContent = `Running as ${state.currentUser}`;
+                    el.panelSubtitle.textContent = "ComfyUI is ready to use";
+                } else if (state.isLoading) {
+                    el.panelTitle.textContent = "Starting...";
+                    el.panelSubtitle.textContent = "Please wait";
+                } else {
+                    el.panelTitle.textContent = "Pod is offline";
+                    el.panelSubtitle.textContent =
+                        "Start the pod to use ComfyUI";
+                }
+
+                // Button
+                if (state.isLoading) {
+                    el.primaryAction.classList.add("loading");
+                    el.primaryAction.innerHTML = "<span>Starting...</span>";
+                } else if (state.isRunning) {
+                    el.primaryAction.classList.remove("loading");
+                    el.primaryAction.innerHTML =
+                        '<i data-lucide="external-link"></i><span>Open ComfyUI</span>';
+                    lucide.createIcons({ nodes: [el.primaryAction] });
+                } else {
+                    el.primaryAction.classList.remove("loading");
+                    el.primaryAction.innerHTML =
+                        '<i data-lucide="play"></i><span>Start ComfyUI</span>';
+                    lucide.createIcons({ nodes: [el.primaryAction] });
+                }
+
+                // Secondary buttons
+                el.restartBtn.disabled = !state.isRunning;
+                el.stopBtn.disabled = !state.isRunning;
+
+                // Stats
+                const active = state.isRunning;
+                el.timerIcon.classList.toggle("inactive", !active);
+                el.gpuIcon.classList.toggle("inactive", !active);
+                el.sessionTime.classList.toggle("inactive", !active);
+                el.gpuUsage.classList.toggle("inactive", !active);
+
+                if (!active) {
+                    el.sessionTime.textContent = "--:--";
+                    el.gpuUsage.textContent = "--%";
+                }
+            }
+
+            function updateUserDisplay() {
+                if (state.currentUser) {
+                    el.userAvatar.innerHTML = state.currentUser
+                        .charAt(0)
+                        .toUpperCase();
+                    el.userAvatar.classList.remove("offline");
+                    el.userName.textContent = state.currentUser;
+                    el.userName.classList.remove("offline");
+                } else {
+                    el.userAvatar.innerHTML = '<i data-lucide="user"></i>';
+                    el.userAvatar.classList.add("offline");
+                    el.userName.textContent = "Select user";
+                    el.userName.classList.add("offline");
+                    lucide.createIcons({ nodes: [el.userAvatar] });
+                }
+            }
+
+            function updateSessionTime() {
+                if (state.isRunning && state.sessionStartTime) {
+                    const elapsed = Date.now() - state.sessionStartTime;
+                    const h = Math.floor(elapsed / 3600000);
+                    const m = Math.floor((elapsed % 3600000) / 60000);
+                    el.sessionTime.textContent =
+                        h > 0 ? `${h}h ${m}m` : `${m}m`;
+                }
+            }
+
+            // User Menu
+            function toggleUserMenu() {
+                el.userMenu.classList.toggle("open");
+            }
+
+            function renderUserMenu() {
+                let html = state.users
+                    .map((user) => {
+                        const active = user === state.currentUser;
+                        return `
+                    <div class="dropdown-item ${active ? "active" : ""}" onclick="selectUser('${user}')">
+                        <span style="width:20px;height:20px;background:${active ? "var(--color-primary)" : "rgba(255,255,255,0.1)"};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600">${user.charAt(0).toUpperCase()}</span>
+                        <span>${user}</span>
+                    </div>
+                `;
+                    })
+                    .join("");
+
+                html += `
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-item add-user" onclick="addUser()">
+                    <i data-lucide="plus"></i>
+                    <span>Add User</span>
+                </div>
+            `;
+
+                el.userMenu.innerHTML = html;
+                lucide.createIcons({ nodes: [el.userMenu] });
+            }
+
+            function selectUser(username) {
+                state.currentUser = username;
+                el.userMenu.classList.remove("open");
+                updateUserDisplay();
+                renderUserMenu();
+                fetch("/api/select_user", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username }),
+                });
+            }
+
+            async function addUser() {
+                el.userMenu.classList.remove("open");
+                const username = prompt("Enter username (lowercase):");
+                if (!username) return;
+
+                const token = prompt("Enter admin token:");
+                if (!token) return;
+
+                try {
+                    const res = await fetch("/api/add_user", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ username, admin_token: token }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showToast(`User "${username}" added`, "success");
+                        loadUsers();
+                    } else {
+                        showToast(data.error || "Failed", "error");
+                    }
+                } catch (e) {
+                    showToast("Failed to add user", "error");
+                }
+            }
+
+            // Actions
+            function handlePrimaryAction() {
+                if (state.isRunning) {
+                    window.open("/proxy/8188", "_blank");
+                } else {
+                    startComfyUI();
+                }
+            }
+
+            // Console
+            function addLog(message, type = "") {
+                const time = new Date().toTimeString().slice(0, 8);
+                const line = document.createElement("div");
+                line.className = `log-line ${type}`;
+                line.textContent = `[${time}] ${message}`;
+                el.consoleBody.appendChild(line);
+                el.consoleBody.scrollTop = el.consoleBody.scrollHeight;
+
+                while (el.consoleBody.children.length > 100) {
+                    el.consoleBody.removeChild(el.consoleBody.firstChild);
+                }
+            }
+
+            // Toast
+            function showToast(message, type = "info") {
+                const container = document.getElementById("toastContainer");
+                const toast = document.createElement("div");
+                toast.className = `toast ${type}`;
+                const icon = type === "success" ? "check-circle" : "x-circle";
+                toast.innerHTML = `<i data-lucide="${icon}"></i><span>${message}</span>`;
+                container.appendChild(toast);
+                lucide.createIcons({ nodes: [toast] });
+                setTimeout(() => {
+                    toast.style.opacity = "0";
+                    setTimeout(() => toast.remove(), 300);
+                }, 4000);
+            }
+
+            // Sound
+            function playSuccessSound() {
+                if (document.hidden) return;
+                try {
+                    const ctx = new (
+                        window.AudioContext || window.webkitAudioContext
+                    )();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.value = 523.25;
+                    osc.type = "sine";
+                    gain.gain.setValueAtTime(0, ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(
+                        0.3,
+                        ctx.currentTime + 0.05,
+                    );
+                    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.2);
+
+                    setTimeout(() => {
+                        const osc2 = ctx.createOscillator();
+                        const gain2 = ctx.createGain();
+                        osc2.connect(gain2);
+                        gain2.connect(ctx.destination);
+                        osc2.frequency.value = 659.25;
+                        osc2.type = "sine";
+                        gain2.gain.setValueAtTime(0, ctx.currentTime);
+                        gain2.gain.linearRampToValueAtTime(
+                            0.3,
+                            ctx.currentTime + 0.05,
+                        );
+                        gain2.gain.linearRampToValueAtTime(
+                            0,
+                            ctx.currentTime + 0.3,
+                        );
+                        osc2.start(ctx.currentTime);
+                        osc2.stop(ctx.currentTime + 0.3);
+                    }, 100);
+                } catch (e) {}
+            }
+
+            // Keyboard
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Escape") el.userMenu.classList.remove("open");
+                if ((e.ctrlKey || e.metaKey) && e.key === "Enter")
+                    handlePrimaryAction();
+            });
+        </script>
+    </body>
+</html>

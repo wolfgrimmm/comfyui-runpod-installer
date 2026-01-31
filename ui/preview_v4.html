@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>RunDeck V4 - Preview</title>
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&family=Space+Grotesk:wght@500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <script src="https://unpkg.com/lucide@latest"></script>
+
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            html,
+            body {
+                height: 100%;
+                font-family: "Inter", sans-serif;
+                background: #000;
+                color: rgba(255, 255, 255, 0.9);
+                overflow: hidden;
+            }
+
+            .app {
+                width: 1440px;
+                height: 900px;
+                margin: 0 auto;
+                position: relative;
+                background: #000;
+            }
+
+            /* Background with gradient overlay */
+            .bg {
+                position: absolute;
+                inset: 0;
+                background:
+                    linear-gradient(
+                        135deg,
+                        rgba(139, 92, 246, 0.15) 0%,
+                        transparent 50%
+                    ),
+                    linear-gradient(
+                        225deg,
+                        rgba(236, 72, 153, 0.1) 0%,
+                        transparent 50%
+                    ),
+                    #000;
+            }
+
+            .bg::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.6);
+            }
+
+            /* Content wrapper */
+            .content {
+                position: relative;
+                z-index: 1;
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+            }
+
+            /* ==================== HEADER ==================== */
+            .header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 24px 40px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            }
+
+            .header-left {
+                display: flex;
+                align-items: center;
+                gap: 24px;
+            }
+
+            .logo {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .logo-dot {
+                width: 10px;
+                height: 10px;
+                background: #8b5cf6;
+                border-radius: 50%;
+            }
+
+            .logo-text {
+                font-family: "Space Grotesk", sans-serif;
+                font-size: 14px;
+                font-weight: 600;
+                letter-spacing: 2px;
+                color: rgba(255, 255, 255, 0.9);
+            }
+
+            /* Status Pill */
+            .status-pill {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 5px 10px;
+                border-radius: 100px;
+                font-size: 12px;
+                font-weight: 500;
+            }
+
+            .status-pill.online {
+                background: rgba(34, 197, 94, 0.125);
+                color: #22c55e;
+            }
+
+            .status-pill.offline {
+                background: rgba(255, 255, 255, 0.08);
+                color: rgba(255, 255, 255, 0.6);
+            }
+
+            .status-dot {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+            }
+
+            .status-pill.online .status-dot {
+                background: #22c55e;
+                box-shadow: 0 0 8px #22c55e;
+            }
+
+            .status-pill.offline .status-dot {
+                background: rgba(255, 255, 255, 0.6);
+            }
+
+            /* Header buttons */
+            .header-right {
+                display: flex;
+                gap: 8px;
+            }
+
+            .icon-btn {
+                width: 36px;
+                height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.06);
+                border-radius: 10px;
+                color: rgba(255, 255, 255, 0.6);
+                cursor: pointer;
+            }
+
+            .icon-btn:hover {
+                background: rgba(255, 255, 255, 0.06);
+                color: rgba(255, 255, 255, 0.9);
+            }
+
+            .icon-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            /* ==================== MAIN ==================== */
+            .main {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+                padding: 32px 40px;
+            }
+
+            .top-row {
+                display: flex;
+                gap: 24px;
+                flex: 1;
+            }
+
+            /* ==================== LEFT PANEL ==================== */
+            .left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+                padding: 24px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.06);
+                border-radius: 20px;
+            }
+
+            /* Title section */
+            .title-section {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .title-text h1 {
+                font-family: "Space Grotesk", sans-serif;
+                font-size: 24px;
+                font-weight: 600;
+                margin-bottom: 6px;
+            }
+
+            .title-text p {
+                font-size: 14px;
+                color: rgba(255, 255, 255, 0.33);
+            }
+
+            /* User dropdown */
+            .user-dropdown {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 12px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.06);
+                border-radius: 10px;
+                cursor: pointer;
+            }
+
+            .user-avatar {
+                width: 24px;
+                height: 24px;
+                background: #8b5cf6;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                font-weight: 600;
+            }
+
+            .user-avatar.offline {
+                background: rgba(255, 255, 255, 0.08);
+                color: rgba(255, 255, 255, 0.6);
+            }
+
+            .user-name {
+                font-size: 13px;
+                font-weight: 500;
+                min-width: 80px;
+            }
+
+            .user-name.offline {
+                color: rgba(255, 255, 255, 0.6);
+            }
+
+            .user-dropdown svg {
+                width: 14px;
+                height: 14px;
+                color: rgba(255, 255, 255, 0.6);
+            }
+
+            /* Actions */
+            .actions {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .primary-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                height: 56px;
+                background: #8b5cf6;
+                border: none;
+                border-radius: 14px;
+                font-family: "Space Grotesk", sans-serif;
+                font-size: 16px;
+                font-weight: 600;
+                color: white;
+                cursor: pointer;
+            }
+
+            .primary-btn:hover {
+                background: #a78bfa;
+            }
+            .primary-btn svg {
+                width: 20px;
+                height: 20px;
+            }
+
+            .secondary-row {
+                display: flex;
+                gap: 12px;
+            }
+
+            .secondary-btn {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                height: 48px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 12px;
+                font-size: 14px;
+                font-weight: 500;
+                color: rgba(255, 255, 255, 0.6);
+                cursor: pointer;
+            }
+
+            .secondary-btn:hover {
+                background: rgba(255, 255, 255, 0.06);
+                color: rgba(255, 255, 255, 0.9);
+            }
+
+            .secondary-btn.disabled {
+                opacity: 0.4;
+                pointer-events: none;
+            }
+
+            .secondary-btn svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            .secondary-btn.stop {
+                background: rgba(239, 68, 68, 0.08);
+                border-color: rgba(239, 68, 68, 0.2);
+                color: #ef4444;
+            }
+
+            /* Stats */
+            .stats {
+                display: flex;
+                gap: 12px;
+            }
+
+            .stat-card {
+                flex: 1;
+                padding: 16px;
+                background: rgba(255, 255, 255, 0.025);
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                border-radius: 16px;
+            }
+
+            .stat-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 10px;
+            }
+
+            .stat-label {
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.33);
+            }
+
+            .stat-header svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .stat-header svg.timer {
+                color: #8b5cf6;
+            }
+            .stat-header svg.gpu {
+                color: #22c55e;
+            }
+            .stat-header svg.inactive {
+                color: rgba(255, 255, 255, 0.27);
+            }
+
+            .stat-value {
+                font-family: "Space Grotesk", sans-serif;
+                font-size: 24px;
+                font-weight: 600;
+            }
+
+            .stat-value.inactive {
+                color: rgba(255, 255, 255, 0.27);
+            }
+
+            /* GPU bar */
+            .gpu-bar {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                padding: 12px;
+                background: rgba(255, 255, 255, 0.015);
+                border-radius: 8px;
+            }
+
+            .gpu-bar svg {
+                width: 14px;
+                height: 14px;
+                color: rgba(255, 255, 255, 0.27);
+            }
+
+            .gpu-bar span {
+                font-size: 12px;
+                color: rgba(255, 255, 255, 0.27);
+            }
+
+            /* ==================== RIGHT PANEL ==================== */
+            .right-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                gap: 12px;
+            }
+
+            .links-row {
+                display: flex;
+                gap: 12px;
+                flex: 1;
+            }
+
+            .link-card {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                padding: 20px 16px;
+                background: rgba(255, 255, 255, 0.025);
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                border-radius: 12px;
+                cursor: pointer;
+                text-decoration: none;
+            }
+
+            .link-card:hover {
+                background: rgba(255, 255, 255, 0.05);
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+
+            .link-card svg {
+                width: 18px;
+                height: 18px;
+            }
+            .link-card span {
+                font-size: 14px;
+                font-weight: 500;
+                color: rgba(255, 255, 255, 0.9);
+            }
+
+            .link-card.purple svg {
+                color: #8b5cf6;
+            }
+            .link-card.green svg {
+                color: #22c55e;
+            }
+            .link-card.amber svg {
+                color: #f59e0b;
+            }
+            .link-card.cyan svg {
+                color: #06b6d4;
+            }
+
+            /* ==================== CONSOLE ==================== */
+            .console {
+                height: 300px;
+                display: flex;
+                flex-direction: column;
+                background: #0d0d0d;
+                border: 1px solid rgba(255, 255, 255, 0.06);
+                border-radius: 16px;
+                overflow: hidden;
+            }
+
+            .console-header {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 12px 16px;
+                background: rgba(255, 255, 255, 0.02);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            }
+
+            .console-header svg {
+                width: 14px;
+                height: 14px;
+                color: rgba(255, 255, 255, 0.27);
+            }
+
+            .console-header span {
+                font-size: 12px;
+                font-weight: 500;
+                color: rgba(255, 255, 255, 0.6);
+            }
+
+            .console-body {
+                flex: 1;
+                padding: 16px;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+
+            .log {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 11px;
+                line-height: 1.5;
+                color: rgba(255, 255, 255, 0.4);
+            }
+
+            .log.success {
+                color: #22c55e;
+            }
+            .log.info {
+                color: #8b5cf6;
+            }
+
+            /* Toggle button for demo */
+            .toggle-state {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 10px 20px;
+                background: #8b5cf6;
+                border: none;
+                border-radius: 8px;
+                color: white;
+                font-weight: 600;
+                cursor: pointer;
+                z-index: 100;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Toggle button for demo -->
+        <button class="toggle-state" onclick="toggleState()">
+            Toggle Online/Offline
+        </button>
+
+        <div class="app">
+            <div class="bg"></div>
+
+            <div class="content">
+                <!-- Header -->
+                <header class="header">
+                    <div class="header-left">
+                        <div class="logo">
+                            <div class="logo-dot"></div>
+                            <span class="logo-text">RUNDECK</span>
+                        </div>
+                        <div class="status-pill online" id="statusPill">
+                            <div class="status-dot"></div>
+                            <span id="statusText">Running</span>
+                        </div>
+                    </div>
+                    <div class="header-right">
+                        <button class="icon-btn">
+                            <i data-lucide="settings"></i>
+                        </button>
+                        <button class="icon-btn">
+                            <i data-lucide="refresh-cw"></i>
+                        </button>
+                        <button class="icon-btn">
+                            <i data-lucide="help-circle"></i>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Main -->
+                <main class="main">
+                    <div class="top-row">
+                        <!-- Left Panel -->
+                        <div class="left-panel">
+                            <div class="title-section">
+                                <div class="title-text">
+                                    <h1 id="title">Running as serhii</h1>
+                                    <p id="subtitle">ComfyUI is ready to use</p>
+                                </div>
+                                <div class="user-dropdown">
+                                    <div class="user-avatar" id="avatar">S</div>
+                                    <span class="user-name" id="userName"
+                                        >serhii</span
+                                    >
+                                    <i data-lucide="chevron-down"></i>
+                                </div>
+                            </div>
+
+                            <div class="actions">
+                                <button class="primary-btn" id="primaryBtn">
+                                    <i
+                                        data-lucide="external-link"
+                                        id="primaryIcon"
+                                    ></i>
+                                    <span id="primaryText">Open ComfyUI</span>
+                                </button>
+                                <div class="secondary-row">
+                                    <button
+                                        class="secondary-btn"
+                                        id="restartBtn"
+                                    >
+                                        <i data-lucide="rotate-ccw"></i>
+                                        <span>Restart</span>
+                                    </button>
+                                    <button
+                                        class="secondary-btn stop"
+                                        id="stopBtn"
+                                    >
+                                        <i data-lucide="square"></i>
+                                        <span>Stop</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="stats">
+                                <div class="stat-card">
+                                    <div class="stat-header">
+                                        <span class="stat-label"
+                                            >Session Time</span
+                                        >
+                                        <i
+                                            data-lucide="timer"
+                                            class="timer"
+                                            id="timerIcon"
+                                        ></i>
+                                    </div>
+                                    <div class="stat-value" id="sessionTime">
+                                        2h 34m
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-header">
+                                        <i
+                                            data-lucide="cpu"
+                                            class="gpu"
+                                            id="gpuIcon"
+                                        ></i>
+                                        <span class="stat-label">GPU</span>
+                                    </div>
+                                    <div class="stat-value" id="gpuUsage">
+                                        42%
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="gpu-bar">
+                                <i data-lucide="cpu"></i>
+                                <span>NVIDIA RTX 4090 - 24GB VRAM</span>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel -->
+                        <div class="right-panel">
+                            <div class="links-row">
+                                <a
+                                    class="link-card purple"
+                                    href="https://pod-creator.skynetworkcdn.com/"
+                                    target="_blank"
+                                >
+                                    <i data-lucide="plus"></i>
+                                    <span>Pod Creator</span>
+                                </a>
+                                <a
+                                    class="link-card green"
+                                    href="https://s3-browser.skynetworkcdn.com/"
+                                    target="_blank"
+                                >
+                                    <i data-lucide="folder"></i>
+                                    <span>S3 Browser</span>
+                                </a>
+                            </div>
+                            <div class="links-row">
+                                <a
+                                    class="link-card amber"
+                                    href="/proxy/8888"
+                                    target="_blank"
+                                >
+                                    <i data-lucide="notebook-text"></i>
+                                    <span>JupyterLab</span>
+                                </a>
+                                <a
+                                    class="link-card cyan"
+                                    href="/models"
+                                    target="_blank"
+                                >
+                                    <i data-lucide="boxes"></i>
+                                    <span>Model Manager</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Console -->
+                    <div class="console">
+                        <div class="console-header">
+                            <i data-lucide="terminal"></i>
+                            <span>Console Output</span>
+                        </div>
+                        <div class="console-body">
+                            <div class="log">
+                                [2024-01-28 14:23:01] Starting ComfyUI...
+                            </div>
+                            <div class="log">
+                                [2024-01-28 14:23:02] Loading model:
+                                v1-5-pruned.safetensors
+                            </div>
+                            <div class="log success">
+                                [2024-01-28 14:23:05] Model loaded successfully
+                            </div>
+                            <div class="log">
+                                [2024-01-28 14:23:06] Loading custom nodes...
+                            </div>
+                            <div class="log">
+                                [2024-01-28 14:23:08] Loaded: ComfyUI-Manager
+                            </div>
+                            <div class="log">
+                                [2024-01-28 14:23:08] Loaded:
+                                ComfyUI-Impact-Pack
+                            </div>
+                            <div class="log success">
+                                [2024-01-28 14:23:09] Server started on port
+                                8188
+                            </div>
+                            <div class="log info">
+                                [2024-01-28 14:23:10] Ready to accept
+                                connections
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <script>
+            // Initialize Lucide icons
+            lucide.createIcons();
+
+            let isOnline = true;
+
+            function toggleState() {
+                isOnline = !isOnline;
+                updateUI();
+            }
+
+            function updateUI() {
+                const statusPill = document.getElementById("statusPill");
+                const statusText = document.getElementById("statusText");
+                const title = document.getElementById("title");
+                const subtitle = document.getElementById("subtitle");
+                const avatar = document.getElementById("avatar");
+                const userName = document.getElementById("userName");
+                const primaryBtn = document.getElementById("primaryBtn");
+                const primaryIcon = document.getElementById("primaryIcon");
+                const primaryText = document.getElementById("primaryText");
+                const restartBtn = document.getElementById("restartBtn");
+                const stopBtn = document.getElementById("stopBtn");
+                const sessionTime = document.getElementById("sessionTime");
+                const gpuUsage = document.getElementById("gpuUsage");
+                const timerIcon = document.getElementById("timerIcon");
+                const gpuIcon = document.getElementById("gpuIcon");
+
+                if (isOnline) {
+                    // Online state
+                    statusPill.className = "status-pill online";
+                    statusText.textContent = "Running";
+                    title.textContent = "Running as serhii";
+                    subtitle.textContent = "ComfyUI is ready to use";
+                    avatar.className = "user-avatar";
+                    avatar.textContent = "S";
+                    userName.className = "user-name";
+                    userName.textContent = "serhii";
+                    primaryIcon.setAttribute("data-lucide", "external-link");
+                    primaryText.textContent = "Open ComfyUI";
+                    restartBtn.classList.remove("disabled");
+                    stopBtn.classList.remove("disabled");
+                    sessionTime.textContent = "2h 34m";
+                    sessionTime.classList.remove("inactive");
+                    gpuUsage.textContent = "42%";
+                    gpuUsage.classList.remove("inactive");
+                    timerIcon.classList.remove("inactive");
+                    timerIcon.classList.add("timer");
+                    gpuIcon.classList.remove("inactive");
+                    gpuIcon.classList.add("gpu");
+                } else {
+                    // Offline state
+                    statusPill.className = "status-pill offline";
+                    statusText.textContent = "Offline";
+                    title.textContent = "Pod is offline";
+                    subtitle.textContent = "Start the pod to use ComfyUI";
+                    avatar.className = "user-avatar offline";
+                    avatar.innerHTML =
+                        '<i data-lucide="user" style="width:12px;height:12px;"></i>';
+                    userName.className = "user-name offline";
+                    userName.textContent = "Select user";
+                    primaryIcon.setAttribute("data-lucide", "play");
+                    primaryText.textContent = "Start ComfyUI";
+                    restartBtn.classList.add("disabled");
+                    stopBtn.classList.add("disabled");
+                    sessionTime.textContent = "--:--";
+                    sessionTime.classList.add("inactive");
+                    gpuUsage.textContent = "--%";
+                    gpuUsage.classList.add("inactive");
+                    timerIcon.classList.add("inactive");
+                    timerIcon.classList.remove("timer");
+                    gpuIcon.classList.add("inactive");
+                    gpuIcon.classList.remove("gpu");
+                }
+
+                // Recreate icons
+                lucide.createIcons();
+            }
+        </script>
+    </body>
+</html>
