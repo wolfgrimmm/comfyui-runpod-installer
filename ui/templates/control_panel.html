@@ -957,18 +957,7 @@
                                                 Select user
                                             </option>
                                             {% endif %} {% for user in users %}
-                                            <option
-                                                value="{{ user }}"
-                                                {%
-                                                if
-                                                user=""
-                                                ="current_user"
-                                                %}selected{%
-                                                endif
-                                                %}
-                                            >
-                                                {{ user }}
-                                            </option>
+                                            <option value="{{ user }}" {% if user == current_user %}selected{% endif %}>{{ user }}</option>
                                             {% endfor %}
                                         </select>
                                         <i data-lucide="chevron-down"></i>
