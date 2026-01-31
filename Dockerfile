@@ -287,6 +287,9 @@ if [ "$NEED_INSTALL" = "1" ]; then
     # Git integration
     uv pip install GitPython PyGithub==1.59.1
 
+    # ComfyUI required dependencies
+    uv pip install alembic pydantic-settings blend-modes deepdiff pynvml
+
     # Jupyter
     uv pip install jupyterlab ipywidgets notebook
 
